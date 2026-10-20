@@ -115,5 +115,16 @@ describe('filtros del historial', () => {
 		const celdas = avance.partidas[0].celdas.slice(0, 3).map((c) => c.realizado);
 		// Mayo y julio emitidos; junio sigue en borrador.
 		expect(celdas).toEqual([1, 0, 1]);
+
+		// Un realizado manual se informa aparte de las ejecuciones con reporte.
+		await repos.programa.registrarRealizadoManual({
+			programaId: programa.id,
+			partidaId: partidas.uno,
+			mes: '2026-05-01',
+			nota: 'Reporte Word anterior'
+		});
+		const mayo = (await repos.programa.obtenerAvance(programa.id)).partidas[0].celdas[0];
+		expect(mayo).toMatchObject({ realizado: 2, ejecucionesReportes: 1, realizadoSinReporte: 1 });
+		expect(mayo.reportes).toHaveLength(1);
 	});
 });

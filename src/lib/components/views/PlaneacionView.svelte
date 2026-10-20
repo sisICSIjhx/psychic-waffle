@@ -210,11 +210,11 @@
 											>
 											<!-- eslint-enable svelte/no-navigation-without-resolve -->
 										{/if}
-										{#if celda.realizado > celda.reportes.length}
+										{#if celda.realizadoSinReporte > 0}
 											<span
 												class="view-note"
 												title="Marcas del Excel o realizados registrados a mano"
-												>{celda.realizado - celda.reportes.length} sin reporte</span
+												>{celda.realizadoSinReporte} sin reporte</span
 											>
 										{/if}
 										{#if estado === 'pendiente' || estado === 'vencido'}

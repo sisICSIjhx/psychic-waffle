@@ -204,7 +204,11 @@ export const esquemaCeldaPrograma = z.object({
 	mes: fecha,
 	programado: z.number().nullable(),
 	realizado: z.number(),
-	reportes: z.array(id)
+	reportes: z.array(id),
+	/** Ejecuciones con reporte emitido (varios reportes por TAG del mismo periodo cuentan una). */
+	ejecucionesReportes: z.number(),
+	/** Marcas R del Excel y realizados capturados a mano. */
+	realizadoSinReporte: z.number()
 });
 export type CeldaPrograma = z.infer<typeof esquemaCeldaPrograma>;
 

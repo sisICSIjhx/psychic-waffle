@@ -17,9 +17,31 @@ const partidas: AvancePrograma['partidas'] = [
 		distribucion: 'produccion',
 		cantidadAnual: 3,
 		celdas: [
-			{ mes: MESES[0], programado: 1, realizado: 2, reportes: [ID(90)] },
-			{ mes: MESES[1], programado: 1, realizado: 0, reportes: [] },
-			{ mes: MESES[2], programado: 1, realizado: 0, reportes: [] }
+			// Una ejecución con seis reportes (uno por TAG) más un realizado del Excel.
+			{
+				mes: MESES[0],
+				programado: 1,
+				realizado: 2,
+				reportes: [ID(90), ID(91), ID(92), ID(93), ID(94), ID(95)],
+				ejecucionesReportes: 1,
+				realizadoSinReporte: 1
+			},
+			{
+				mes: MESES[1],
+				programado: 1,
+				realizado: 0,
+				reportes: [],
+				ejecucionesReportes: 0,
+				realizadoSinReporte: 0
+			},
+			{
+				mes: MESES[2],
+				programado: 1,
+				realizado: 0,
+				reportes: [],
+				ejecucionesReportes: 0,
+				realizadoSinReporte: 0
+			}
 		],
 		totalProgramado: 3,
 		totalRealizado: 1,
@@ -84,7 +106,7 @@ describe('PlaneacionView', () => {
 	it('enlaza solo los reportes emitidos y distingue lo realizado sin reporte', async () => {
 		const { container } = montar();
 		const realizado = page.getByRole('link', {
-			name: 'Ver 1 reporte(s) emitido(s) de la partida 7 en MAYO 2026'
+			name: 'Ver 6 reporte(s) emitido(s) de la partida 7 en MAYO 2026'
 		});
 		await expect
 			.element(realizado)
@@ -92,7 +114,7 @@ describe('PlaneacionView', () => {
 				'href',
 				expect.stringMatching(/partida=.*&desde=2026-05&hasta=2026-05&estado=emitido/)
 			);
-		// R 2 de mayo: un reporte emitido y una marca del Excel o un realizado manual.
+		// R 2 de mayo: una ejecución con seis reportes y una marca del Excel o un realizado manual.
 		const mayo = container.querySelector('tbody .celda') as HTMLElement;
 		expect(mayo.innerText.replace(/\s+/g, ' ')).toContain('R 2');
 		expect(mayo.innerText).toContain('1 sin reporte');

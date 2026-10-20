@@ -27,7 +27,9 @@ function partida(
 			mes,
 			programado,
 			realizado,
-			reportes: []
+			reportes: [],
+			ejecucionesReportes: realizado,
+			realizadoSinReporte: 0
 		})),
 		totalProgramado: 0,
 		totalRealizado: 0,
@@ -42,7 +44,9 @@ describe('estado de cada celda del programa', () => {
 			mes,
 			programado,
 			realizado,
-			reportes: []
+			reportes: [],
+			ejecucionesReportes: realizado,
+			realizadoSinReporte: 0
 		});
 		expect(estadoCelda(celda('2026-06-01', 1, 1), HOY)).toBe('cumplido');
 		expect(estadoCelda(celda('2026-06-01', 1, 0), HOY)).toBe('vencido');
