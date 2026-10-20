@@ -13,11 +13,24 @@ export interface ImagenPreparada {
 	alto: number;
 }
 
+/** Píxeles sin comprimir (RGBA), como los entrega el decodificador de HEIC. */
+export interface PixelesRgba {
+	ancho: number;
+	alto: number;
+}
+
 export async function prepararImagen(
 	datos: Uint8Array,
-	{ ladoMayor = LADO_MAYOR_PX, calidad = CALIDAD_JPEG } = {}
+	{
+		ladoMayor = LADO_MAYOR_PX,
+		calidad = CALIDAD_JPEG,
+		rgba
+	}: { ladoMayor?: number; calidad?: number; rgba?: PixelesRgba } = {}
 ): Promise<ImagenPreparada> {
-	const { data, info } = await sharp(datos, { failOn: 'error' })
+	const entrada = rgba
+		? sharp(datos, { raw: { width: rgba.ancho, height: rgba.alto, channels: 4 } })
+		: sharp(datos, { failOn: 'error' });
+	const { data, info } = await entrada
 		.rotate()
 		.resize({ width: ladoMayor, height: ladoMayor, fit: 'inside', withoutEnlargement: true })
 		.flatten({ background: '#ffffff' })

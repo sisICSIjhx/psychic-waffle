@@ -1,0 +1,377 @@
+// Reglas puras de la captura: periodos y ocurrencias, prellenado desde el catálogo, validaciones para
+// enviar a revisión y aplicación explícita de los cambios del catálogo a un borrador.
+import {
+	diasDelMes,
+	semanasDelMes,
+	tituloReporte,
+	type Ocurrencia,
+	type Periodo
+} from './documento.ts';
+import type {
+	Contrato,
+	FirmantesVigentes,
+	FirmasReporte,
+	Partida,
+	PERIODICIDADES,
+	Reporte,
+	ReporteGuardado,
+	ReporteNuevo,
+	Sitio
+} from './esquemas.ts';
+
+export type Periodicidad = (typeof PERIODICIDADES)[number];
+
+export const ETIQUETA_PERIODICIDAD: Record<Periodicidad, string> = {
+	diaria: 'Diaria',
+	semanal: 'Semanal',
+	quincenal: 'Quincenal',
+	mensual: 'Mensual',
+	bimestral: 'Bimestral',
+	trimestral: 'Trimestral',
+	cuatrimestral: 'Cuatrimestral',
+	semestral: 'Semestral',
+	anual: 'Anual',
+	cuando_aplique: 'Cuando aplique'
+};
+
+export const ETIQUETA_OCURRENCIA: Record<Ocurrencia['tipo'], string> = {
+	semana: 'Semana',
+	quincena: 'Quincena',
+	dia: 'Día'
+};
+
+/** Las periodicidades menores a mensual piden la ocurrencia dentro del mes. */
+export function tipoOcurrencia(periodicidad: Periodicidad): Ocurrencia['tipo'] | null {
+	if (periodicidad === 'diaria') return 'dia';
+	if (periodicidad === 'semanal') return 'semana';
+	if (periodicidad === 'quincenal') return 'quincena';
+	return null;
+}
+
+/** Números de ocurrencia válidos en el mes («AAAA-MM-01»). */
+export function ocurrenciasDelMes(tipo: Ocurrencia['tipo'], mes: string): number[] {
+	const { anio, mes: numeroMes } = partesMes(mes);
+	const total =
+		tipo === 'dia'
+			? diasDelMes(anio, numeroMes)
+			: tipo === 'semana'
+				? semanasDelMes(anio, numeroMes)
+				: 2;
+	return Array.from({ length: total }, (_, i) => i + 1);
+}
+
+export function partesMes(mes: string): { anio: number; mes: number } {
+	const coincidencia = /^(\d{4})-(\d{2})/.exec(mes);
+	if (!coincidencia) throw new RangeError(`Mes inválido: «${mes}»`);
+	return { anio: Number(coincidencia[1]), mes: Number(coincidencia[2]) };
+}
+
+/** Meses («AAAA-MM-01») que toca la vigencia del contrato, en orden. */
+export function mesesDeVigencia(inicio: string, fin: string): string[] {
+	const desde = partesMes(inicio);
+	const hasta = partesMes(fin);
+	const meses: string[] = [];
+	for (let anio = desde.anio, mes = desde.mes; anio * 12 + mes <= hasta.anio * 12 + hasta.mes; ) {
+		meses.push(`${anio}-${String(mes).padStart(2, '0')}-01`);
+		mes++;
+		if (mes > 12) {
+			mes = 1;
+			anio++;
+		}
+	}
+	return meses;
+}
+
+export function periodoDeReporte(reporte: Pick<Reporte, 'periodoMes' | 'ocurrencia'>): Periodo {
+	return { ...partesMes(reporte.periodoMes), ocurrencia: reporte.ocurrencia };
+}
+
+/** Texto de un alcance del catálogo: el primer renglón es el título y el resto la descripción. */
+export function separarAlcance(texto: string): { titulo: string; descripcion: string } {
+	const [titulo = '', ...resto] = texto.replace(/\r\n?/g, '\n').split('\n');
+	return { titulo: titulo.trim(), descripcion: resto.join('\n').trim() };
+}
+
+function firmasDeVigentes(vigentes: FirmantesVigentes): FirmasReporte {
+	const firmas: FirmasReporte = {};
+	for (const funcion of ['elaboro', 'aprobo', 'recibio'] as const) {
+		const firmante = vigentes[funcion];
+		if (firmante) {
+			firmas[funcion] = {
+				nombre: firmante.nombre,
+				cargo: firmante.cargo,
+				empresa: firmante.empresa
+			};
+		}
+	}
+	return firmas;
+}
+
+export interface SeleccionReporte {
+	partida: Partida;
+	contrato: Contrato;
+	sitio: Sitio;
+	firmantes: FirmantesVigentes;
+	/** AAAA-MM-01 */
+	periodoMes: string;
+	ocurrencia: Ocurrencia | null;
+	equipoIds: string[];
+}
+
+/** Contenido que el reporte toma de la partida (lo que «aplicar cambios del catálogo» renueva). */
+export function contenidoDeCatalogo(partida: Partida) {
+	return {
+		objetivo: partida.objetivo ?? '',
+		introduccion: partida.descripcion ?? '',
+		conclusiones: partida.conclusionesBase ?? '',
+		tipoMantenimiento: partida.tipoMantenimiento.trim() || 'Preventivo',
+		// Solo los alcances ejecutables; las notas y normas no forman parte del reporte.
+		alcances: partida.alcances
+			.filter((a) => a.tipo === 'alcance')
+			.map((a) => ({ ...separarAlcance(a.texto), partidaAlcanceId: a.id ?? null })),
+		herramientas: partida.herramientas.map((h) => ({
+			cantidad: h.cantidad,
+			descripcion: h.descripcion
+		}))
+	};
+}
+
+/**
+ * Huella del contenido que el reporte copia de la partida. Ignora los identificadores, que cambian
+ * cada vez que se guarda la partida aunque el texto sea el mismo.
+ */
+export function huellaCatalogo(partida: Partida): string {
+	const c = contenidoDeCatalogo(partida);
+	const texto = JSON.stringify([
+		c.objetivo,
+		c.introduccion,
+		c.conclusiones,
+		c.tipoMantenimiento,
+		c.alcances.map((a) => [a.titulo, a.descripcion]),
+		c.herramientas.map((h) => [h.cantidad, h.descripcion])
+	]);
+	// cyrb53: suficiente para detectar cambios; no es una función criptográfica.
+	let h1 = 0xdeadbeef;
+	let h2 = 0x41c6ce57;
+	for (let i = 0; i < texto.length; i++) {
+		const codigo = texto.charCodeAt(i);
+		h1 = Math.imul(h1 ^ codigo, 2654435761);
+		h2 = Math.imul(h2 ^ codigo, 1597334677);
+	}
+	h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+	h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+	return `${(4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)}-${texto.length}`;
+}
+
+/** Reporte nuevo con el encabezado y el contenido copiados del catálogo y del contrato. */
+export function prellenarReporte(seleccion: SeleccionReporte): ReporteNuevo {
+	const { partida, contrato, sitio, periodoMes, ocurrencia } = seleccion;
+	const tipo = tipoOcurrencia(partida.periodicidad);
+	if (tipo && ocurrencia?.tipo !== tipo) {
+		throw new RangeError(
+			`La partida ${partida.numero} requiere elegir ${ETIQUETA_OCURRENCIA[tipo]}`
+		);
+	}
+	if (!tipo && ocurrencia) {
+		throw new RangeError(`La partida ${partida.numero} no lleva semana, quincena ni día`);
+	}
+	const equiposPartida = new Set(partida.equipos.map((e) => e.id));
+	const ajenos = seleccion.equipoIds.filter((id) => !equiposPartida.has(id));
+	if (ajenos.length) throw new RangeError('Hay equipos que no pertenecen a la partida');
+	if (partida.equipos.length && !seleccion.equipoIds.length) {
+		throw new RangeError('Elija al menos un TAG de la partida');
+	}
+	const periodo: Periodo = { ...partesMes(periodoMes), ocurrencia };
+	const contenido = contenidoDeCatalogo(partida);
+	return {
+		partidaId: partida.id,
+		periodoMes,
+		ocurrencia,
+		fechaEjecucion: null,
+		titulo: tituloReporte({
+			numeroPartida: partida.numero,
+			actividad: partida.actividad,
+			periodo
+		}),
+		usuario: contrato.cliente?.razonSocial ?? '',
+		contratoTexto: contrato.numero,
+		sitioTexto: `${sitio.clave} ${sitio.nombre}`.trim(),
+		periodicidad: ETIQUETA_PERIODICIDAD[partida.periodicidad],
+		actividad: partida.actividad,
+		numeroPartida: partida.numero,
+		nombreCorto: partida.nombreCorto,
+		disposicionFotos: partida.disposicionFotos,
+		incluyeVerificacion: partida.proponeVerificacion,
+		firmantes: firmasDeVigentes(seleccion.firmantes),
+		equipoIds: seleccion.equipoIds,
+		catalogoHuella: huellaCatalogo(partida),
+		...contenido
+	};
+}
+
+export interface Observacion {
+	campo: string;
+	mensaje: string;
+}
+
+const RELLENO = /\bcambiar\b|^\s*(n\s*\/\s*a|x{2,}|-+|_+|\.+|pendiente|por definir)\s*$/i;
+
+/** Datos mínimos de un reporte para validarlo, tal como los tiene el editor o la base. */
+export type ReporteValidable = Pick<
+	Reporte,
+	| 'periodoMes'
+	| 'fechaEjecucion'
+	| 'titulo'
+	| 'usuario'
+	| 'contratoTexto'
+	| 'sitioTexto'
+	| 'periodicidad'
+	| 'tipoMantenimiento'
+	| 'objetivo'
+	| 'conclusiones'
+	| 'incluyeVerificacion'
+	| 'firmantes'
+> & {
+	alcances: Pick<Reporte['alcances'][number], 'titulo' | 'estadoVerificacion' | 'observaciones'>[];
+	equipos: unknown[];
+};
+
+const ETIQUETA_FIRMA = { elaboro: 'Elaboró', aprobo: 'Aprobó', recibio: 'Recibió' } as const;
+
+/**
+ * Observaciones que impiden enviar a revisión o emitir. `requiereTag` indica que la partida tiene
+ * equipos y el reporte debe registrar al menos uno.
+ */
+export function validarParaRevision(
+	reporte: ReporteValidable,
+	{ requiereTag = false } = {}
+): Observacion[] {
+	const observaciones: Observacion[] = [];
+	const agregar = (campo: string, mensaje: string) => observaciones.push({ campo, mensaje });
+
+	const mes = reporte.periodoMes.slice(0, 7);
+	if (!reporte.fechaEjecucion || !/^\d{4}-\d{2}-\d{2}$/.test(reporte.fechaEjecucion)) {
+		agregar('fechaEjecucion', 'Capture la fecha completa de ejecución (día, mes y año).');
+	} else if (reporte.fechaEjecucion.slice(0, 7) !== mes) {
+		agregar('fechaEjecucion', 'La fecha de ejecución debe estar dentro del mes del reporte.');
+	}
+
+	const encabezado = {
+		titulo: 'Título',
+		usuario: 'Usuario',
+		contratoTexto: 'Contrato / OC',
+		sitioTexto: 'Sitio',
+		periodicidad: 'Periodicidad',
+		tipoMantenimiento: 'Tipo de mantenimiento'
+	} as const;
+	for (const [campo, etiqueta] of Object.entries(encabezado) as [
+		keyof typeof encabezado,
+		string
+	][]) {
+		const valor = reporte[campo]?.trim() ?? '';
+		if (!valor) agregar(campo, `Falta «${etiqueta}».`);
+		else if (RELLENO.test(valor)) agregar(campo, `«${etiqueta}» tiene un texto de relleno.`);
+	}
+	if (requiereTag && reporte.equipos.length === 0) {
+		agregar('equipos', 'Elija al menos un TAG de la partida.');
+	}
+	for (const funcion of ['elaboro', 'aprobo', 'recibio'] as const) {
+		if (!reporte.firmantes[funcion]?.nombre?.trim()) {
+			agregar(
+				`firmantes.${funcion}`,
+				`Falta el nombre de quien firma «${ETIQUETA_FIRMA[funcion]}».`
+			);
+		}
+	}
+	if (!reporte.objetivo.trim()) agregar('objetivo', 'Falta el objetivo.');
+	if (reporte.alcances.length === 0) agregar('alcances', 'El reporte no tiene alcances.');
+	reporte.alcances.forEach((alcance, i) => {
+		const numero = `2.${i + 1}`;
+		if (!alcance.titulo.trim())
+			agregar(`alcances.${i}.titulo`, `El alcance ${numero} no tiene título.`);
+		if (!reporte.incluyeVerificacion) return;
+		if (alcance.estadoVerificacion === 'pendiente') {
+			agregar(`alcances.${i}.estado`, `Indique el estado de verificación del alcance ${numero}.`);
+		} else if (alcance.estadoVerificacion === 'con_observacion' && !alcance.observaciones.trim()) {
+			agregar(
+				`alcances.${i}.observaciones`,
+				`El alcance ${numero} está «Con observación»: capture la observación.`
+			);
+		}
+	});
+	if (!reporte.conclusiones.trim()) {
+		agregar('conclusiones', 'Las conclusiones y recomendaciones no pueden quedar vacías.');
+	}
+	return observaciones;
+}
+
+/** Estado editable de un reporte, en la forma que recibe el guardado. */
+export function aGuardado(reporte: Reporte): ReporteGuardado {
+	return {
+		id: reporte.id,
+		version: reporte.version,
+		fechaEjecucion: reporte.fechaEjecucion,
+		titulo: reporte.titulo,
+		tipoMantenimiento: reporte.tipoMantenimiento,
+		objetivo: reporte.objetivo,
+		introduccion: reporte.introduccion,
+		conclusiones: reporte.conclusiones,
+		incluyeVerificacion: reporte.incluyeVerificacion,
+		firmantes: reporte.firmantes,
+		alcances: reporte.alcances.map((a) => ({
+			id: a.id,
+			titulo: a.titulo,
+			descripcion: a.descripcion,
+			estadoVerificacion: a.estadoVerificacion,
+			observaciones: a.observaciones,
+			partidaAlcanceId: a.partidaAlcanceId,
+			fotos: a.fotos.map((f) => ({ id: f.id, descripcion: f.descripcion, momento: f.momento }))
+		})),
+		herramientas: reporte.herramientas.map((h) => ({
+			cantidad: h.cantidad,
+			descripcion: h.descripcion
+		})),
+		equipoIds: reporte.equipos.map((e) => e.id)
+	};
+}
+
+const comparable = (texto: string) =>
+	texto.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+/**
+ * Aplica al borrador el contenido vigente del catálogo: objetivo, introducción, conclusiones,
+ * herramientas y alcances. Un alcance que corresponde a uno del catálogo (mismo título) conserva sus
+ * fotos, estado y observaciones; los alcances del reporte que ya no están en el catálogo se conservan
+ * al final solo si tienen fotos u observaciones, para no perder evidencia.
+ */
+export function aplicarCatalogo(reporte: Reporte, partida: Partida): ReporteGuardado {
+	const actual = aGuardado(reporte);
+	const contenido = contenidoDeCatalogo(partida);
+	const disponibles = [...actual.alcances];
+	const tomar = (titulo: string) => {
+		const indice = disponibles.findIndex((a) => comparable(a.titulo) === comparable(titulo));
+		return indice === -1 ? null : disponibles.splice(indice, 1)[0];
+	};
+	const alcances = contenido.alcances.map((delCatalogo) => {
+		const previo = tomar(delCatalogo.titulo);
+		return {
+			id: previo?.id,
+			titulo: delCatalogo.titulo,
+			descripcion: delCatalogo.descripcion || previo?.descripcion || '',
+			estadoVerificacion: previo?.estadoVerificacion ?? 'pendiente',
+			observaciones: previo?.observaciones ?? '',
+			partidaAlcanceId: delCatalogo.partidaAlcanceId,
+			fotos: previo?.fotos ?? []
+		};
+	});
+	const conEvidencia = disponibles.filter((a) => a.fotos.length > 0 || a.observaciones?.trim());
+	return {
+		...actual,
+		objetivo: contenido.objetivo || actual.objetivo,
+		introduccion: contenido.introduccion || actual.introduccion,
+		conclusiones: contenido.conclusiones || actual.conclusiones,
+		tipoMantenimiento: contenido.tipoMantenimiento,
+		alcances: [...alcances, ...conEvidencia],
+		herramientas: contenido.herramientas.length ? contenido.herramientas : actual.herramientas
+	};
+}

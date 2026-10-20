@@ -97,21 +97,21 @@ Cada fase cierra con estos pasos:
 
 ## 5. Captura de reportes
 
-- [ ] 5.1 Crear `/captura`: selección guiada de contrato, sitio, partida, periodo y TAG, con el filtro
+- [x] 5.1 Crear `/captura`: selección guiada de contrato, sitio, partida, periodo y TAG, con el filtro
       `?cliente=`, conectada al submenú de Cerritos, Proagro y Virtual.
-- [ ] 5.2 Implementar el prellenado desde el catálogo y el contrato, con la copia de firmantes.
-- [ ] 5.3 Crear el editor `/reportes/[id]`: encabezado, alcances editables y reordenables,
+- [x] 5.2 Implementar el prellenado desde el catálogo y el contrato, con la copia de firmantes.
+- [x] 5.3 Crear el editor `/reportes/[id]`: encabezado, alcances editables y reordenables,
       herramientas y conclusiones, más un interruptor «Incluir tabla de verificación» disponible en
       cualquier cliente (el valor inicial lo da la partida, y se pide confirmación al desactivarlo con
       estados ya capturados).
-- [ ] 5.4 Implementar la carga múltiple de fotos por alcance: validación de formato y tamaño,
+- [x] 5.4 Implementar la carga múltiple de fotos por alcance: validación de formato y tamaño,
       reordenamiento con renumeración y espacios antes/durante/después.
-- [ ] 5.5 Implementar el autoguardado con espera y la detección de conflictos de versión.
-- [ ] 5.6 Implementar las validaciones para enviar a revisión y los estados Borrador → En revisión →
+- [x] 5.5 Implementar el autoguardado con espera y la detección de conflictos de versión.
+- [x] 5.6 Implementar las validaciones para enviar a revisión y los estados Borrador → En revisión →
       Emitido.
-- [ ] 5.7 Agregar el endpoint de generación y descarga del DOCX desde el reporte, y registrarlo en
+- [x] 5.7 Agregar el endpoint de generación y descarga del DOCX desde el reporte, y registrarlo en
       `documentos_generados`.
-- [ ] 5.8 Agregar pruebas de componentes (`*.svelte.spec.ts`) del editor y una prueba de recorrido
+- [x] 5.8 Agregar pruebas de componentes (`*.svelte.spec.ts`) del editor y una prueba de recorrido
       completo: crear, capturar, emitir y descargar.
 - [ ] 5.9 Validación y revisión con Codex de la fase 5.
 

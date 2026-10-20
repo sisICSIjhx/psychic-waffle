@@ -3,6 +3,9 @@
 import { env } from '$env/dynamic/private';
 import { env as entornoPublico } from '$env/dynamic/public';
 import { carpetaAlmacenamiento, repositoriosDesdeEntorno, type Entorno } from './datos-entorno.ts';
+import { AlmacenamientoLocal } from './almacenamiento.ts';
+import { ServicioCaptura } from './captura.ts';
+import { plantillaVigente } from './plantillas/vigente.ts';
 import type { Repositorios } from './repositorios/index.ts';
 
 export { elegirOrigenDatos } from './datos-entorno.ts';
@@ -29,4 +32,20 @@ export function datos(): Promise<Repositorios> {
 /** Carpeta del almacenamiento local configurada (STORAGE_DIR o ./storage). */
 export function almacenamiento(): string {
 	return carpetaAlmacenamiento(entorno());
+}
+
+let servicioCaptura: Promise<ServicioCaptura> | null = null;
+
+/** Casos de uso de la captura con el almacenamiento local y la plantilla empaquetada. */
+export function captura(): Promise<ServicioCaptura> {
+	servicioCaptura ??= datos()
+		.then(
+			(repos) =>
+				new ServicioCaptura(repos, new AlmacenamientoLocal(almacenamiento()), plantillaVigente)
+		)
+		.catch((error) => {
+			servicioCaptura = null;
+			throw error;
+		});
+	return servicioCaptura;
 }

@@ -327,7 +327,9 @@ export const esquemaReporte = z.object({
 	alcances: z.array(esquemaAlcanceReporte),
 	herramientas: z.array(esquemaHerramienta),
 	equipos: z.array(esquemaEquipo.extend({ orden: z.number().int().positive() })),
-	documentos: z.array(esquemaDocumentoGenerado)
+	documentos: z.array(esquemaDocumentoGenerado),
+	/** Huella del contenido del catálogo copiado o aplicado por última vez. */
+	catalogoHuella: z.string()
 });
 export type Reporte = z.infer<typeof esquemaReporte>;
 
@@ -361,7 +363,8 @@ export const esquemaReporteNuevo = z.object({
 		})
 	),
 	herramientas: z.array(esquemaHerramienta),
-	equipoIds: z.array(id)
+	equipoIds: z.array(id),
+	catalogoHuella: z.string().optional()
 });
 export type ReporteNuevo = z.input<typeof esquemaReporteNuevo>;
 

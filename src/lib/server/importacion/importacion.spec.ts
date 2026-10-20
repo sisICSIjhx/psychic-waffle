@@ -381,6 +381,39 @@ describe('correcciones de la revisión de la fase 4', () => {
 		expect(celdas[2].realizado).toBe(1);
 	});
 
+	it('conserva los alcances registrados si el libro solo trae notas de la partida', async () => {
+		const soloNota = {
+			...PARTIDAS_EJEMPLO[0],
+			numero: 9,
+			actividad: 'Partida con solo una nota',
+			alcances: ['Nota: Análisis de resultados.']
+		};
+		await repos.catalogo.importarCatalogo(await carga([...PARTIDAS_EJEMPLO, soloNota]), false);
+		const partida = (await repos.catalogo.listarPartidas({ contratoId })).find(
+			(p) => p.numero === '9'
+		)!;
+		const detalle = await repos.catalogo.obtenerPartida(partida.id);
+		// Alcances tomados de los reportes (derivar-partidas --complementar).
+		await repos.catalogo.guardarPartida({
+			...detalle,
+			alcances: [{ tipo: 'alcance', texto: 'Medición\nCon electrodo.' }, ...detalle.alcances],
+			equipoIds: []
+		});
+		const igual = await repos.catalogo.importarCatalogo(
+			await carga([...PARTIDAS_EJEMPLO, soloNota]),
+			true
+		);
+		expect(igual.partidas.find((p) => p.numero === '9')!.accion).toBe('sin_cambios');
+		const notaNueva = { ...soloNota, alcances: ['Nota: Análisis y corrección.'] };
+		await repos.catalogo.importarCatalogo(await carga([...PARTIDAS_EJEMPLO, notaNueva]), false);
+		expect(
+			(await repos.catalogo.obtenerPartida(partida.id)).alcances.map((a) => [a.tipo, a.texto])
+		).toEqual([
+			['alcance', 'Medición\nCon electrodo.'],
+			['nota', 'Nota: Análisis y corrección.']
+		]);
+	});
+
 	it('actualiza el fin del periodo de un programa existente', async () => {
 		const base = await carga();
 		const extendido = { ...base, programa: { ...base.programa!, periodoFin: '2027-05-31' } };

@@ -168,11 +168,19 @@ mayúsculas y con espacios simples.
   bloque por un XML de tabla en la plantilla. La alternativa evaluada es `docxtemplater` con el módulo
   de imágenes, que es de pago, por lo que se descarta salvo que falle lo anterior.
 - El PDF se obtiene con `soffice --headless --convert-to pdf` si `SOFFICE_PATH` está configurado.
+- La aplicación usa la plantilla empaquetada por Vite (`plantillas/vigente.ts`, importada con
+  `?inline`), así que el build no depende de la ruta en `src/`; los scripts la leen del disco. El DOCX
+  de cada versión del reporte se guarda en `storage/documentos/` y se registra en
+  `documentos_generados`; una segunda descarga de la misma versión lo reutiliza.
 
 ### D6. Almacenamiento de fotos detrás de una interfaz
 
 - La implementación inicial guarda en disco local, en `storage/` (ignorado por Git), con el original y
-  la versión optimizada.
+  la versión optimizada (`almacenamiento.ts`; rechaza rutas fuera de la carpeta).
+- Las fotos se validan por su contenido (JPEG, PNG o HEIC, hasta 15 MB) y se cargan una por petición.
+  HEIC se decodifica con `heic-decode` 2.1.0 (ISC) y `libheif-js` 1.23.2 fijado con `overrides`
+  (LGPL-3.0, WebAssembly sin modificar), porque `sharp` precompilado no lee HEVC. En un despliegue con
+  `adapter-node`, `BODY_SIZE_LIMIT` debe admitir al menos 16 MB.
 - SharePoint será otra implementación en un cambio posterior.
 
 ### D7. Rutas e interfaz
@@ -184,6 +192,7 @@ mayúsculas y con espacios simples.
 | `/captura`                 | Selección guiada; con `?cliente=` filtra por Cerritos, Proagro o Virtual |
 | `/reportes/[id]`           | Editor del reporte                                                       |
 | `/reportes/[id]/documento` | Endpoint de descarga del DOCX                                            |
+| `/reportes/[id]/fotos/[f]` | Versión optimizada de una foto para el editor                            |
 | `/historial`               | Historial de reportes                                                    |
 | `/catalogo`                | Contratos, partidas, equipos, firmantes e importación                    |
 | `/personal`, `/perfil`     | Se mantienen                                                             |

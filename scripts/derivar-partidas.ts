@@ -2,7 +2,12 @@
 // cuyo catálogo oficial aún no se recibe (Proagro y Virtual). Uso local:
 //
 //   node scripts/derivar-partidas.ts <carpeta de reportes> --cliente <clave> --cliente-nombre <nombre>
-//        [--vigencia AAAA-MM-DD:AAAA-MM-DD] [--aplicar]
+//        [--vigencia AAAA-MM-DD:AAAA-MM-DD] [--complementar] [--aplicar]
+//
+// Con --complementar, las partidas confirmadas (p. ej. las importadas del Excel de Cerritos, que solo
+// trae los alcances) reciben de los reportes únicamente lo que les falta: objetivo, introducción,
+// conclusiones, herramientas, TAG y, si no tienen ninguno, los alcances. Solo si la actividad del
+// reporte coincide con la del catálogo; nada de lo ya capturado se reemplaza.
 //
 // Por omisión es un ensayo. Agrupa por sitio y número de partida (la carpeta «PARTIDA NN» y la
 // carpeta «ERM NNNNN» prevalecen sobre el texto del reporte, que a veces se copió de otro sitio),
@@ -32,7 +37,8 @@ const { values: opciones, positionals } = parseArgs({
 		cliente: { type: 'string' },
 		'cliente-nombre': { type: 'string' },
 		vigencia: { type: 'string', default: '2026-05-01:2027-04-30' },
-		aplicar: { type: 'boolean', default: false }
+		aplicar: { type: 'boolean', default: false },
+		complementar: { type: 'boolean', default: false }
 	}
 });
 const carpeta = positionals[0];
@@ -49,6 +55,40 @@ async function* docx(directorio: string): AsyncGenerator<string> {
 		if (entrada.isDirectory()) yield* docx(ruta);
 		else if (/\.docx$/i.test(entrada.name) && !entrada.name.startsWith('~$')) yield ruta;
 	}
+}
+
+const PALABRAS_VACIAS = new Set([
+	'de',
+	'del',
+	'la',
+	'las',
+	'el',
+	'los',
+	'y',
+	'e',
+	'a',
+	'en',
+	'con',
+	'para',
+	'por',
+	'al'
+]);
+
+/** Palabras significativas de una actividad, para comparar la del reporte con la del catálogo. */
+function palabras(texto: string): Set<string> {
+	return new Set(
+		normalizarParaComparar(texto)
+			.split(/[^a-z0-9]+/)
+			.filter((p) => p.length > 2 && !PALABRAS_VACIAS.has(p))
+	);
+}
+
+/** Proporción de palabras comunes (Jaccard) entre dos actividades. */
+function parecido(a: string, b: string): number {
+	const x = palabras(a);
+	const y = palabras(b);
+	const comunes = [...x].filter((p) => y.has(p)).length;
+	return comunes / Math.max(1, new Set([...x, ...y]).size);
 }
 
 const masFrecuente = (valores: string[]) => {
@@ -215,6 +255,8 @@ try {
 
 	let creadas = 0;
 	let omitidasConfirmadas = 0;
+	let complementadas = 0;
+	const distintas: string[] = [];
 	for (const grupo of grupos.values()) {
 		const { sitioClave, numero } = grupo[0];
 		const sitioId = sitios.get(sitioClave)!;
@@ -222,21 +264,72 @@ try {
 		const existente = existentes.find(
 			(p) => p.numero.replace(/^0+(?=\d)/, '') === numero.replace(/^0+(?=\d)/, '')
 		);
-		if (existente?.estadoCatalogo === 'confirmado') {
+		if (existente?.estadoCatalogo === 'confirmado' && !opciones.complementar) {
 			omitidasConfirmadas++;
 			continue;
-		}
-		const equipos = await repos.catalogo.listarEquipos(sitioId);
-		const equipoIds: string[] = [];
-		for (const tag of new Set(grupo.map((g) => g.tag).filter((t): t is string => Boolean(t)))) {
-			const equipo =
-				equipos.find((e) => iguales(e.tag, tag)) ??
-				(await repos.catalogo.guardarEquipo({ sitioId, tag }));
-			equipoIds.push(equipo.id);
 		}
 		// El reporte más completo aporta el contenido de la plantilla.
 		const base = [...grupo].sort((a, b) => b.reporte.alcances.length - a.reporte.alcances.length)[0]
 			.reporte;
+		const alcancesDerivados = base.alcances.map((a) => ({
+			tipo: 'alcance' as const,
+			// Primer renglón: título del alcance; los siguientes, su descripción base.
+			texto: [a.titulo, ...a.descripcion].join('\n')
+		}));
+		const tags = [...new Set(grupo.map((g) => g.tag).filter((t): t is string => Boolean(t)))];
+		const registrarEquipos = async () => {
+			const equipos = await repos.catalogo.listarEquipos(sitioId);
+			const ids: string[] = [];
+			for (const tag of tags) {
+				const equipo =
+					equipos.find((e) => iguales(e.tag, tag)) ??
+					(await repos.catalogo.guardarEquipo({ sitioId, tag }));
+				ids.push(equipo.id);
+			}
+			return ids;
+		};
+
+		if (existente?.estadoCatalogo === 'confirmado') {
+			const detalle = await repos.catalogo.obtenerPartida(existente.id);
+			if (parecido(base.actividad, detalle.actividad) < 0.4) {
+				distintas.push(`${sitioClave} partida ${numero}`);
+				continue;
+			}
+			// Solo se llena lo vacío y solo con lo que el reporte sí trae: repetir el complemento no cambia nada.
+			const llenar = (actual: string | null, delReporte: string[]) =>
+				!actual?.trim() && delReporte.length ? delReporte.join('\n') : actual;
+			const tieneAlcances = detalle.alcances.some((a) => a.tipo === 'alcance');
+			const cambios = {
+				objetivo: llenar(detalle.objetivo, base.objetivo),
+				descripcion: llenar(detalle.descripcion, base.introduccion),
+				conclusionesBase: llenar(detalle.conclusionesBase, base.conclusiones),
+				herramientas:
+					detalle.herramientas.length || !base.herramientas.length
+						? detalle.herramientas
+						: base.herramientas,
+				alcances:
+					tieneAlcances || !alcancesDerivados.length
+						? detalle.alcances
+						: [...alcancesDerivados, ...detalle.alcances],
+				equipoIds:
+					detalle.equipos.length || !tags.length
+						? detalle.equipos.map((e) => e.id)
+						: await registrarEquipos()
+			};
+			const cambia =
+				cambios.objetivo !== detalle.objetivo ||
+				cambios.descripcion !== detalle.descripcion ||
+				cambios.conclusionesBase !== detalle.conclusionesBase ||
+				cambios.herramientas !== detalle.herramientas ||
+				cambios.alcances !== detalle.alcances ||
+				cambios.equipoIds.length !== detalle.equipos.length;
+			if (cambia) {
+				await repos.catalogo.guardarPartida({ ...detalle, ...cambios });
+				complementadas++;
+			}
+			continue;
+		}
+		const equipoIds = await registrarEquipos();
 		const periodicidad =
 			periodicidadDeTexto(masFrecuente(grupo.map((g) => g.reporte.encabezado.periodicidad))) ??
 			'cuando_aplique';
@@ -256,11 +349,7 @@ try {
 				: 'cuadricula',
 			proponeVerificacion: grupo.some((g) => g.reporte.tieneVerificacion),
 			estadoCatalogo: 'por_confirmar',
-			// Primer renglón: título del alcance; los siguientes, su descripción base.
-			alcances: base.alcances.map((a) => ({
-				tipo: 'alcance' as const,
-				texto: [a.titulo, ...a.descripcion].join('\n')
-			})),
+			alcances: alcancesDerivados,
 			herramientas: base.herramientas,
 			equipoIds
 		});
@@ -269,6 +358,12 @@ try {
 	console.log(
 		`Partidas por confirmar registradas o actualizadas: ${creadas}. Omitidas por estar confirmadas: ${omitidasConfirmadas}.`
 	);
+	if (opciones.complementar) {
+		console.log(`Partidas confirmadas complementadas con los reportes: ${complementadas}.`);
+		for (const d of distintas) {
+			console.log(`Sin complementar (la actividad del reporte no coincide con el catálogo): ${d}`);
+		}
+	}
 } finally {
 	await repos.cerrar();
 }

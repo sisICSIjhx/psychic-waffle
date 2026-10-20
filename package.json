@@ -59,8 +59,12 @@
 	"dependencies": {
 		"@supabase/supabase-js": "2.118.0",
 		"docx-templates": "4.15.0",
+		"heic-decode": "2.1.0",
 		"jszip": "3.10.2",
 		"sharp": "0.35.5",
 		"zod": "4.6.7"
+	},
+	"overrides": {
+		"libheif-js": "1.23.2"
 	}
 }

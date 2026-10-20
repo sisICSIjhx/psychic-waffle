@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-20 — FOR-ICSI-RMT-01, fase 5: captura de reportes
+
+- Motivo: capturar el reporte desde el catálogo para que el técnico solo registre lo que cambia en cada ejecución (tareas 5.1 a 5.9). Por indicación del usuario todo es local: sin Supabase, con PGlite y datos tomados de los reportes reales (sin firmantes).
+- Alcance: reglas puras en `src/lib/dominio/captura.ts` (periodos y ocurrencias, prellenado, validaciones para revisión, huella del catálogo y aplicación explícita de sus cambios); servicio `src/lib/server/captura.ts` (alta, guardado, fotos, estados, revisión y DOCX), almacenamiento local y validación de fotos (JPEG, PNG y HEIC de hasta 15 MB); migraciones `0007` (huella del catálogo por reporte) y `0009` (la importación conserva alcances si el libro solo trae notas); rutas `/captura` (selección guiada con `?cliente=` y borradores recientes) y `/reportes/[id]` (editor con autoguardado de 1,5 s, conflicto de versión, fotos por alcance con antes/durante/después, tabla de verificación con confirmación, estados, revisión y descarga en `/reportes/[id]/documento`). `derivar-partidas --complementar` llena con los reportes lo que les falta a las partidas confirmadas (el Excel de Cerritos solo trae viñetas).
+- Decisiones: la plantilla se empaqueta con `?inline` para el build; HEIC con `heic-decode` 2.1.0 y `libheif-js` 1.23.2 fijado (LGPL-3.0); una foto por petición (en `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB). Diseño D5, D6 y D7 actualizados.
+- Validación: `check` 0/0; `lint` sin observaciones; `test` 16 archivos y 125 pruebas (dominio de captura, recorrido completo crear → fotos → emitir → DOCX → revisión, fotos y almacenamiento, componentes del editor en Chromium). Navegador con la base local: partida 7 de Cerritos («07.- TOMA DE POTENCIALES TUBO-SUELO. MAYO 2026»), autoguardado, carga con un PDF rechazado, conflicto entre dos pestañas, confirmación de la tabla, revisión, emisión, descarga del DOCX (658 KB) y aplicación de los cambios del catálogo. Complemento de Cerritos: 39 partidas (la 43 se omitió por actividad distinta) y reimportación del Excel sin cambios. `vite build` incrusta la plantilla.
+- Pendientes: la decodificación HEIC no se probó con una foto HEIC real (no hay en los insumos); revisión de Codex de la fase.
+
 ## 2026-10-20 — FOR-ICSI-RMT-01, fase 4: catálogo e importación
 
 - Motivo: cargar el catálogo de partidas, alcances y programa anual desde el Excel oficial y dar de alta lo que falta desde la interfaz (tareas 4.1 a 4.6).

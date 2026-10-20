@@ -53,7 +53,7 @@ export class RepositorioReportes {
 
 	async insertar(reporte: ReporteNuevo): Promise<Reporte> {
 		const entrada = esquemaReporteNuevo.parse(reporte);
-		return esquemaReporte.parse(await this.sql.llamar('api_insertar_reporte', entrada));
+		return esquemaReporte.parse(await this.sql.llamar('api_crear_reporte', entrada));
 	}
 
 	async obtener(id: string): Promise<Reporte> {
@@ -69,6 +69,15 @@ export class RepositorioReportes {
 	): Promise<{ reporte: Reporte; fotosEliminadas: RutasFoto[] }> {
 		const entrada = esquemaReporteGuardado.parse(reporte);
 		return esquemaResultadoGuardado.parse(await this.sql.llamar('api_guardar_reporte', entrada));
+	}
+
+	/** Guarda el borrador con el contenido del catálogo aplicado y registra la huella nueva. */
+	async aplicarCatalogo(
+		reporte: ReporteGuardado,
+		catalogoHuella: string
+	): Promise<{ reporte: Reporte; fotosEliminadas: RutasFoto[] }> {
+		const entrada = { ...esquemaReporteGuardado.parse(reporte), catalogoHuella };
+		return esquemaResultadoGuardado.parse(await this.sql.llamar('api_aplicar_catalogo', entrada));
 	}
 
 	async agregarFoto(foto: FotoNueva): Promise<{ foto: Foto; version: number }> {
