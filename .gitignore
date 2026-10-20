@@ -29,3 +29,6 @@ vite.config.ts.timestamp-*
 
 # Insumos reales (reportes con datos personales)
 /insumos/
+
+# Almacenamiento local de fotos y documentos generados
+/storage/

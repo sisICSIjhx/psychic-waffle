@@ -37,7 +37,9 @@ cantidad fija.
 ### Requirement: Realizado derivado de los reportes
 
 La cantidad realizada de cada partida y mes SHALL calcularse con los reportes en estado «Emitido» de esa
-partida, contrato, sitio y mes. Los borradores no SHALL contar.
+partida, contrato, sitio y mes, más los realizados registrados manualmente para trabajos documentados
+fuera del sistema (con nota y fecha de registro). Los borradores y las revisiones sustituidas no SHALL
+contar.
 
 #### Scenario: Reporte emitido
 
@@ -48,6 +50,11 @@ partida, contrato, sitio y mes. Los borradores no SHALL contar.
 
 - **WHEN** la partida trimestral de manómetros emite seis reportes, uno por TAG, en el mismo mes
 - **THEN** el realizado cuenta una ejecución de la partida en ese mes y lista los seis reportes asociados
+
+#### Scenario: Realizado histórico manual
+
+- **WHEN** se registra manualmente que la partida 7 se ejecutó en mayo de 2026 con un reporte Word anterior
+- **THEN** el realizado de mayo cuenta esa ejecución sin crear un reporte emitido
 
 ### Requirement: Consulta del avance
 

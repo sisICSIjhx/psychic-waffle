@@ -76,7 +76,7 @@ Tablas principales:
 | Grupo    | Tablas                                                                                                                                                                                        |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Catálogo | `clientes`, `contratos`, `sitios`, `contrato_sitios`, `partidas`, `partida_alcances` (orden y tipo `alcance\|nota\|norma`), `partida_herramientas`, `equipos`, `partida_equipos`, `firmantes` |
-| Programa | `programas` (contrato, sitio y periodo), `programa_meses` (partida, mes y cantidad programada)                                                                                                |
+| Programa | `programas` (contrato, sitio y periodo), `programa_meses` (partida, mes y cantidad programada), `programa_realizados_manuales` (partida, mes, cantidad y nota)                                |
 | Reportes | `reportes`, `reporte_alcances`, `reporte_fotos`, `reporte_herramientas`, `reporte_equipos`, `documentos_generados`                                                                            |
 
 Detalle de las tablas:
@@ -87,14 +87,15 @@ Detalle de las tablas:
   (`confirmado` o `por_confirmar`, para las partidas derivadas de reportes de Proagro y Virtual).
 - `reportes`: contrato, sitio, partida, periodo (mes y ocurrencia), fecha, tipo de mantenimiento,
   título, objetivo, conclusiones, `incluye_verificacion` (decisión del usuario en cualquier cliente),
-  estado, `version` para la concurrencia optimista y copia de los firmantes.
+  estado, `version` para la concurrencia optimista, copia de los firmantes, `revision` (0, 1, …) y
+  `sustituye_a` (reporte emitido que corrige; al emitirse, el anterior pasa a `sustituido`).
 - `reporte_alcances`: título, descripción, estado de verificación y observaciones.
 - `reporte_fotos`: alcance, orden, pie, momento (antes, durante o después) y referencia de
   almacenamiento.
 - `documentos_generados`: versión de plantilla, ruta y fecha.
 
-El realizado del programa se calcula con una vista SQL sobre los reportes emitidos; no se guarda un
-contador. Las claves son UUID. Hay restricciones `unique` para (contrato, sitio, número de partida),
+El realizado del programa se calcula con una vista SQL sobre los reportes emitidos no sustituidos más
+los realizados manuales; no se guarda un contador. Las claves son UUID. Hay restricciones `unique` para (contrato, sitio, número de partida),
 para la clave de sitio y para el TAG por sitio. La clave de sitio se normaliza: sin acentos, en
 mayúsculas y con espacios simples.
 

@@ -44,7 +44,7 @@ El documento SHALL contener, en este orden:
 
 ### Requirement: Fotografías en el documento
 
-Las fotografías SHALL insertarse en tablas nativas de Word bajo su alcance, con su pie «Ilustración n.m»,
+Las fotografías SHALL insertarse en tablas nativas de Word bajo su alcance, con su pie «Ilustración 2.n.m»,
 en una cuadrícula de dos columnas o en la disposición antes/durante/después. SHALL conservar su
 proporción, con tamaño uniforme, sin desbordar el ancho de página. Un alcance sin fotos no SHALL dejar
 celdas vacías.

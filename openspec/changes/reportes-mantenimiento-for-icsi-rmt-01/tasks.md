@@ -11,14 +11,14 @@ Cada fase cierra con estos pasos:
 
 ## 0. Preparación
 
-- [ ] 0.1 Crear la rama `feat/reportes-rmt-01` a partir de `main` y hacer un commit del estado actual
+- [x] 0.1 Crear la rama `feat/reportes-rmt-01` a partir de `main` y hacer un commit del estado actual
       de la documentación (HISTORIAL, CONTEXTO, PROPUESTA y `.gitignore` con `/insumos/`).
-- [ ] 0.2 Agregar `/storage/` a `.gitignore` y crear `.env.example` con `PUBLIC_SUPABASE_URL`,
+- [x] 0.2 Agregar `/storage/` a `.gitignore` y crear `.env.example` con `PUBLIC_SUPABASE_URL`,
       `PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SOFFICE_PATH` y `STORAGE_DIR`.
-- [ ] 0.3 Crear `scripts/revision-codex.ps1`, que recibe el SHA y la fase, ejecuta `codex review` con
-      instrucciones fijas (excluir `insumos/`, `storage/` y `.env*`; reportar severidad, archivo y
-      línea) y guarda la salida en el scratchpad.
-- [ ] 0.4 Probar el script con el commit 0.1 y verificar que no lee rutas excluidas.
+- [x] 0.3 Crear `scripts/revision-codex.ps1`, que recibe el SHA y la fase, ejecuta `codex review` con
+      instrucciones fijas (excluir `insumos/`, `storage/` y `.env*` salvo `.env.example`; reportar
+      severidad, archivo y línea) y guarda la salida en el scratchpad.
+- [x] 0.4 Probar el script con el commit 0.1 y verificar que no lee rutas excluidas.
 
 ## 1. Shell y navegación
 
@@ -42,7 +42,9 @@ Cada fase cierra con estos pasos:
 
 - [ ] 2.1 Construir `FOR-ICSI-RMT-01.v1.docx` a partir de cualquier reporte real, ya que todos
       comparten el mismo diseño. Limpiar el contenido,
-      conservar logotipos, encabezado y pie, y añadir marcadores de campos y bloques repetidos.
+      conservar logotipos, encabezado y pie, y añadir marcadores de campos y bloques repetidos. La
+      plantilla se sanea (sin propiedades de autor, comentarios, revisiones, customXml ni nombres) y
+      una auditoría automatizada del paquete lo comprueba.
 - [ ] 2.2 Implementar en `src/lib/dominio/` las reglas puras, con pruebas: título, numeración
       «Ilustración 2.n.m», agrupación de fotos por disposición y nombre de archivo.
 - [ ] 2.3 Implementar `src/lib/server/documentos/generar.ts` con `docx-templates` y la preparación de
@@ -62,9 +64,9 @@ Cada fase cierra con estos pasos:
 - [ ] 3.1 Escribir `supabase/migrations/0001_catalogo.sql`: clientes, contratos, sitios, partidas,
       alcances, herramientas, equipos y firmantes, con sus restricciones `unique` y la normalización
       de la clave de sitio.
-- [ ] 3.2 Escribir `0002_programa.sql`: programas, meses y la vista de realizado.
+- [ ] 3.2 Escribir `0002_programa.sql`: programas, meses, realizados manuales y la vista de realizado.
 - [ ] 3.3 Escribir `0003_reportes.sql`: reportes, alcances, fotos, herramientas, equipos, documentos
-      generados, columna `version` y estados.
+      generados, columna `version`, estados y revisiones (`revision`, `sustituye_a`).
 - [ ] 3.4 Escribir `0004_rls.sql`: RLS habilitado con la política de servicio.
 - [ ] 3.5 Crear en `src/lib/dominio/` los tipos y esquemas Zod de cada entidad.
 - [ ] 3.6 Crear los repositorios `catalogo`, `programa` y `reportes` en `src/lib/server/repositorios/`,

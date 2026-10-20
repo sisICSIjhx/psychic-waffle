@@ -12,12 +12,17 @@ conclusiones.
 
 Para crear un reporte, el usuario SHALL elegir contrato, sitio, partida y periodo (mes, y semana u
 ocurrencia cuando la periodicidad sea menor a mensual). Si la partida tiene equipos asociados, también
-SHALL elegir el TAG. Solo SHALL ofrecerse contratos vigentes y partidas del sitio elegido.
+SHALL elegir uno o varios TAG. Solo SHALL ofrecerse contratos vigentes y partidas del sitio elegido.
 
 #### Scenario: Partida semanal
 
 - **WHEN** el usuario elige la partida 15 semanal de Cerritos en mayo de 2026
 - **THEN** el sistema pide la semana y titula el reporte con «SEMANA n»
+
+#### Scenario: Varios TAG en un reporte
+
+- **WHEN** la partida de manómetros de Cerritos se reporta para PI-0001 y PI-1001 juntos
+- **THEN** la captura permite elegir ambos TAG y el reporte los registra y los muestra en el encabezado
 
 #### Scenario: Acceso por cliente
 
@@ -125,12 +130,18 @@ persona modificó el mismo reporte, SHALL detectar el conflicto y no sobrescribi
 
 El reporte SHALL pasar por los estados Borrador, En revisión y Emitido. Solo se SHALL emitir un reporte que
 cumpla todas las validaciones. Un reporte emitido no SHALL modificarse; para corregirlo se crea una nueva
-revisión.
+revisión vinculada al original. Al emitirse la nueva revisión, la anterior SHALL quedar sustituida y
+solo la revisión vigente SHALL contar como realizada.
 
 #### Scenario: Emisión
 
 - **WHEN** un reporte en revisión cumple todas las validaciones y se emite
 - **THEN** su estado pasa a Emitido, queda de solo lectura y cuenta como realizado en el programa anual
+
+#### Scenario: Nueva revisión de un reporte emitido
+
+- **WHEN** se crea y emite la revisión 1 de un reporte emitido
+- **THEN** la revisión 0 queda sustituida y el realizado del programa sigue contando una sola ejecución
 
 ### Requirement: Historial de reportes
 
