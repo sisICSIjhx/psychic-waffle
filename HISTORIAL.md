@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-20 — FOR-ICSI-RMT-01, fase 3: modelo de datos y repositorios
+
+- Motivo: crear desde cero el esquema PostgreSQL del catálogo, el programa anual y los reportes, probado con PGlite porque el proyecto de Supabase aún no existe (tareas 3.1 a 3.9).
+- Alcance: migraciones `supabase/migrations/0001` a `0004` (catálogo con claves normalizadas y unicidad de sitio, partida y TAG; firmantes sin traslapes; programa sin periodos superpuestos y con realizados manuales; reportes con versión, estados, revisiones, copia del TAG y documentos generados; vistas de ejecuciones y de realizado por programa; RLS en todas las tablas). Acceso solo mediante funciones `api_*` (jsonb → jsonb) con errores IC404/IC409/IC422. Esquemas Zod en `src/lib/dominio/esquemas.ts`; cliente SQL con implementaciones PGlite y Supabase (`rpc` con clave de servicio) y repositorios en `src/lib/server/`.
+- Decisiones: la lógica de persistencia vive en SQL para que ambas implementaciones sean adaptadores delgados probados con las mismas migraciones (diseño D2 actualizado); `@supabase/ssr` y `hooks.server.ts` se difieren al cambio de autenticación. Dependencias exactas: `zod` 4.6.7, `@supabase/supabase-js` 2.118.0 y `@electric-sql/pglite` 0.5.10 (desarrollo).
+- Validación: `check` 0/0, `lint` sin observaciones y suite completa aprobada (25 pruebas de repositorios sobre PGlite y 3 del adaptador de Supabase simulado). Revisión de Codex en 2 rondas: 9 hallazgos corregidos (`docs/revisiones/fase-3.md`).
+- Pendientes: tarea 3.8 del usuario (crear el proyecto de Supabase y el `.env`; después se aplican las migraciones y se prueba la conexión).
+
 ## 2026-10-20 — FOR-ICSI-RMT-01, fase 2: prueba documental y plantilla v1
 
 - Motivo: validar el riesgo principal del cambio, la fidelidad del DOCX, antes de construir la captura (tareas 2.1 a 2.7).

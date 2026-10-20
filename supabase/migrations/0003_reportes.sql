@@ -674,3 +674,40 @@ begin
 	);
 end
 $$;
+
+-- Con «reportes» ya creada, el cambio de periodo de un programa tampoco puede dejar fuera meses
+-- con reportes emitidos de sus partidas (redefine la validación de 0002).
+create or replace function public.validar_programa()
+returns trigger
+language plpgsql
+as $$
+declare
+	superpuesto uuid;
+begin
+	-- Serializa los cambios del mismo contrato antes de comprobar superposiciones.
+	perform 1 from public.contratos where id = new.contrato_id for update;
+	select g.id into superpuesto
+	from public.programas g
+	where g.contrato_id = new.contrato_id and g.sitio_id = new.sitio_id and g.id <> new.id
+		and daterange(g.periodo_inicio, g.periodo_fin, '[]') && daterange(new.periodo_inicio, new.periodo_fin, '[]')
+	limit 1;
+	if superpuesto is not null then
+		perform public.error_api('IC422', 'El periodo se superpone con otro programa del contrato y sitio',
+			jsonb_build_object('motivo', 'programa_superpuesto', 'programaId', superpuesto));
+	end if;
+	if tg_op = 'UPDATE' and (
+		exists (select 1 from public.programa_meses m where m.programa_id = new.id
+			and (m.mes < public.primer_dia_mes(new.periodo_inicio) or m.mes > new.periodo_fin))
+		or exists (select 1 from public.programa_realizados_manuales m where m.programa_id = new.id
+			and (m.mes < public.primer_dia_mes(new.periodo_inicio) or m.mes > new.periodo_fin))
+		or exists (select 1 from public.reportes r
+			where r.contrato_id = new.contrato_id and r.sitio_id = new.sitio_id and r.estado = 'emitido'
+				and r.periodo_mes between public.primer_dia_mes(old.periodo_inicio) and old.periodo_fin
+				and (r.periodo_mes < public.primer_dia_mes(new.periodo_inicio) or r.periodo_mes > new.periodo_fin))
+	) then
+		perform public.error_api('IC422', 'El nuevo periodo deja fuera meses ya registrados',
+			jsonb_build_object('motivo', 'periodo_con_datos_fuera'));
+	end if;
+	return new;
+end
+$$;

@@ -613,3 +613,21 @@ describe('correcciones de la revisión de la fase 3', () => {
 		);
 	});
 });
+
+describe('correcciones de la revisión de la fase 3 (ronda 2)', () => {
+	it('no acorta un periodo que deja fuera un reporte emitido sin mes programado', async () => {
+		const base = await crearBase(repos, 'c6');
+		const reporte = await nuevoReporte(repos, base, { periodoMes: '2027-03-01' });
+		await emitir(repos, reporte);
+		const error = await esperarError(
+			repos.programa.guardarPrograma({
+				id: base.programaId,
+				contratoId: base.contratoId,
+				sitioId: base.sitioId,
+				periodoInicio: '2026-05-01',
+				periodoFin: '2026-12-31'
+			})
+		);
+		expect(error.detalle).toMatchObject({ motivo: 'periodo_con_datos_fuera' });
+	});
+});

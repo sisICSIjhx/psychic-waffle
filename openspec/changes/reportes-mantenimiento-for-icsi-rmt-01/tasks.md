@@ -78,7 +78,7 @@ Cada fase cierra con estos pasos:
 - [ ] 3.8 (Depende del usuario) El usuario crea el proyecto de Supabase, que aún no existe, y llena
       `.env` siguiendo `.env.example`. Después se aplican las migraciones y se prueba la conexión.
       Este paso no bloquea las fases 4 a 6, que trabajan con PGlite.
-- [ ] 3.9 Validación y revisión con Codex de la fase 3.
+- [x] 3.9 Validación y revisión con Codex de la fase 3.
 
 ## 4. Catálogo e importación
 
