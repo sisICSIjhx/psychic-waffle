@@ -1,0 +1,13 @@
+{
+	"exclude": [
+		".agents/**",
+		".claude/**",
+		".codex/**",
+		".cache/**",
+		"**/.env*",
+		".svelte-kit/**",
+		"build/**",
+		"static/**",
+		"openspec/**"
+	]
+}

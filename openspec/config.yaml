@@ -1,0 +1,31 @@
+schema: spec-driven
+
+context: |
+  Language: Spanish
+  All artifacts must be written in Spanish.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  Producto y stack: consultar docs/CONTEXTO_PROYECTO.md (SvelteKit 2 + Svelte 5 + TypeScript + Tailwind 4, npm).
+  Política adaptativa en AGENTS.md: menores directos; moderados con plan breve y OpenSpec según riesgo; mayores/críticos con OpenSpec salvo indicación explícita del usuario.
+  Leer solo los módulos, specs e historial pertinentes. Preservar los cambios existentes.
+
+rules:
+  proposal:
+    - Explicar brevemente el problema, el alcance y las capacidades afectadas.
+    - Distinguir el comportamiento actual comprobado del propuesto.
+  specs:
+    - Usar requisitos SHALL y escenarios WHEN/THEN; mantener el contenido en español y los encabezados estructurales en inglés.
+    - Cubrir errores, límites y permisos cuando corresponda.
+  design:
+    - Referenciar rutas reales (src/routes, src/lib) y registrar las decisiones sin duplicar código.
+  tasks:
+    - Separar implementación y validación con tareas comprobables (npm run check, npm run lint, npm run test).
+    - Incluir la actualización del historial y del contexto cuando corresponda.
+
+operations:
+  apply:
+    guidance:
+      - Aprovechar la autorización existente. OpenSpec no añade por sí mismo otra aprobación.
+      - Ejecutar las comprobaciones pertinentes al cambio, sin declarar resultados no comprobados.
+  archive:
+    guidance:
+      - Sincronizar specs y registrar resultados reales y pendientes en HISTORIAL.md.

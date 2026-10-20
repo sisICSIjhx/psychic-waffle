@@ -1,0 +1,14 @@
+{
+	"mcpServers": {
+		"codegraph": {
+			"type": "stdio",
+			"command": "cmd",
+			"args": ["/d", "/c", "node_modules\\.bin\\codegraph.cmd", "serve", "--mcp", "--path", "."],
+			"env": {
+				"CODEGRAPH_TELEMETRY": "0",
+				"DO_NOT_TRACK": "1",
+				"CODEGRAPH_NO_DOWNLOAD": "1"
+			}
+		}
+	}
+}
