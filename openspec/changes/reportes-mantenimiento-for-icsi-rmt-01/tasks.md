@@ -117,12 +117,12 @@ Cada fase cierra con estos pasos:
 
 ## 6. Planeación anual e historial
 
-- [ ] 6.1 Crear la vista `/planeacion`: matriz P/R por mes, filtros, pendientes vencidos y acceso a
+- [x] 6.1 Crear la vista `/planeacion`: matriz P/R por mes, filtros, pendientes vencidos y acceso a
       la captura desde una celda.
-- [ ] 6.2 Crear la vista `/historial`: paginación, filtros, apertura y descarga.
-- [ ] 6.3 Mostrar en el panel de control los indicadores del mes: programado, realizado, pendientes y
+- [x] 6.2 Crear la vista `/historial`: paginación, filtros, apertura y descarga.
+- [x] 6.3 Mostrar en el panel de control los indicadores del mes: programado, realizado, pendientes y
       borradores.
-- [ ] 6.4 Agregar pruebas de la vista de realizado y de los filtros.
+- [x] 6.4 Agregar pruebas de la vista de realizado y de los filtros.
 - [ ] 6.5 Validación y revisión con Codex de la fase 6.
 
 ## 7. Cierre

@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-20 — FOR-ICSI-RMT-01, fase 6: planeación anual, historial y panel
+
+- Motivo: dar seguimiento al programa anual con lo realizado de los reportes y localizar cualquier reporte (tareas 6.1 a 6.5).
+- Alcance: reglas puras en `src/lib/dominio/planeacion.ts` (estado de cada celda P/R, pendientes vencidos, filtros, resumen del mes y programa vigente); `/planeacion` (matriz P/R por mes con filtros por contrato, sitio, programa, distribución y periodicidad, vencidos agrupados por mes, celda pendiente que abre `/captura` con partida y mes elegidos, enlace del realizado a sus reportes y registro de realizados hechos fuera del sistema); `/historial` (filtros por cliente, contrato, sitio, partida, TAG, estado y periodo en la URL, paginación, apertura y descarga); panel de control con partidas programadas, cumplidas y pendientes del mes, vencidos, borradores y reportes recientes.
+- Decisiones: el panel cuenta partidas y no cantidades (una partida diaria programa unos 30 por mes y dominaría cualquier suma); un mes vence al terminar, según la fecha de la zona del negocio.
+- Validación: `check` 0/0; `lint` sin observaciones; suite completa aprobada (dominio de planeación, filtros del historial y realizado solo de emitidos sobre PGlite, componentes de planeación, historial y panel). Navegador con la base local: matriz de Cerritos (55 partidas, 12 meses), enlace «Capturar» con partida y mes preseleccionados, historial filtrado por cliente y estado, y panel con los indicadores de octubre.
+- Pendientes: revisión de Codex de la fase.
+
 ## 2026-10-20 — FOR-ICSI-RMT-01, fase 5: captura de reportes
 
 - Motivo: capturar el reporte desde el catálogo para que el técnico solo registre lo que cambia en cada ejecución (tareas 5.1 a 5.9). Por indicación del usuario todo es local: sin Supabase, con PGlite y datos tomados de los reportes reales (sin firmantes).
