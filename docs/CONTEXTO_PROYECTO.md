@@ -4,7 +4,7 @@ Verificado el 2026-10-19 contra los archivos locales.
 
 ## Producto y arquitectura
 
-- Producto: «ICSI Reportes» (marca «ICSI V2» en la barra lateral). Panel web en español con vistas de Panel de Control, Planeación Anual, Captura (Prosasa, Virtual, Proagro), Historial Global, Administración de Personal y Mi Perfil. El propósito de negocio detallado está pendiente de verificar.
+- Producto: «ICSI Reportes» (marca «ICSI V2» en la barra lateral). Panel web en español con vistas de Panel de Control, Planeación Anual, Captura (Prosasa, Virtual, Proagro), Historial Global, Administración de Personal y Mi Perfil. Objetivo confirmado por el usuario: centralizar y automatizar reportes técnicos, reduciendo su elaboración de unos 60 a 30 minutos o menos.
 - Stack y runtime: SvelteKit 2.49 + Svelte 5.45 + Vite 7.2 + TypeScript 5.9 + Tailwind CSS 4.1; adapter-auto (destino de despliegue no definido). Pruebas con Vitest 4 y Playwright 1.57. npm con package-lock v3 y engine-strict=true. Equipo local: Node 26.2.0, npm 11.13.0.
 - Módulos y entradas:
   - src/routes/+layout.svelte: shell (Sidebar, HeaderBar, tema dark/light, título por vista, navegación por URL con routesByView).
@@ -14,6 +14,7 @@ Verificado el 2026-10-19 contra los archivos locales.
   - src/lib/components/fields/: campos de formulario; solo TextField.svelte tiene contenido.
   - src/app.css: estilos globales y variables de tema; src/routes/layout.css: Tailwind (no importado aún).
 - Persistencia e integraciones: no hay backend, endpoints, base de datos ni src/lib/server. El indicador «Conectado» del encabezado es estático.
+- Propuesta pendiente de implementar y validar: [PROPUESTA_TECNOLOGICA_Y_PENDIENTES.md](PROPUESTA_TECNOLOGICA_Y_PENDIENTES.md). Contempla Supabase/PostgreSQL, SharePoint, DOCX desde plantillas Word, edición local con carga del corregido y PDF desde la misma revisión; uso en oficina y pruebas con 40 sesiones activas. Generador y conversor sujetos a prueba con formatos reales.
 
 ## Reglas que deben conservarse
 
@@ -31,15 +32,16 @@ Verificado el 2026-10-19 contra los archivos locales.
 
 ## Mapa para recuperar contexto
 
-| Tema                          | Entrada real                                          |
-| ----------------------------- | ----------------------------------------------------- |
-| Interfaz o módulo principal   | src/routes/+layout.svelte, src/lib/layout/            |
-| Vistas y formularios          | src/lib/components/views/, src/lib/components/fields/ |
-| Datos y contratos             | Pendiente: aún no hay modelo de datos ni API          |
-| Validación                    | npm run check, npm run lint, npm run test (raíz)      |
-| Decisiones anteriores         | Buscar por tema en HISTORIAL.md                       |
-| Requisitos                    | openspec/specs/<capacidad>/spec.md                    |
-| Uso de memoria y herramientas | docs/MEMORIA_Y_ESPECIFICACIONES.md                    |
+| Tema                           | Entrada real                                          |
+| ------------------------------ | ----------------------------------------------------- |
+| Interfaz o módulo principal    | src/routes/+layout.svelte, src/lib/layout/            |
+| Vistas y formularios           | src/lib/components/views/, src/lib/components/fields/ |
+| Datos y contratos              | Pendiente: aún no hay modelo de datos ni API          |
+| Propuesta técnica y pendientes | docs/PROPUESTA_TECNOLOGICA_Y_PENDIENTES.md            |
+| Validación                     | npm run check, npm run lint, npm run test (raíz)      |
+| Decisiones anteriores          | Buscar por tema en HISTORIAL.md                       |
+| Requisitos                     | openspec/specs/<capacidad>/spec.md                    |
+| Uso de memoria y herramientas  | docs/MEMORIA_Y_ESPECIFICACIONES.md                    |
 
 ## Estado vigente
 

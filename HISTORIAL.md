@@ -3,6 +3,33 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-19 — Análisis de reportes reales y plan de trabajo FOR-ICSI-RMT-01
+
+- Motivo: el usuario entregó, en `insumos/`, los reportes reales (157 DOCX de Cerritos, Proagroindustrias y Virtual) y el catálogo de alcances con el programa anual de Cerritos, y pidió un plan de trabajo para ajustar la captura, la base de datos y la generación de reportes.
+- Resultado: se creó el cambio de OpenSpec `openspec/changes/reportes-mantenimiento-for-icsi-rmt-01/` con:
+  - propuesta;
+  - 4 specs: `catalogo-contratos`, `programa-anual`, `captura-reportes` y `generacion-documental`;
+  - diseño con el modelo de datos, las decisiones y las preguntas abiertas;
+  - tareas en 8 fases (0 a 7), cada una con revisión de Codex CLI (`codex review --commit`).
+- Hallazgos clave: los tres clientes usan el mismo formato FOR-ICSI-RMT-01 y varían en la disposición de las fotos y en la tabla de verificación. Hay inconsistencias de captura: sitios escritos de varias formas, contrato «(Cambiar)», partidas copiadas entre ERM y fechas incompletas.
+- `.gitignore`: se agregó `/insumos/` porque los reportes contienen nombres de personal. La extracción de texto se hizo en el scratchpad de la sesión, fuera del repositorio.
+- Validación: `openspec validate reportes-mantenimiento-for-icsi-rmt-01 --strict` válido; los artefactos se formatearon con Prettier. No se modificó código de `src/` ni se ejecutaron suites de aplicación (entrega de planeación).
+- Decisiones del usuario, incorporadas al plan:
+  - se elimina la vista Prosasa, que era de un proyecto anterior;
+  - no existe Supabase, así que el esquema se crea desde cero;
+  - Proagro y Virtual tienen catálogo pendiente de entrega, por lo que sus partidas se derivan de sus reportes como «por confirmar»;
+  - la tabla de verificación es opcional en cualquier cliente;
+  - todos los reportes comparten diseño, así que cualquiera sirve de referencia para la plantilla.
+- Pendientes: aprobación del plan ajustado para iniciar la fase 0; creación del proyecto de Supabase por el usuario (tarea 3.8).
+
+## 2026-10-19 — Propuesta tecnológica y pendientes de implementación
+
+- Motivo: consolidar la evaluación tecnológica y el alcance confirmado para reportes DOCX/PDF, edición local de Word, archivos en SharePoint y uso por alrededor de 40 usuarios.
+- Resultado y alcance: se agregó docs/PROPUESTA_TECNOLOGICA_Y_PENDIENTES.md con tecnologías propuestas, estado observado, ciclo documental, caché, concurrencia, pendientes, criterios de validación y referencias técnicas. docs/CONTEXTO_PROYECTO.md incorpora el objetivo de negocio y una referencia breve a la propuesta. Este cambio es documental; no implementa integraciones ni cambia dependencias o código de la aplicación.
+- Respaldo previo: HISTORIAL.md y docs/CONTEXTO_PROYECTO.md copiados fuera del proyecto, con coincidencia SHA-256 verificada, en C:\Users\sistemas\.codex\visualizations\2026\10\20\01a15745-9951-72c0-91f8-3607710a9ba2\respaldos-reportes-icsi\2026-10-19_214325.
+- Validación: Prettier --check satisfactorio en los tres documentos; cuatro enlaces locales resueltos y diez URL HTTPS con sintaxis válida; historial anterior conservado íntegramente frente al respaldo; git diff --check sin errores de espacios. La revisión de enlaces externos comprobó sintaxis, no disponibilidad remota. Sin ejecución de pruebas funcionales ni validación visual documental.
+- Pendientes: recuperar plantillas y documentos de referencia; comprobar fidelidad del generador DOCX y conversor PDF; implementar los bloques descritos y medir capacidad con carga representativa. No se ejecutan suites de aplicación por tratarse de documentación.
+
 ## 2026-10-19 — Activación del MCP de CodeGraph en Claude Code
 
 - Motivo: cerrar el pendiente de aprobar y probar codegraph desde una sesión de Claude Code.

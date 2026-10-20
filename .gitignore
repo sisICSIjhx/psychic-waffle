@@ -26,3 +26,6 @@ vite.config.ts.timestamp-*
 /.cache/
 /.codegraph/
 /.claude/settings.local.json
+
+# Insumos reales (reportes con datos personales)
+/insumos/
