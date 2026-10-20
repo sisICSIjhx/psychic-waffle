@@ -197,7 +197,7 @@ export interface Caja {
 /** Caja uniforme de cada foto por disposición (cm); la foto se ajusta conservando su proporción. */
 export const CAJA_FOTO: Record<DisposicionFotos, Caja> = {
 	cuadricula: { ancho: 8, alto: 6 },
-	antes_durante_despues: { ancho: 5.2, alto: 6.5 }
+	antes_durante_despues: { ancho: 8, alto: 6 }
 };
 
 /** Tamaño en cm que cabe en la caja sin deformar la imagen. */

@@ -259,33 +259,71 @@ const SIN_BORDES =
 		.join('') +
 	'</w:tblBorders>';
 
-function tablaFotos(columnas: number, celdas: string[], origen: string): string {
-	const ancho = Math.floor(ANCHO_CONTENIDO / columnas);
-	const tcPr = `<w:tcPr><w:tcW w:w="${ancho}" w:type="dxa"/><w:vAlign w:val="bottom"/></w:tcPr>`;
-	const celdaMarcador = (comando: string) =>
-		Array.from(
-			{ length: columnas },
-			(_, i) => `<w:tc>${tcPr}${i === 0 ? parrafoComando(comando) : '<w:p/>'}</w:tc>`
-		).join('');
+/** Las tablas de fotos tienen dos columnas; una foto sola o «después» abarca ambas, centrada. */
+const ANCHO_COLUMNA_FOTO = Math.floor(ANCHO_CONTENIDO / 2);
+
+function celdaTabla(contenido: string, columnas = 1): string {
+	const span = columnas > 1 ? `<w:gridSpan w:val="${columnas}"/>` : '';
+	return `<w:tc><w:tcPr><w:tcW w:w="${ANCHO_COLUMNA_FOTO * columnas}" w:type="dxa"/>${span}<w:vAlign w:val="bottom"/></w:tcPr>${contenido}</w:tc>`;
+}
+
+/** Fila con solo un comando de control (FOR, IF…); docx-templates la elimina al procesar. */
+const filaControl = (comando: string) => `<w:tr>${celdaTabla(parrafoComando(comando), 2)}</w:tr>`;
+const filaFotos = (celdas: string) => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${celdas}</w:tr>`;
+
+function tablaFotos(filas: string[]): string {
 	return [
 		'<w:tbl><w:tblPr><w:tblStyle w:val="Tablaconcuadrcula"/>',
-		`<w:tblW w:w="${ancho * columnas}" w:type="dxa"/><w:jc w:val="center"/>${SIN_BORDES}`,
+		`<w:tblW w:w="${ANCHO_COLUMNA_FOTO * 2}" w:type="dxa"/><w:jc w:val="center"/>${SIN_BORDES}`,
 		'<w:tblLayout w:type="fixed"/><w:tblLook w:val="04A0" w:firstRow="0" w:lastRow="0" w:firstColumn="0" w:lastColumn="0" w:noHBand="1" w:noVBand="1"/></w:tblPr>',
-		`<w:tblGrid>${`<w:gridCol w:w="${ancho}"/>`.repeat(columnas)}</w:tblGrid>`,
-		`<w:tr>${celdaMarcador(`FOR f IN ${origen}`)}</w:tr>`,
-		`<w:tr><w:trPr><w:cantSplit/></w:trPr>${celdas.map((c) => `<w:tc>${tcPr}${c}</w:tc>`).join('')}</w:tr>`,
-		`<w:tr>${celdaMarcador('END-FOR f')}</w:tr>`,
+		`<w:tblGrid>${`<w:gridCol w:w="${ANCHO_COLUMNA_FOTO}"/>`.repeat(2)}</w:tblGrid>`,
+		...filas,
 		'</w:tbl>'
 	].join('');
 }
 
-/** Celda de foto: etiqueta opcional, imagen y pie. Los IF en línea conservan la celda aunque falte la foto. */
-function celdaFoto(variable: string, etiqueta?: string): string {
+/** Cuadrícula de dos columnas; si la fila tiene una sola foto, se centra. */
+function tablaCuadricula(): string {
+	return tablaFotos([
+		filaControl('FOR f IN $a.cuadricula'),
+		filaControl('IF !!$f.der'),
+		filaFotos(celdaTabla(celdaFoto('$f.izq')) + celdaTabla(celdaFoto('$f.der'))),
+		filaControl('END-IF'),
+		filaControl('IF !$f.der'),
+		filaFotos(celdaTabla(celdaFoto('$f.izq'), 2)),
+		filaControl('END-IF'),
+		filaControl('END-FOR f')
+	]);
+}
+
+/** Antes y durante arriba; después centrada abajo y unida a la fila anterior (como Virtual). */
+function tablaAntesDuranteDespues(): string {
+	return tablaFotos([
+		filaControl('FOR f IN $a.antesDuranteDespues'),
+		filaControl('IF !!($f.antes || $f.durante)'),
+		filaFotos(
+			celdaTabla(celdaFoto('$f.antes', 'ANTES', true)) +
+				celdaTabla(celdaFoto('$f.durante', 'DURANTE', true))
+		),
+		filaControl('END-IF'),
+		filaControl('IF !!$f.despues'),
+		filaFotos(celdaTabla(celdaFoto('$f.despues', 'DESPUÉS'), 2)),
+		filaControl('END-IF'),
+		filaControl('END-FOR f')
+	]);
+}
+
+/**
+ * Celda de foto: etiqueta opcional, imagen y pie. Los IF en línea conservan la celda aunque falte la
+ * foto. Con `unirConSiguiente`, la fila no se separa de la siguiente al cambiar de página.
+ */
+function celdaFoto(variable: string, etiqueta?: string, unirConSiguiente = false): string {
+	const unir = unirConSiguiente ? '<w:keepNext/>' : '';
 	const etiquetaXml = etiqueta
 		? parrafo(
 				'NewNormal',
 				run(cmd(`INS ${variable} ? '${etiqueta}' : ''`), '<w:rPr><w:b/></w:rPr>'),
-				'<w:spacing w:before="120" w:after="40"/><w:jc w:val="center"/>'
+				`${unir}<w:spacing w:before="120" w:after="40"/><w:jc w:val="center"/>`
 			)
 		: '';
 	return (
@@ -293,9 +331,9 @@ function celdaFoto(variable: string, etiqueta?: string): string {
 		parrafo(
 			'NewNormal',
 			run(cmd(`IF !!${variable}`)) + run(cmd(`IMAGE ${variable}.imagen`)) + run(cmd('END-IF')),
-			P_CENTRO
+			unir + P_CENTRO
 		) +
-		parrafo('Descripcin', run(cmd(`INS ${variable} ? ${variable}.pie : ''`)), P_PIE)
+		parrafo('Descripcin', run(cmd(`INS ${variable} ? ${variable}.pie : ''`)), unir + P_PIE)
 	);
 }
 
@@ -315,18 +353,10 @@ function cuerpo(tablaHerramientas: string, tablaVerificacion: string): string {
 		parrafo('Alcances', run(cmd('INS $a.titulo'))),
 		parrafosDe('$a.descripcion', 'd'),
 		parrafoComando('IF $a.cuadricula.length > 0'),
-		tablaFotos(2, [celdaFoto('$f.izq'), celdaFoto('$f.der')], '$a.cuadricula'),
+		tablaCuadricula(),
 		parrafoComando('END-IF'),
 		parrafoComando('IF $a.antesDuranteDespues.length > 0'),
-		tablaFotos(
-			3,
-			[
-				celdaFoto('$f.antes', 'ANTES'),
-				celdaFoto('$f.durante', 'DURANTE'),
-				celdaFoto('$f.despues', 'DESPUÉS')
-			],
-			'$a.antesDuranteDespues'
-		),
+		tablaAntesDuranteDespues(),
 		parrafoComando('END-IF'),
 		parrafoComando('END-FOR a'),
 		nivel1(run('3. HERRAMIENTAS Y EQUIPO')),

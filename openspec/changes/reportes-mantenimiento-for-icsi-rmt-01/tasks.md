@@ -57,7 +57,7 @@ Cada fase cierra con estos pasos:
       respeta el orden de las secciones y numera según tenga o no verificación.
 - [x] 2.6 Convertir a PDF con LibreOffice, si está instalado, y comparar visualmente con los
       originales. Dejar las capturas de la comparación para la revisión del usuario.
-- [ ] 2.7 Validación y revisión con Codex de la fase 2. **Punto de control:** se presentan los 3 DOCX al
+- [x] 2.7 Validación y revisión con Codex de la fase 2. **Punto de control:** se presentan los 3 DOCX al
       usuario antes de cerrar la plantilla v1.
 
 ## 3. Modelo de datos y repositorios

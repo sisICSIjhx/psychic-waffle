@@ -203,9 +203,32 @@ describe('generación del DOCX FOR-ICSI-RMT-01', () => {
 			textoCompleto.indexOf('Ilustración 2.1.3 final')
 		);
 		for (const medida of extensionesCm(documento)) {
-			expect(medida.ancho).toBeLessThanOrEqual(5.21);
-			expect(medida.alto).toBeLessThanOrEqual(6.51);
+			expect(medida.ancho).toBeLessThanOrEqual(8.01);
+			expect(medida.alto).toBeLessThanOrEqual(6.01);
 		}
+		// Disposición 2 + 1: antes y durante en una fila; después sola, centrada en ambas columnas.
+		const tabla = bloquesCuerpo(documento).find(
+			(b) => b.etiqueta === 'w:tbl' && texto(b.xml).includes('Ilustración 2.1.3 final')
+		)!;
+		const filas = elementos(tabla.xml, 'w:tr');
+		expect(filas).toHaveLength(2);
+		expect(elementos(filas[0].xml, 'w:tc')).toHaveLength(2);
+		expect(filas[0].xml).toContain('<w:keepNext/>');
+		expect(filas[1].xml).toContain('<w:gridSpan w:val="2"/>');
+		expect(texto(filas[1].xml)).toContain('DESPUÉS');
+	});
+
+	it('centra la foto sola de la última fila de la cuadrícula', async () => {
+		const { documento } = await abrir((await generarDocx(await reporteBase())).docx);
+		const tabla = bloquesCuerpo(documento).find(
+			(b) => b.etiqueta === 'w:tbl' && texto(b.xml).includes('Ilustración 2.1.1')
+		)!;
+		const filas = elementos(tabla.xml, 'w:tr');
+		expect(filas).toHaveLength(2);
+		expect(elementos(filas[0].xml, 'w:tc')).toHaveLength(2);
+		expect(elementos(filas[1].xml, 'w:tc')).toHaveLength(1);
+		expect(filas[1].xml).toContain('<w:gridSpan w:val="2"/>');
+		expect(texto(filas[1].xml)).toContain('Ilustración 2.1.3');
 	});
 
 	it('escapa caracteres especiales, separa renglones en párrafos y muestra herramientas sin cantidad', async () => {

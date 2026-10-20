@@ -136,8 +136,10 @@ mayúsculas y con espacios simples.
 
 - La plantilla se construye a partir de un reporte real limpio, con logotipos, encabezado y pie, y
   marcadores para los campos y los bloques repetidos (`FOR alcance`, `FOR fila`).
-- Las fotos se agrupan en filas de 2 (cuadrícula) o de 3 (antes/durante/después) antes de pasar a la
-  plantilla.
+- Las fotos se agrupan en filas de 2 (cuadrícula) o en juegos 2 + 1 (antes y durante arriba, después
+  centrada abajo, como los reportes de Virtual) antes de pasar a la plantilla. Todas usan una caja de
+  8 × 6 cm; una foto sola en la última fila de la cuadrícula se centra. Decisión del usuario en el
+  punto de control de la fase 2 (2026-10-20).
 - Las imágenes se preparan con `sharp`: se corrige la orientación EXIF, el lado mayor queda en
   1600 px y se guardan en JPEG de calidad 80.
 - Si `docx-templates` no puede reproducir alguna parte de la tabla de encabezado, se sustituye ese

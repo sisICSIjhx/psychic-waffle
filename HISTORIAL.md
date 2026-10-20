@@ -3,13 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
-## 2026-10-20 — FOR-ICSI-RMT-01, fase 2: prueba documental (punto de control pendiente)
+## 2026-10-20 — FOR-ICSI-RMT-01, fase 2: prueba documental y plantilla v1
 
 - Motivo: validar el riesgo principal del cambio, la fidelidad del DOCX, antes de construir la captura (tareas 2.1 a 2.7).
 - Alcance: plantilla `src/lib/server/plantillas/FOR-ICSI-RMT-01.v1.docx` construida con `scripts/construir-plantilla.ts` desde un reporte real de manómetros (conserva portada, encabezado, firmas, estilos, membrete y pies; saneada y auditada); reglas puras en `src/lib/dominio/documento.ts`; generador con `docx-templates` y `sharp` (perfiles adaptativos por presupuesto), auditoría del paquete, utilidades OOXML y conversión de prueba a PDF en `src/lib/server/documentos/`; `scripts/prueba-documental.ts` con 3 ejemplos de firmantes ficticios y `scripts/verificar-datos-personales.ts`. Dependencias exactas: `docx-templates` 4.15.0, `sharp` 0.35.5 y `jszip` 3.10.2.
 - Decisiones técnicas: el índice no lleva `w:dirty` (bloqueaba a Word al actualizarlo) y la plantilla activa `updateFields` y `removePersonalInformation`; cada renglón de texto es un párrafo; solo se incrustan fuentes de licencia libre (Open Sans y Arimo).
 - Validación: `check` 0/0; `lint` sin observaciones; `test` 6 archivos y 45 pruebas. Los 3 DOCX (20, 36 y 74 fotos; 1,5, 2,2 y 27,7 MB) abren en Microsoft Word sin reparación, actualizan el índice y se exportan a PDF (9, 9 y 16 páginas). LibreOffice no está instalado: la conversión informa «no disponible». Comparación visual con los originales mediante los PDF de Word; capturas en `storage/prueba-documental/comparacion/` (ignorado). Verificación de datos personales sin coincidencias. Revisión de Codex en 2 rondas, 8 hallazgos corregidos (`docs/revisiones/fase-2.md`).
-- Pendientes: aprobación del usuario de la plantilla v1 y de las decisiones listadas en `docs/revisiones/fase-2.md` (tarea 2.7); soporte HEIC en la carga de fotos (fase 5; `sharp` precompilado no lo decodifica); resolver la ruta de la plantilla en el build de producción al exponer el endpoint (fase 5); `npm audit` reporta vulnerabilidades en la cadena de herramientas previa (Kit, Vite, Vitest, OpenSpec), ninguna en las dependencias nuevas.
+- Punto de control (tarea 2.7): el usuario revisó los 3 DOCX y eligió antes/durante/después en 2 + 1 con fotos de 8 × 6 cm (como Virtual; diseño D5 actualizado), foto sola centrada en la cuadrícula, título en mayúsculas e índice con aviso de actualización al abrir. Ajustes implementados y validados (46 pruebas; Word: 9, 16 y 16 páginas). Plantilla v1 cerrada.
+- Pendientes: soporte HEIC en la carga de fotos (fase 5; `sharp` precompilado no lo decodifica); resolver la ruta de la plantilla en el build de producción al exponer el endpoint (fase 5); `npm audit` reporta vulnerabilidades en la cadena de herramientas previa (Kit, Vite, Vitest, OpenSpec), ninguna en las dependencias nuevas.
 
 ## 2026-10-19 — FOR-ICSI-RMT-01, fase 1: shell y navegación
 

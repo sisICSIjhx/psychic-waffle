@@ -60,13 +60,18 @@ su contenido se valida con la auditoría automática y las pruebas.
   un párrafo.
 - Las tablas de herramientas y verificación repiten la fila de encabezado al cruzar de página.
 
-## Punto de control pendiente (tarea 2.7)
+## Punto de control (tarea 2.7, 2026-10-20)
 
-La plantilla v1 queda abierta hasta que el usuario revise los 3 DOCX. Decisiones a confirmar:
+El usuario revisó los 3 DOCX y decidió:
 
-- Antes/durante/después: fila de 3 fotos de 5,2 × 6,5 cm (diseño D5) o disposición 2 + 1 con fotos de
-  unos 8 cm, como el original de Virtual.
-- Título en mayúsculas (como el ejemplo de la spec) o respetando mayúsculas y minúsculas capturadas.
-- Índice: Word pregunta al abrir si actualiza los campos para llenar los números de página; la
-  alternativa es no preguntar y actualizarlo a mano (F9).
-- Foto única en la última fila de la cuadrícula: alineada a la izquierda, como el original, o centrada.
+- Antes/durante/después en disposición 2 + 1 (antes y durante arriba, después centrada abajo, fotos de
+  8 × 6 cm), como los reportes de Virtual. Se actualizó el diseño D5.
+- Título de la portada en mayúsculas (sin cambio).
+- Índice: Word pregunta al abrir si actualiza los campos (sin cambio).
+- Foto única en la última fila de la cuadrícula: centrada.
+
+Los ajustes se implementaron y validaron con pruebas (fila 2 + 1 con `keepNext`, celda que abarca dos
+columnas para la foto sola) y en Word: los 3 DOCX abren sin reparación y exportan a PDF (9, 16 y 16
+páginas). No se abrió una tercera ronda de Codex por el límite de 2 rondas por fase; estos ajustes
+quedan cubiertos por las pruebas y la revisión visual, y Codex los verá en el contexto de la fase 3.
+Con esto se cierra la plantilla v1.
