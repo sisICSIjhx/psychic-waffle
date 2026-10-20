@@ -36,7 +36,7 @@ Cada fase cierra con estos pasos:
 - [x] 1.5 Implementar `SelectField`, `DateField`, `NumberField` y `TextAreaField` con el patrón de
       `TextField`.
 - [x] 1.6 Actualizar `src/routes/page.svelte.spec.ts` y agregar una prueba de navegación entre vistas.
-- [ ] 1.7 Validación y revisión con Codex de la fase 1.
+- [x] 1.7 Validación y revisión con Codex de la fase 1.
 
 ## 2. Prueba documental (riesgo principal, antes de la captura)
 

@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-19 — FOR-ICSI-RMT-01, fase 1: shell y navegación
+
+- Motivo: corregir las observaciones del shell que bloqueaban el desarrollo (tareas 1.1 a 1.7 del cambio OpenSpec).
+- Alcance: `src/lib/layout/navegacion.ts` como fuente única de rutas (`routesByView`), títulos y accesos de captura; rutas `/planeacion`, `/captura?cliente=`, `/historial`, `/catalogo`, `/personal` y `/perfil` con vistas provisionales; barra lateral con enlaces reales (`resolve`), props `activeView`/`isCollapsed`/`isMobileOpen` y evento `navigate`; HeaderBar con título `h1` y estilo corregido; campos `SelectField`, `DateField`, `NumberField` y `TextAreaField`. Se eliminaron la vista Prosasa, `ProagroView`, `VirtualView` y el `Sidebar` duplicado (sin importaciones). `GUIA_INSTALACION_IA_PARA_CLAUDE.md` quedó fuera de Prettier.
+- Archivos: `src/routes/`, `src/lib/layout/`, `src/lib/components/`, `src/app.css`, `.prettierignore`, `.claude/launch.json` y `docs/revisiones/fase-1.md`.
+- Validación: `check` 0 errores y 0 advertencias; `lint` sin observaciones; `test` 4 archivos y 10 pruebas aprobadas (server y client en Chromium); validación visual en el servidor de desarrollo (navegación, estado activo, título y menú colapsado, consola sin errores). Revisión de Codex (1 ronda): sin hallazgos.
+- Pendientes: fase 2 (prueba documental) con punto de control del usuario.
+
 ## 2026-10-19 — FOR-ICSI-RMT-01, fase 0: preparación y revisión con Codex
 
 - Motivo: el usuario aprobó el plan del cambio `reportes-mantenimiento-for-icsi-rmt-01` y autorizó ejecutarlo por fases, con revisión de Codex al cierre de cada una.
