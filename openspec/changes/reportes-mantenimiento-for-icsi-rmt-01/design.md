@@ -213,8 +213,8 @@ mayúsculas y con espacios simples.
   y revisa el diff del commit. Las instrucciones:
   - prohíben abrir `insumos/`, `storage/` y `.env*`;
   - piden hallazgos con severidad, archivo y línea.
-- Claude clasifica cada hallazgo como corregir, descartar con motivo o diferir, aplica las
-  correcciones, vuelve a ejecutar las comprobaciones y hace un commit de corrección.
+- Cada hallazgo se clasifica como corregir, descartar con motivo o diferir; se aplican las
+  correcciones, se vuelven a ejecutar las comprobaciones y se hace un commit de corrección.
 - Hay como máximo 2 rondas por fase.
 - El resumen sin datos personales queda en `docs/revisiones/fase-N.md`.
 - Codex envía el diff a OpenAI. Por eso los commits nunca contienen insumos ni credenciales.
