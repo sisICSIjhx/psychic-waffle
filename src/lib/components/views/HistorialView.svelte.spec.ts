@@ -63,4 +63,14 @@ describe('HistorialView', () => {
 		expect(descargas[0].getAttribute('href')).toBe(`/reportes/${ID(1)}/documento`);
 		expect(page.getByRole('link', { name: 'Abrir' }).elements()).toHaveLength(2);
 	});
+
+	it('ofrece volver aunque la página pedida ya no tenga reportes', async () => {
+		render(HistorialView, {
+			resultado: { total: 3, pagina: 2, tamano: 20, filas: [] }
+		});
+		await expect.element(page.getByText('Sin reportes con estos filtros')).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'Anterior' }))
+			.toHaveAttribute('href', '/historial?pagina=1');
+	});
 });

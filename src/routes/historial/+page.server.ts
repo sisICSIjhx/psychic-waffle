@@ -7,7 +7,8 @@ import type { PageServerLoad } from './$types';
 const TAMANO_PAGINA = 20;
 
 /** «AAAA-MM» (input type=month) → «AAAA-MM-01»; cualquier otra cosa se ignora. */
-const mesDe = (valor: string | null) => (/^\d{4}-\d{2}$/.test(valor ?? '') ? `${valor}-01` : null);
+const mesDe = (valor: string | null) =>
+	/^\d{4}-(0[1-9]|1[0-2])$/.test(valor ?? '') ? `${valor}-01` : null;
 
 export const load: PageServerLoad = async ({ url }) => {
 	const repos = await datos();
@@ -43,7 +44,14 @@ export const load: PageServerLoad = async ({ url }) => {
 		pagina,
 		tamano: TAMANO_PAGINA
 	};
-	const resultado = await repos.reportes.listar(filtro);
+	let resultado = await repos.reportes.listar(filtro);
+	// Una página que ya no existe (p. ej. tras emitir borradores) muestra la última con resultados.
+	if (resultado.filas.length === 0 && resultado.total > 0) {
+		resultado = await repos.reportes.listar({
+			...filtro,
+			pagina: Math.ceil(resultado.total / TAMANO_PAGINA)
+		});
+	}
 	return {
 		clientes,
 		contratos,

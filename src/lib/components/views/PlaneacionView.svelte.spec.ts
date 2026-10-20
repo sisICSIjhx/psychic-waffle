@@ -17,7 +17,7 @@ const partidas: AvancePrograma['partidas'] = [
 		distribucion: 'produccion',
 		cantidadAnual: 3,
 		celdas: [
-			{ mes: MESES[0], programado: 1, realizado: 1, reportes: [ID(90)] },
+			{ mes: MESES[0], programado: 1, realizado: 2, reportes: [ID(90)] },
 			{ mes: MESES[1], programado: 1, realizado: 0, reportes: [] },
 			{ mes: MESES[2], programado: 1, realizado: 0, reportes: [] }
 		],
@@ -81,15 +81,21 @@ describe('PlaneacionView', () => {
 		await expect.element(page.getByText('Pendientes vencidos (1)')).toBeInTheDocument();
 	});
 
-	it('enlaza el realizado con los reportes emitidos de la partida en ese mes', async () => {
-		montar();
-		const realizado = page.getByRole('link', { name: 'R 1' });
+	it('enlaza solo los reportes emitidos y distingue lo realizado sin reporte', async () => {
+		const { container } = montar();
+		const realizado = page.getByRole('link', {
+			name: 'Ver 1 reporte(s) emitido(s) de la partida 7 en MAYO 2026'
+		});
 		await expect
 			.element(realizado)
 			.toHaveAttribute(
 				'href',
 				expect.stringMatching(/partida=.*&desde=2026-05&hasta=2026-05&estado=emitido/)
 			);
+		// R 2 de mayo: un reporte emitido y una marca del Excel o un realizado manual.
+		const mayo = container.querySelector('tbody .celda') as HTMLElement;
+		expect(mayo.innerText.replace(/\s+/g, ' ')).toContain('R 2');
+		expect(mayo.innerText).toContain('1 sin reporte');
 		await expect.element(page.getByLabelText('Periodicidad')).toHaveValue('mensual');
 	});
 });

@@ -196,17 +196,26 @@
 								<td class="celda {estado}" title={ESTADO[estado]}>
 									{#if estado !== 'sin_programa'}
 										<span class="pr">P {celda.programado ?? '—'}</span>
-										{#if celda.realizado > 0}
+										<!-- R incluye reportes emitidos, marcas del Excel y realizados manuales;
+										     el enlace lleva solo a los reportes emitidos. -->
+										<span class="pr">R {celda.realizado}</span>
+										{#if celda.reportes.length}
 											<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
 											<!-- eslint-disable svelte/no-navigation-without-resolve -->
 											<a
-												class="pr"
+												class="reportes-celda"
 												href={`${resolve('/historial')}?${consultaHistorial(p.id, celda.mes)}`}
-												>R {celda.realizado}</a
+												aria-label={`Ver ${celda.reportes.length} reporte(s) emitido(s) de la partida ${p.numero} en ${textoMes(celda.mes)}`}
+												>{celda.reportes.length} rep.</a
 											>
 											<!-- eslint-enable svelte/no-navigation-without-resolve -->
-										{:else}
-											<span class="pr">R 0</span>
+										{/if}
+										{#if celda.realizado > celda.reportes.length}
+											<span
+												class="view-note"
+												title="Marcas del Excel o realizados registrados a mano"
+												>{celda.realizado - celda.reportes.length} sin reporte</span
+											>
 										{/if}
 										{#if estado === 'pendiente' || estado === 'vencido'}
 											<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->

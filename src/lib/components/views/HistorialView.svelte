@@ -131,7 +131,7 @@
 
 <section class="card" aria-labelledby="titulo-resultados">
 	<h2 id="titulo-resultados" class="view-heading">
-		{resultado.total === 0
+		{resultado.total === 0 || resultado.filas.length === 0
 			? 'Sin reportes con estos filtros'
 			: `${desdeFila} a ${hastaFila} de ${resultado.total} reportes`}
 	</h2>
@@ -179,27 +179,28 @@
 				</tbody>
 			</table>
 		</div>
-		{#if paginas > 1}
-			<nav class="paginacion" aria-label="Páginas del historial">
-				{#if resultado.pagina > 1}
-					<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
-					<!-- eslint-disable svelte/no-navigation-without-resolve -->
-					<a class="boton" href={`${resolve('/historial')}?${consultaPagina(resultado.pagina - 1)}`}
-						>Anterior</a
-					>
-					<!-- eslint-enable svelte/no-navigation-without-resolve -->
-				{/if}
-				<span>Página {resultado.pagina} de {paginas}</span>
-				{#if resultado.pagina < paginas}
-					<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
-					<!-- eslint-disable svelte/no-navigation-without-resolve -->
-					<a class="boton" href={`${resolve('/historial')}?${consultaPagina(resultado.pagina + 1)}`}
-						>Siguiente</a
-					>
-					<!-- eslint-enable svelte/no-navigation-without-resolve -->
-				{/if}
-			</nav>
-		{/if}
+	{/if}
+	<!-- La paginación se muestra aunque la página quede vacía (p. ej. tras emitir borradores). -->
+	{#if paginas > 1 || resultado.pagina > 1}
+		<nav class="paginacion" aria-label="Páginas del historial">
+			{#if resultado.pagina > 1}
+				<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				<a class="boton" href={`${resolve('/historial')}?${consultaPagina(resultado.pagina - 1)}`}
+					>Anterior</a
+				>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			{/if}
+			<span>Página {resultado.pagina} de {paginas}</span>
+			{#if resultado.pagina < paginas}
+				<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				<a class="boton" href={`${resolve('/historial')}?${consultaPagina(resultado.pagina + 1)}`}
+					>Siguiente</a
+				>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			{/if}
+		</nav>
 	{/if}
 </section>
 
