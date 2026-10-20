@@ -113,7 +113,7 @@ Cada fase cierra con estos pasos:
       `documentos_generados`.
 - [x] 5.8 Agregar pruebas de componentes (`*.svelte.spec.ts`) del editor y una prueba de recorrido
       completo: crear, capturar, emitir y descargar.
-- [ ] 5.9 Validación y revisión con Codex de la fase 5.
+- [x] 5.9 Validación y revisión con Codex de la fase 5.
 
 ## 6. Planeación anual e historial
 

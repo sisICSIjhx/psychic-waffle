@@ -263,6 +263,13 @@ describe('validaciones para enviar a revisión', () => {
 			})
 		).map((o) => o.campo);
 		expect(campos).toEqual(['usuario', 'contratoTexto', 'sitioTexto', 'tipoMantenimiento']);
+		// En los demás campos «Cambiar» es relleno aunque vaya acompañado.
+		expect(
+			validarParaRevision(validable({ contratoTexto: '4500057477 Cambiar' })).map((o) => o.campo)
+		).toEqual(['contratoTexto']);
+		expect(validarParaRevision(validable({ titulo: '(Cambiar)' })).map((o) => o.campo)).toEqual([
+			'titulo'
+		]);
 		// «Cambiar» dentro de un título legítimo no es relleno.
 		expect(
 			validarParaRevision(validable({ titulo: '05.- CAMBIAR FILTROS DE GAS. MAYO 2026' }))

@@ -268,7 +268,8 @@ export class ServicioCaptura {
 			const resultado = await generarDocx(await this.documentoDe(reporte, reporte.fechaEjecucion), {
 				plantilla
 			});
-			const ruta = `documentos/${reporte.id}/v${reporte.version}-${resultado.nombreArchivo}`;
+			// Cada intento escribe en su propia ruta: dos descargas simultáneas no comparten archivo.
+			const ruta = `documentos/${reporte.id}/v${reporte.version}-${randomUUID().slice(0, 8)}-${resultado.nombreArchivo}`;
 			await this.archivos.guardar(ruta, resultado.docx);
 			try {
 				const documento = await this.repos.reportes.registrarDocumento({
@@ -281,7 +282,13 @@ export class ServicioCaptura {
 				});
 				return { datos: resultado.docx, nombreArchivo: resultado.nombreArchivo, documento };
 			} catch (error) {
-				await this.archivos.eliminar(ruta).catch(() => undefined);
+				// Solo se borra si la base confirma que el archivo no quedó registrado (la respuesta
+				// pudo perderse después de insertar).
+				const registrado = await this.repos.reportes
+					.obtener(reporte.id)
+					.then((r) => r.documentos.some((d) => d.ruta === ruta))
+					.catch(() => true);
+				if (!registrado) await this.archivos.eliminar(ruta).catch(() => undefined);
 				const cambio = error instanceof ErrorDatos && error.tipo === 'conflicto';
 				if (!cambio || intento >= 3) throw error;
 			}

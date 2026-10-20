@@ -216,11 +216,17 @@ export interface Observacion {
 }
 
 /**
- * Textos de relleno de las plantillas anteriores: «(Cambiar)» en cualquier parte, o un valor que solo
- * dice «Cambiar», «N/A», «XX», guiones o «Pendiente». «CAMBIAR FILTROS» es un título legítimo.
+ * Textos de relleno de las plantillas anteriores: un valor que solo dice «N/A», «XX», guiones o
+ * «Pendiente», y la palabra «Cambiar» en cualquier parte de usuario, contrato, sitio, periodicidad o
+ * tipo. En el título solo cuenta «(Cambiar)» o un título que diga únicamente «Cambiar», porque
+ * «CAMBIAR FILTROS» puede ser una actividad legítima.
  */
-const RELLENO =
-	/\(\s*cambiar\s*\)|^\s*(cambiar|n\s*\/\s*a|x{2,}|-+|_+|\.+|pendiente|por definir)\s*$/i;
+const RELLENO_VALOR = /^\s*(n\s*\/\s*a|x{2,}|-+|_+|\.+|pendiente|por definir)\s*$/i;
+const RELLENO = new RegExp(`\\bcambiar\\b|${RELLENO_VALOR.source}`, 'i');
+const RELLENO_TITULO = new RegExp(
+	`\\(\\s*cambiar\\s*\\)|^\\s*cambiar\\s*$|${RELLENO_VALOR.source}`,
+	'i'
+);
 
 /**
  * Primer y último día («AAAA-MM-DD») en que puede ejecutarse el reporte del periodo: el mes completo
@@ -319,7 +325,8 @@ export function validarParaRevision(
 	][]) {
 		const valor = reporte[campo]?.trim() ?? '';
 		if (!valor) agregar(campo, `Falta «${etiqueta}».`);
-		else if (RELLENO.test(valor)) agregar(campo, `«${etiqueta}» tiene un texto de relleno.`);
+		else if ((campo === 'titulo' ? RELLENO_TITULO : RELLENO).test(valor))
+			agregar(campo, `«${etiqueta}» tiene un texto de relleno.`);
 	}
 	if (requiereTag && reporte.equipos.length === 0) {
 		agregar('equipos', 'Elija al menos un TAG de la partida.');

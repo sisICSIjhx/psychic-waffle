@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { aGuardado } from '../dominio/captura';
 import type { Partida, Reporte } from '../dominio/esquemas';
 import { AlmacenamientoLocal } from './almacenamiento';
+import type { ClienteSql } from './bd/cliente';
 import { crearClientePglite } from './bd/pglite';
 import { ErrorValidacion, ServicioCaptura } from './captura';
 import { texto } from './documentos/ooxml';
@@ -174,6 +175,18 @@ describe('recorrido completo de la captura', () => {
 				bytes: 10
 			})
 		).rejects.toMatchObject({ tipo: 'conflicto' });
+
+		// La versión es obligatoria aunque el llamador no use el repositorio.
+		const sql = (repos.reportes as unknown as { sql: ClienteSql }).sql;
+		await expect(
+			sql.llamar('api_registrar_documento', {
+				reporteId: emitido.id,
+				versionPlantilla: 'FOR-ICSI-RMT-01.v1',
+				ruta: 'documentos/sin-version.docx',
+				nombreArchivo: 'sin-version.docx',
+				bytes: 10
+			})
+		).rejects.toMatchObject({ tipo: 'invalido' });
 
 		// La revisión conserva la huella del original: no ofrece cambios del catálogo inexistentes.
 		const revision = await servicio.crearRevision(emitido.id);
