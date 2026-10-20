@@ -57,21 +57,33 @@ const masFrecuente = (valores: string[]) => {
 	return [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
 };
 
-/** «EM-30184 PAJARITOS» o «EM-30179 AGUA DULCE, VER.» → clave y nombre. */
-function separarSitio(texto: string): { clave: string; nombre: string } | null {
-	const coincidencia = /\b(?:E\s*R?\s*M)\s*-?\s*(\d{5})\b\s*(.*)$/i.exec(texto);
+/**
+ * «EM-30184 PAJARITOS» o «ERM 30185 ÁREA VI» → prefijo (EM o ERM, tal como está escrito), número y
+ * nombre. Solo se normalizan los separadores y las mayúsculas.
+ */
+function separarSitio(texto: string): { prefijo: string; numero: string; nombre: string } | null {
+	const coincidencia = /\b(E\s*R?\s*M)\s*-?\s*(\d{5})\b\s*(.*)$/i.exec(texto);
 	return coincidencia
-		? { clave: `EM-${coincidencia[1]}`, nombre: coincidencia[2].replace(/\s+/g, ' ').trim() }
+		? {
+				prefijo: coincidencia[1].replace(/\s+/g, '').toUpperCase(),
+				numero: coincidencia[2],
+				nombre: coincidencia[3].replace(/\s+/g, ' ').trim()
+			}
 		: null;
 }
 
 interface Lectura {
 	ruta: string;
 	reporte: ReporteExistente;
-	sitioClave: string;
-	sitioNombre: string;
+	/** Número de la estación (de la carpeta o, si no hay, del encabezado). */
+	sitioNumero: string;
+	/** Prefijo escrito en la carpeta o en el encabezado. */
+	prefijoCarpeta: string | null;
+	/** Prefijo y nombre del encabezado, solo si su número coincide con el de la estación. */
+	encabezado: { prefijo: string; nombre: string } | null;
 	numero: string;
 	tag: string | null;
+	sitioClave: string;
 }
 
 const lecturas: Lectura[] = [];
@@ -85,22 +97,35 @@ for await (const ruta of docx(resolve(carpeta))) {
 		.map((s) => /PARTIDA\s*0*(\d+)/i.exec(s)?.[1])
 		.filter(Boolean)
 		.at(-1);
-	const carpetaSitio = carpetas.map((s) => /\bERM\s*(\d{5})\b/i.exec(s)?.[1]).find(Boolean);
+	const carpetaSitio = carpetas.map((s) => separarSitio(s)).find(Boolean);
 	const delEncabezado = separarSitio(reporte.encabezado.sitio);
-	const sitioClave = carpetaSitio ? `EM-${carpetaSitio}` : delEncabezado?.clave;
+	const sitioNumero = carpetaSitio?.numero ?? delEncabezado?.numero;
 	const numero = carpetaPartida ?? reporte.numero;
-	if (!sitioClave || !numero) {
+	if (!sitioNumero || !numero) {
 		omitidos.push(`${basename(ruta)} (sin sitio o número de partida)`);
 		continue;
 	}
 	lecturas.push({
 		ruta,
 		reporte,
-		sitioClave,
-		sitioNombre: delEncabezado?.clave === sitioClave ? delEncabezado.nombre : '',
+		sitioNumero,
+		prefijoCarpeta: carpetaSitio?.prefijo ?? null,
+		encabezado: delEncabezado?.numero === sitioNumero ? delEncabezado : null,
 		numero,
-		tag: tagDeReporte(reporte.encabezado.tag, basename(ruta))
+		tag: tagDeReporte(reporte.encabezado.tag, basename(ruta)),
+		sitioClave: ''
 	});
+}
+
+// Clave de cada estación con el prefijo tal como lo escriben los reportes (el más frecuente entre
+// los encabezados que traen el mismo número); si ninguno lo trae, el de la carpeta.
+for (const sitioNumero of new Set(lecturas.map((l) => l.sitioNumero))) {
+	const delGrupo = lecturas.filter((l) => l.sitioNumero === sitioNumero);
+	const prefijo =
+		masFrecuente(delGrupo.map((l) => l.encabezado?.prefijo ?? '')) ||
+		masFrecuente(delGrupo.map((l) => l.prefijoCarpeta ?? '')) ||
+		'EM';
+	for (const lectura of delGrupo) lectura.sitioClave = `${prefijo}-${sitioNumero}`;
 }
 
 const usuario = masFrecuente(lecturas.map((l) => l.reporte.encabezado.usuario));
@@ -149,6 +174,8 @@ try {
 		console.log(
 			'Ensayo: no se guardó nada. Repita con --aplicar para registrar las partidas por confirmar.'
 		);
+		// process.exit omite el finally: se cierra la base antes de salir.
+		await repos.cerrar();
 		process.exit(0);
 	}
 
@@ -169,7 +196,7 @@ try {
 	const sitios = new Map<string, string>();
 	for (const clave of new Set(lecturas.map((l) => l.sitioClave))) {
 		const nombre = masFrecuente(
-			lecturas.filter((l) => l.sitioClave === clave).map((l) => l.sitioNombre)
+			lecturas.filter((l) => l.sitioClave === clave).map((l) => l.encabezado?.nombre ?? '')
 		);
 		const existente = (await repos.catalogo.listarSitios()).find((s) => iguales(s.clave, clave));
 		const sitio = existente ?? (await repos.catalogo.guardarSitio({ clave, nombre }));

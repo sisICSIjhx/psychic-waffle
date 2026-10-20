@@ -12,7 +12,8 @@ export type TipoAlcance = 'alcance' | 'nota' | 'norma';
 export interface PartidaImportada {
 	numero: string;
 	actividad: string;
-	descripcion: string | null;
+	/** El libro no trae descripción de partida; si se agrega, la importación la actualizará. */
+	descripcion?: string | null;
 	distribucion: 'produccion' | 'mantenimiento' | null;
 	periodicidad: Periodicidad;
 	cantidadAnual: number | null;
@@ -288,7 +289,9 @@ function analizarPrograma(hoja: Hoja, advertencias: string[]) {
 				if (porMes !== null) meses.push({ mes: rango.mes, cantidad: porMes });
 			}
 			if (filaR !== -1 && marcado(filaR, rango.columna, rango.hasta)) {
-				realizados.push({ mes: rango.mes, cantidad: 1 });
+				// Un mes realizado cuenta lo mismo que lo programado para ese mes.
+				const porMes = periodicidad ? cantidadDelMes(periodicidad, rango.mes) : null;
+				realizados.push({ mes: rango.mes, cantidad: porMes ?? 1 });
 			}
 		}
 		filas.push({
@@ -486,7 +489,6 @@ export function analizarHojas(hojas: Hoja[]): CatalogoImportado {
 		return {
 			numero: c.numero,
 			actividad: c.actividad || p?.actividad || `Partida ${c.numero}`,
-			descripcion: null,
 			distribucion: DISTRIBUCION[normalizar(c.distribucion || p?.distribucion)] ?? null,
 			periodicidad,
 			cantidadAnual: periodicidad === 'cuando_aplique' ? null : (p?.cantidadAnual ?? null),

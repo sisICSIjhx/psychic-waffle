@@ -42,7 +42,8 @@ describe('análisis del libro de catálogo', () => {
 		expect(mensual.meses).toHaveLength(12);
 		expect(diaria.meses.reduce((suma, m) => suma + m.cantidad, 0)).toBe(365);
 		expect(diaria.meses[0]).toEqual({ mes: '2026-05-01', cantidad: 31 });
-		expect(diaria.realizados).toEqual([{ mes: '2026-05-01', cantidad: 1 }]);
+		// El mes realizado de una partida diaria cuenta todos sus días, como lo programado.
+		expect(diaria.realizados).toEqual([{ mes: '2026-05-01', cantidad: 31 }]);
 		expect(diaria.alcances[1].tipo).toBe('norma');
 		expect(diaria).toMatchObject({ materialesPor: 'cliente', requierePt: true });
 		expect(eventual).toMatchObject({ cantidadAnual: null, meses: [] });
@@ -147,7 +148,7 @@ describe('importación sobre la base de datos', () => {
 		const diaria = avance.partidas.find((p) => p.numero === '2')!;
 		expect(diaria.totalProgramado).toBe(365);
 		expect(diaria.diferencia).toBe(0);
-		expect(diaria.celdas[0].realizado).toBe(1);
+		expect(diaria.celdas[0].realizado).toBe(31);
 	});
 
 	it('reimportar el mismo archivo informa que no hay cambios y no duplica', async () => {
@@ -156,7 +157,7 @@ describe('importación sobre la base de datos', () => {
 		expect(otraVez.programa.accion).toBe('existente');
 		expect(await repos.catalogo.listarPartidas({ contratoId })).toHaveLength(3);
 		const avance = await repos.programa.obtenerAvance(otraVez.programa.id!);
-		expect(avance.partidas.find((p) => p.numero === '2')!.celdas[0].realizado).toBe(1);
+		expect(avance.partidas.find((p) => p.numero === '2')!.celdas[0].realizado).toBe(31);
 	});
 
 	it('actualiza solo lo que cambió y conserva lo capturado fuera del Excel', async () => {
@@ -252,5 +253,98 @@ describe('importación sobre la base de datos', () => {
 			tipo: 'invalido'
 		});
 		expect(await repos.catalogo.listarPartidas({ contratoId })).toEqual(antes);
+	});
+});
+
+describe('correcciones de la revisión de la fase 4', () => {
+	let repos: Repositorios;
+	let contratoId: string;
+	let sitioId: string;
+
+	beforeAll(async () => {
+		repos = crearRepositorios(await crearClientePglite());
+		const cliente = await repos.catalogo.guardarCliente({
+			clave: 'ficticio',
+			nombre: 'Ficticio',
+			razonSocial: 'CLIENTE FICTICIO'
+		});
+		const contrato = await repos.catalogo.guardarContrato({
+			clienteId: cliente.id,
+			numero: 'OC-FICTICIA',
+			descripcion: null,
+			vigenciaInicio: '2026-05-01',
+			vigenciaFin: '2027-05-31'
+		});
+		const sitio = await repos.catalogo.guardarSitio({
+			clave: 'EM-99999',
+			nombre: 'SITIO FICTICIO'
+		});
+		await repos.catalogo.asociarSitio(contrato.id, sitio.id);
+		contratoId = contrato.id;
+		sitioId = sitio.id;
+	}, 60_000);
+
+	afterAll(() => repos.cerrar());
+
+	const carga = async (partidas = PARTIDAS_EJEMPLO) => {
+		const catalogo = await analizarLibroCatalogo(await crearLibroSintetico({ partidas }));
+		return { contratoId, sitioId, programa: catalogo.programa, partidas: catalogo.partidas };
+	};
+
+	it('conserva la descripción capturada, que el libro no trae', async () => {
+		await repos.catalogo.importarCatalogo(await carga(), false);
+		const [primera] = await repos.catalogo.listarPartidas({ contratoId });
+		const detalle = await repos.catalogo.obtenerPartida(primera.id);
+		await repos.catalogo.guardarPartida({
+			...detalle,
+			descripcion: 'Introducción capturada a mano',
+			equipoIds: []
+		});
+		const otraVez = await repos.catalogo.importarCatalogo(await carga(), false);
+		expect(otraVez.resumen).toEqual({ crear: 0, actualizar: 0, sinCambios: 3 });
+		const cambiadas = PARTIDAS_EJEMPLO.map((p, i) =>
+			i === 0 ? { ...p, actividad: 'Orden y limpieza ficticia corregida' } : p
+		);
+		await repos.catalogo.importarCatalogo(await carga(cambiadas), false);
+		expect((await repos.catalogo.obtenerPartida(primera.id)).descripcion).toBe(
+			'Introducción capturada a mano'
+		);
+	});
+
+	it('sincroniza las marcas R y conserva los realizados capturados a mano', async () => {
+		const [programa] = await repos.programa.listarProgramas({ contratoId });
+		const diaria = (await repos.catalogo.listarPartidas({ contratoId })).find(
+			(p) => p.numero === '2'
+		)!;
+		await repos.programa.registrarRealizadoManual({
+			programaId: programa.id,
+			partidaId: diaria.id,
+			mes: '2026-06-01',
+			cantidad: 5,
+			nota: 'Capturado a mano'
+		});
+		const sinR = PARTIDAS_EJEMPLO.map((p) => (p.numero === 2 ? { ...p, realizados: [] } : p));
+		const ensayo = await repos.catalogo.importarCatalogo(await carga(sinR), true);
+		expect(ensayo.partidas.find((p) => p.numero === '2')).toMatchObject({
+			accion: 'actualizar',
+			cambiaPrograma: true
+		});
+		await repos.catalogo.importarCatalogo(await carga(sinR), false);
+		const celdas = (await repos.programa.obtenerAvance(programa.id)).partidas.find(
+			(p) => p.numero === '2'
+		)!.celdas;
+		expect(celdas[0].realizado).toBe(0);
+		expect(celdas[1].realizado).toBe(5);
+	});
+
+	it('actualiza el fin del periodo de un programa existente', async () => {
+		const base = await carga();
+		const extendido = { ...base, programa: { ...base.programa!, periodoFin: '2027-05-31' } };
+		const ensayo = await repos.catalogo.importarCatalogo(extendido, true);
+		expect(ensayo.programa.accion).toBe('actualizar');
+		await repos.catalogo.importarCatalogo(extendido, false);
+		const [programa] = await repos.programa.listarProgramas({ contratoId });
+		expect(programa.periodoFin).toBe('2027-05-31');
+		expect(programa.meses).toHaveLength(13);
 	});
 });

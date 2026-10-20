@@ -14,7 +14,7 @@
 	}
 
 	export let resultado: {
-		programa: { accion: 'crear' | 'existente' | 'ninguno' };
+		programa: { accion: 'crear' | 'actualizar' | 'existente' | 'ninguno' };
 		resumen: { crear: number; actualizar: number; sinCambios: number };
 		partidas: FilaResumen[];
 	};
@@ -44,6 +44,7 @@
 	} as const;
 	const PROGRAMA = {
 		crear: 'se creará el programa anual',
+		actualizar: 'se actualizará el periodo del programa anual y sus meses',
 		existente: 'el programa anual ya existe y se actualizarán sus meses',
 		ninguno: 'el archivo no trae programa'
 	} as const;

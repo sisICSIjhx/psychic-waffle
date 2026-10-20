@@ -2,8 +2,8 @@
 //
 // Uso:
 //   npm run importar -- <archivo.xlsx> --contrato <número> --sitio <clave> [--aplicar]
-// Por omisión hace un ensayo: muestra el resumen sin guardar. Con --aplicar guarda todo en una
-// transacción. Si el contrato o el sitio no existen, se pueden crear con:
+// Por omisión hace un ensayo: muestra el resumen sin guardar nada. Con --aplicar guarda todo en una
+// transacción. Si el contrato o el sitio no existen, se pueden crear al aplicar con:
 //   --cliente <clave> --cliente-nombre <nombre> --razon-social <texto>
 //   --vigencia <AAAA-MM-DD>:<AAAA-MM-DD> --sitio-nombre <nombre> --crear
 // Los firmantes que trae la hoja no se importan: se listan para registrarlos desde /catalogo.
@@ -11,9 +11,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import type { Contrato } from '../src/lib/dominio/esquemas.ts';
 import { repositoriosDesdeEntorno } from '../src/lib/server/datos-entorno.ts';
-import { analizarLibroCatalogo, ErrorImportacion } from '../src/lib/server/importacion/catalogo.ts';
 import { normalizarParaComparar } from '../src/lib/server/documentos/auditoria.ts';
+import { analizarLibroCatalogo, ErrorImportacion } from '../src/lib/server/importacion/catalogo.ts';
+import type { Repositorios } from '../src/lib/server/repositorios/index.ts';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ARCHIVO_ENTORNO = join(RAIZ, '.env');
@@ -40,88 +42,120 @@ function fallar(mensaje: string): never {
 }
 
 const archivo = positionals[0];
-if (!archivo || !opciones.contrato || !opciones.sitio) {
+const numeroContrato = opciones.contrato;
+const claveSitio = opciones.sitio;
+if (!archivo || !numeroContrato || !claveSitio) {
 	fallar('Uso: npm run importar -- <archivo.xlsx> --contrato <número> --sitio <clave> [--aplicar]');
 }
 
 const igual = (a: string, b: string) => normalizarParaComparar(a) === normalizarParaComparar(b);
 
-const repos = await repositoriosDesdeEntorno(process.env);
+// El libro se analiza antes de tocar la base: un archivo inválido no deja ningún cambio.
+let catalogo: Awaited<ReturnType<typeof analizarLibroCatalogo>>;
 try {
-	let contrato = (await repos.catalogo.listarContratos()).find((c) =>
-		igual(c.numero, opciones.contrato!)
-	);
-	if (!contrato) {
-		if (!opciones.crear || !opciones.cliente || !opciones.vigencia) {
-			fallar(
-				`No existe el contrato ${opciones.contrato}. Créelo en /catalogo o use --crear con --cliente y --vigencia.`
-			);
-		}
-		const [vigenciaInicio, vigenciaFin] = opciones.vigencia.split(':');
-		const cliente =
-			(await repos.catalogo.listarClientes()).find((c) => c.clave === opciones.cliente) ??
-			(await repos.catalogo.guardarCliente({
-				clave: opciones.cliente,
-				nombre: opciones['cliente-nombre'] ?? opciones.cliente,
-				razonSocial: opciones['razon-social'] ?? opciones['cliente-nombre'] ?? opciones.cliente
-			}));
-		contrato = await repos.catalogo.guardarContrato({
-			clienteId: cliente.id,
-			numero: opciones.contrato!,
-			descripcion: null,
-			vigenciaInicio,
-			vigenciaFin
-		});
-		console.log(`Contrato ${contrato.numero} creado para ${cliente.nombre}.`);
-	}
+	catalogo = await analizarLibroCatalogo(readFileSync(resolve(archivo)));
+} catch (error) {
+	if (error instanceof ErrorImportacion) fallar(`Importación rechazada: ${error.message}`);
+	throw error;
+}
 
-	let sitio = (await repos.catalogo.listarSitios(contrato.id)).find((s) =>
-		igual(s.clave, opciones.sitio!)
-	);
-	if (!sitio) {
-		const existente = (await repos.catalogo.listarSitios()).find((s) =>
-			igual(s.clave, opciones.sitio!)
-		);
-		if (!existente && !opciones.crear) {
-			fallar(
-				`El sitio ${opciones.sitio} no está asociado al contrato. Asócielo en /catalogo o use --crear.`
-			);
-		}
-		sitio =
-			existente ??
-			(await repos.catalogo.guardarSitio({
-				clave: opciones.sitio!,
-				nombre: opciones['sitio-nombre'] ?? ''
-			}));
-		await repos.catalogo.asociarSitio(contrato.id, sitio.id);
-		console.log(`Sitio ${sitio.clave} ${sitio.nombre} asociado al contrato.`);
-	}
-
-	const catalogo = await analizarLibroCatalogo(readFileSync(resolve(archivo)));
-	const resultado = await repos.catalogo.importarCatalogo(
-		{
-			contratoId: contrato.id,
-			sitioId: sitio.id,
-			programa: catalogo.programa,
-			partidas: catalogo.partidas
-		},
-		!opciones.aplicar
-	);
-	const { crear, actualizar, sinCambios } = resultado.resumen;
-	console.log(
-		`${resultado.ensayo ? 'Ensayo (no se guardó nada)' : 'Importación aplicada'}: ${crear} por crear, ${actualizar} por actualizar, ${sinCambios} sin cambios. Programa: ${resultado.programa.accion}.`
-	);
-	if (crear + actualizar === 0) console.log('No hay cambios respecto a lo registrado.');
+function informarLibro() {
 	for (const advertencia of catalogo.advertencias) console.log(`Advertencia: ${advertencia}`);
 	if (catalogo.firmantesPropuestos.length) {
 		console.log(
 			`La hoja trae ${catalogo.firmantesPropuestos.length} firmante(s); no se importan: regístrelos y confírmelos en /catalogo.`
 		);
 	}
-	if (resultado.ensayo) console.log('Para guardar, repita el comando con --aplicar.');
-} catch (error) {
-	if (error instanceof ErrorImportacion) fallar(`Importación rechazada: ${error.message}`);
-	throw error;
+}
+
+/** Contrato y sitio de destino: crea o asocia lo que falte. Solo se llama con --aplicar. */
+async function prepararDestino(repos: Repositorios, existente: Contrato | undefined) {
+	let contrato = existente;
+	if (!contrato) {
+		const [vigenciaInicio, vigenciaFin] = (opciones.vigencia ?? '').split(':');
+		const claveCliente = opciones.cliente ?? '';
+		const cliente =
+			(await repos.catalogo.listarClientes()).find((c) => c.clave === claveCliente) ??
+			(await repos.catalogo.guardarCliente({
+				clave: claveCliente,
+				nombre: opciones['cliente-nombre'] ?? claveCliente,
+				razonSocial: opciones['razon-social'] ?? opciones['cliente-nombre'] ?? claveCliente
+			}));
+		contrato = await repos.catalogo.guardarContrato({
+			clienteId: cliente.id,
+			numero: numeroContrato!,
+			descripcion: null,
+			vigenciaInicio,
+			vigenciaFin
+		});
+		console.log(`Contrato ${contrato.numero} creado para ${cliente.nombre}.`);
+	}
+	let sitio = (await repos.catalogo.listarSitios(contrato.id)).find((s) =>
+		igual(s.clave, claveSitio!)
+	);
+	if (!sitio) {
+		sitio =
+			(await repos.catalogo.listarSitios()).find((s) => igual(s.clave, claveSitio!)) ??
+			(await repos.catalogo.guardarSitio({
+				clave: claveSitio!,
+				nombre: opciones['sitio-nombre'] ?? ''
+			}));
+		await repos.catalogo.asociarSitio(contrato.id, sitio.id);
+		console.log(`Sitio ${sitio.clave} ${sitio.nombre} asociado al contrato.`);
+	}
+	return { contrato, sitio };
+}
+
+const repos = await repositoriosDesdeEntorno(process.env);
+try {
+	const contrato = (await repos.catalogo.listarContratos()).find((c) =>
+		igual(c.numero, numeroContrato!)
+	);
+	const sitioAsociado = contrato
+		? (await repos.catalogo.listarSitios(contrato.id)).find((s) => igual(s.clave, claveSitio!))
+		: undefined;
+	const sitioExistente =
+		sitioAsociado ?? (await repos.catalogo.listarSitios()).find((s) => igual(s.clave, claveSitio!));
+	if (!contrato && (!opciones.crear || !opciones.cliente || !opciones.vigencia)) {
+		fallar(
+			`No existe el contrato ${numeroContrato}. Créelo en /catalogo o use --crear con --cliente y --vigencia.`
+		);
+	}
+	if (!sitioExistente && !opciones.crear) {
+		fallar(`No existe el sitio ${claveSitio}. Regístrelo en /catalogo o use --crear.`);
+	}
+
+	if (!opciones.aplicar && (!contrato || !sitioAsociado)) {
+		// Ensayo sin contrato o sin la asociación del sitio: no hay partidas registradas para ese
+		// par, así que todas se crearían. Se informa sin escribir nada.
+		if (!contrato) console.log(`Se crearía el contrato ${numeroContrato}.`);
+		if (!sitioExistente) console.log(`Se crearía el sitio ${claveSitio}.`);
+		console.log(`Se asociaría el sitio ${claveSitio} al contrato.`);
+		console.log(
+			`Ensayo (no se guardó nada): ${catalogo.partidas.length} por crear, 0 por actualizar, 0 sin cambios. Programa: ${catalogo.programa ? 'crear' : 'ninguno'}.`
+		);
+	} else {
+		const destino =
+			contrato && sitioAsociado
+				? { contrato, sitio: sitioAsociado }
+				: await prepararDestino(repos, contrato);
+		const resultado = await repos.catalogo.importarCatalogo(
+			{
+				contratoId: destino.contrato.id,
+				sitioId: destino.sitio.id,
+				programa: catalogo.programa,
+				partidas: catalogo.partidas
+			},
+			!opciones.aplicar
+		);
+		const { crear, actualizar, sinCambios } = resultado.resumen;
+		console.log(
+			`${resultado.ensayo ? 'Ensayo (no se guardó nada)' : 'Importación aplicada'}: ${crear} por crear, ${actualizar} por actualizar, ${sinCambios} sin cambios. Programa: ${resultado.programa.accion}.`
+		);
+		if (crear + actualizar === 0) console.log('No hay cambios respecto a lo registrado.');
+	}
+	informarLibro();
+	if (!opciones.aplicar) console.log('Para guardar, repita el comando con --aplicar.');
 } finally {
 	await repos.cerrar();
 }

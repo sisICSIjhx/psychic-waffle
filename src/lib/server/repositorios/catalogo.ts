@@ -36,7 +36,7 @@ export type FirmanteEntrada = Omit<Firmante, 'id' | 'vigenteHasta'> &
 export const esquemaResultadoImportacion = z.object({
 	ensayo: z.boolean(),
 	programa: z.object({
-		accion: z.enum(['crear', 'existente', 'ninguno']),
+		accion: z.enum(['crear', 'actualizar', 'existente', 'ninguno']),
 		id: z.uuid().nullable()
 	}),
 	resumen: z.object({

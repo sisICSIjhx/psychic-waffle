@@ -73,13 +73,27 @@ export const actions: Actions = {
 		}
 	},
 
-	guardarEquipo: async ({ request }) => {
+	guardarEquipo: async ({ request, params }) => {
 		const formulario = await request.formData();
 		try {
-			const equipo = await (
-				await datos()
-			).catalogo.guardarEquipo({
-				sitioId: texto(formulario, 'sitioId'),
+			const repos = await datos();
+			const sitioId = texto(formulario, 'sitioId');
+			const id = opcional(formulario, 'id');
+			// Solo se agregan o editan equipos de un sitio de este contrato.
+			const sitioDelContrato = (await repos.catalogo.listarSitios(params.id)).some(
+				(s) => s.id === sitioId
+			);
+			const equipoDelSitio =
+				!id || (await repos.catalogo.listarEquipos(sitioId)).some((e) => e.id === id);
+			if (!sitioDelContrato || !equipoDelSitio) {
+				return fail(400, {
+					accion: 'guardarEquipo',
+					error: 'El equipo no pertenece a un sitio de este contrato.'
+				});
+			}
+			const equipo = await repos.catalogo.guardarEquipo({
+				...(id ? { id } : {}),
+				sitioId,
 				tag: texto(formulario, 'tag'),
 				tipo: opcional(formulario, 'tipo'),
 				marca: opcional(formulario, 'marca'),
@@ -87,7 +101,10 @@ export const actions: Actions = {
 				rango: opcional(formulario, 'rango'),
 				numeroSerie: opcional(formulario, 'numeroSerie')
 			});
-			return { accion: 'guardarEquipo', mensaje: `Equipo ${equipo.tag} registrado.` };
+			return {
+				accion: 'guardarEquipo',
+				mensaje: `Equipo ${equipo.tag} ${id ? 'actualizado' : 'registrado'}.`
+			};
 		} catch (error) {
 			return fail(400, { accion: 'guardarEquipo', error: mensajeDeError(error) });
 		}
@@ -96,9 +113,16 @@ export const actions: Actions = {
 	guardarFirmante: async ({ request, params }) => {
 		const formulario = await request.formData();
 		try {
-			await (
-				await datos()
-			).catalogo.guardarFirmante({
+			const repos = await datos();
+			const id = opcional(formulario, 'id');
+			if (id && !(await repos.catalogo.listarFirmantes(params.id)).some((f) => f.id === id)) {
+				return fail(400, {
+					accion: 'guardarFirmante',
+					error: 'El firmante no pertenece a este contrato.'
+				});
+			}
+			await repos.catalogo.guardarFirmante({
+				...(id ? { id } : {}),
 				contratoId: params.id,
 				funcion: texto(formulario, 'funcion') as 'elaboro' | 'aprobo' | 'recibio',
 				nombre: texto(formulario, 'nombre'),
@@ -107,7 +131,10 @@ export const actions: Actions = {
 				vigenteDesde: texto(formulario, 'vigenteDesde'),
 				vigenteHasta: opcional(formulario, 'vigenteHasta')
 			});
-			return { accion: 'guardarFirmante', mensaje: 'Firmante registrado.' };
+			return {
+				accion: 'guardarFirmante',
+				mensaje: id ? 'Firmante actualizado.' : 'Firmante registrado.'
+			};
 		} catch (error) {
 			return fail(400, { accion: 'guardarFirmante', error: mensajeDeError(error) });
 		}

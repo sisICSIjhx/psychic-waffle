@@ -10,8 +10,8 @@
 		Programa,
 		Sitio
 	} from '$lib/dominio/esquemas';
+	import type { SubmitFunction } from '@sveltejs/kit';
 	import TextField from '$lib/components/fields/TextField.svelte';
-	import DateField from '$lib/components/fields/DateField.svelte';
 	import Aviso from './Aviso.svelte';
 	import ResumenImportacion from './ResumenImportacion.svelte';
 
@@ -40,19 +40,81 @@
 		cuando_aplique: 'Cuando aplique'
 	};
 
-	// Formulario de firmante; los firmantes que propone el Excel lo prellenan para confirmarlos.
-	let firmante = { funcion: 'elaboro', nombre: '', cargo: '', empresa: '' };
-	async function usarPropuesto(propuesto: { nombre: string; cargo: string; empresa: string }) {
+	// Formularios de equipo y firmante: sirven para agregar y, con «Editar», para corregir una fila
+	// (llevan su id). Los firmantes que propone el Excel prellenan el formulario para confirmarlos.
+	const equipoVacio = () => ({
+		id: '',
+		tag: '',
+		tipo: '',
+		marca: '',
+		modelo: '',
+		rango: '',
+		numeroSerie: ''
+	});
+	const firmanteVacio = () => ({
+		id: '',
+		funcion: 'elaboro',
+		nombre: '',
+		cargo: '',
+		empresa: '',
+		vigenteDesde: contrato.vigenciaInicio,
+		vigenteHasta: ''
+	});
+	let equipo = equipoVacio();
+	let firmante = firmanteVacio();
+	let equipoAbierto = false;
+
+	async function enfocar(id: string) {
+		// Espera a que se abra el panel del formulario antes de enfocar el campo.
+		await tick();
+		document.getElementById(id)?.focus();
+	}
+
+	function editarEquipo(e: Equipo) {
+		equipo = {
+			id: e.id,
+			tag: e.tag,
+			tipo: e.tipo ?? '',
+			marca: e.marca ?? '',
+			modelo: e.modelo ?? '',
+			rango: e.rango ?? '',
+			numeroSerie: e.numeroSerie ?? ''
+		};
+		equipoAbierto = true;
+		enfocar('equipo-tag');
+	}
+
+	function editarFirmante(f: Firmante) {
 		firmante = {
-			...firmante,
+			id: f.id,
+			funcion: f.funcion,
+			nombre: f.nombre,
+			cargo: f.cargo,
+			empresa: f.empresa,
+			vigenteDesde: f.vigenteDesde,
+			vigenteHasta: f.vigenteHasta ?? ''
+		};
+		enfocar('firmante-nombre');
+	}
+
+	function usarPropuesto(propuesto: { nombre: string; cargo: string; empresa: string }) {
+		firmante = {
+			...firmanteVacio(),
 			nombre: propuesto.nombre,
 			cargo: propuesto.cargo,
 			empresa: propuesto.empresa
 		};
-		// Espera a que se abra el panel del formulario antes de enfocar el nombre.
-		await tick();
-		document.getElementById('firmante-nombre')?.focus();
+		enfocar('firmante-nombre');
 	}
+
+	// Tras guardar con éxito se vacía el formulario; si falla, se conserva lo capturado.
+	const limpiarAlGuardar =
+		(limpiar: () => void): SubmitFunction =>
+		() =>
+		async ({ result, update }) => {
+			if (result.type === 'success') limpiar();
+			await update({ reset: false });
+		};
 
 	function enviarAlCambiar(evento: Event) {
 		(evento.currentTarget as HTMLSelectElement).form?.requestSubmit();
@@ -217,19 +279,25 @@
 				<table>
 					<thead
 						><tr
-							><th>TAG</th><th>Tipo</th><th>Marca</th><th>Modelo</th><th>Rango</th><th>Serie</th
+							><th>TAG</th><th>Tipo</th><th>Marca</th><th>Modelo</th><th>Rango</th><th>Serie</th><th
+								><span class="sr-only">Acciones</span></th
 							></tr
 						></thead
 					>
 					<tbody>
-						{#each equipos as equipo (equipo.id)}
+						{#each equipos as fila (fila.id)}
 							<tr>
-								<td>{equipo.tag}</td>
-								<td>{equipo.tipo ?? ''}</td>
-								<td>{equipo.marca ?? ''}</td>
-								<td>{equipo.modelo ?? ''}</td>
-								<td>{equipo.rango ?? ''}</td>
-								<td>{equipo.numeroSerie ?? ''}</td>
+								<td>{fila.tag}</td>
+								<td>{fila.tipo ?? ''}</td>
+								<td>{fila.marca ?? ''}</td>
+								<td>{fila.modelo ?? ''}</td>
+								<td>{fila.rango ?? ''}</td>
+								<td>{fila.numeroSerie ?? ''}</td>
+								<td>
+									<button class="action-btn edit" type="button" on:click={() => editarEquipo(fila)}
+										>Editar <span class="sr-only">{fila.tag}</span></button
+									>
+								</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -238,18 +306,55 @@
 		{:else}
 			<p class="view-note">Sin equipos registrados en este sitio.</p>
 		{/if}
-		<details>
-			<summary>Agregar equipo</summary>
-			<form method="POST" action="?/guardarEquipo" use:enhance class="form-grid">
+		<details bind:open={equipoAbierto}>
+			<summary>{equipo.id ? `Editar equipo ${equipo.tag}` : 'Agregar equipo'}</summary>
+			<form
+				method="POST"
+				action="?/guardarEquipo"
+				use:enhance={limpiarAlGuardar(() => (equipo = equipoVacio()))}
+				class="form-grid"
+			>
 				<input type="hidden" name="sitioId" value={sitio.id} />
-				<TextField label="TAG" name="tag" placeholder="PI-0001" />
-				<TextField label="Tipo" name="tipo" />
-				<TextField label="Marca" name="marca" />
-				<TextField label="Modelo" name="modelo" />
-				<TextField label="Rango" name="rango" />
-				<TextField label="Número de serie" name="numeroSerie" />
+				<input type="hidden" name="id" value={equipo.id} />
+				<div class="form-group">
+					<label for="equipo-tag">TAG</label>
+					<input
+						id="equipo-tag"
+						name="tag"
+						placeholder="PI-0001"
+						bind:value={equipo.tag}
+						required
+					/>
+				</div>
+				<div class="form-group">
+					<label for="equipo-tipo">Tipo</label>
+					<input id="equipo-tipo" name="tipo" bind:value={equipo.tipo} />
+				</div>
+				<div class="form-group">
+					<label for="equipo-marca">Marca</label>
+					<input id="equipo-marca" name="marca" bind:value={equipo.marca} />
+				</div>
+				<div class="form-group">
+					<label for="equipo-modelo">Modelo</label>
+					<input id="equipo-modelo" name="modelo" bind:value={equipo.modelo} />
+				</div>
+				<div class="form-group">
+					<label for="equipo-rango">Rango</label>
+					<input id="equipo-rango" name="rango" bind:value={equipo.rango} />
+				</div>
+				<div class="form-group">
+					<label for="equipo-serie">Número de serie</label>
+					<input id="equipo-serie" name="numeroSerie" bind:value={equipo.numeroSerie} />
+				</div>
 				<div class="form-group acciones-formulario">
-					<button class="boton primario" type="submit">Agregar</button>
+					<button class="boton primario" type="submit"
+						>{equipo.id ? 'Guardar cambios' : 'Agregar'}</button
+					>
+					{#if equipo.id}
+						<button class="boton" type="button" on:click={() => (equipo = equipoVacio())}
+							>Cancelar edición</button
+						>
+					{/if}
 				</div>
 			</form>
 		</details>
@@ -262,7 +367,10 @@
 		<div class="tabla-desplazable">
 			<table>
 				<thead
-					><tr><th>Función</th><th>Nombre</th><th>Cargo</th><th>Empresa</th><th>Vigencia</th></tr
+					><tr
+						><th>Función</th><th>Nombre</th><th>Cargo</th><th>Empresa</th><th>Vigencia</th><th
+							><span class="sr-only">Acciones</span></th
+						></tr
 					></thead
 				>
 				<tbody>
@@ -273,6 +381,11 @@
 							<td>{f.cargo}</td>
 							<td>{f.empresa}</td>
 							<td>{f.vigenteDesde} {f.vigenteHasta ? `a ${f.vigenteHasta}` : 'en adelante'}</td>
+							<td>
+								<button class="action-btn edit" type="button" on:click={() => editarFirmante(f)}
+									>Editar <span class="sr-only">{FUNCIONES[f.funcion]}</span></button
+								>
+							</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -281,9 +394,15 @@
 	{:else}
 		<p class="view-note">Sin firmantes. Los reportes nuevos copian los firmantes vigentes.</p>
 	{/if}
-	<details open={firmante.nombre !== ''}>
-		<summary>Registrar firmante</summary>
-		<form method="POST" action="?/guardarFirmante" use:enhance class="form-grid">
+	<details open={firmante.nombre !== '' || firmante.id !== ''}>
+		<summary>{firmante.id ? 'Editar firmante' : 'Registrar firmante'}</summary>
+		<form
+			method="POST"
+			action="?/guardarFirmante"
+			use:enhance={limpiarAlGuardar(() => (firmante = firmanteVacio()))}
+			class="form-grid"
+		>
+			<input type="hidden" name="id" value={firmante.id} />
 			<div class="form-group">
 				<label for="firmante-funcion">Función</label>
 				<select id="firmante-funcion" name="funcion" bind:value={firmante.funcion}>
@@ -304,15 +423,34 @@
 				<label for="firmante-empresa">Empresa</label>
 				<input id="firmante-empresa" name="empresa" bind:value={firmante.empresa} />
 			</div>
-			<DateField
-				label="Vigente desde"
-				name="vigenteDesde"
-				value={contrato.vigenciaInicio}
-				required
-			/>
-			<DateField label="Vigente hasta (opcional)" name="vigenteHasta" />
+			<div class="form-group">
+				<label for="firmante-desde">Vigente desde</label>
+				<input
+					id="firmante-desde"
+					name="vigenteDesde"
+					type="date"
+					bind:value={firmante.vigenteDesde}
+					required
+				/>
+			</div>
+			<div class="form-group">
+				<label for="firmante-hasta">Vigente hasta (opcional)</label>
+				<input
+					id="firmante-hasta"
+					name="vigenteHasta"
+					type="date"
+					bind:value={firmante.vigenteHasta}
+				/>
+			</div>
 			<div class="form-group acciones-formulario">
-				<button class="boton primario" type="submit">Registrar</button>
+				<button class="boton primario" type="submit"
+					>{firmante.id ? 'Guardar cambios' : 'Registrar'}</button
+				>
+				{#if firmante.id}
+					<button class="boton" type="button" on:click={() => (firmante = firmanteVacio())}
+						>Cancelar edición</button
+					>
+				{/if}
 			</div>
 		</form>
 	</details>
