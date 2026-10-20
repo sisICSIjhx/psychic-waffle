@@ -10,3 +10,6 @@ bun.lockb
 
 # Habilidades generadas por OpenSpec (no editar a mano)
 /.claude/skills/
+
+# Guía externa de instalación: sus bloques de código se copian tal cual
+/GUIA_INSTALACION_IA_PARA_CLAUDE.md

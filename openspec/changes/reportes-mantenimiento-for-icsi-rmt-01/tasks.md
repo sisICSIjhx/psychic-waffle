@@ -22,20 +22,20 @@ Cada fase cierra con estos pasos:
 
 ## 1. Shell y navegación
 
-- [ ] 1.1 Corregir la importación de `src/routes/+page.svelte` (`$lib/components/views/DashboardView.svelte`).
-- [ ] 1.2 Crear las rutas `/planeacion`, `/captura`, `/historial`, `/catalogo`, `/personal` y `/perfil`,
+- [x] 1.1 Corregir la importación de `src/routes/+page.svelte` (`$lib/components/views/DashboardView.svelte`).
+- [x] 1.2 Crear las rutas `/planeacion`, `/captura`, `/historial`, `/catalogo`, `/personal` y `/perfil`,
       y alinear `routesByView` en `src/routes/+layout.svelte`.
-- [ ] 1.3 Alinear las propiedades y eventos entre `+layout.svelte` y `src/lib/layout/Sidebar.svelte`
+- [x] 1.3 Alinear las propiedades y eventos entre `+layout.svelte` y `src/lib/layout/Sidebar.svelte`
       (`activeView`/`isCollapsed`/`navigate`), y eliminar el duplicado `src/lib/components/Sidebar.svelte`
       tras comprobar que no se importa.
-- [ ] 1.4 Corregir el atributo `style` mal ubicado en `HeaderBar.svelte`.
-- [ ] 1.4.1 Eliminar la vista Prosasa: `ProsasaView.svelte`, su entrada en el menú de la barra lateral
+- [x] 1.4 Corregir el atributo `style` mal ubicado en `HeaderBar.svelte`.
+- [x] 1.4.1 Eliminar la vista Prosasa: `ProsasaView.svelte`, su entrada en el menú de la barra lateral
       y en `routesByView`. Dejar el submenú de Captura con Cerritos, Proagro y Virtual, apuntando a
       `/captura?cliente=`, y retirar `ProagroView` y `VirtualView`, que están vacías, tras comprobar
       que nada más las importa.
-- [ ] 1.5 Implementar `SelectField`, `DateField`, `NumberField` y `TextAreaField` con el patrón de
+- [x] 1.5 Implementar `SelectField`, `DateField`, `NumberField` y `TextAreaField` con el patrón de
       `TextField`.
-- [ ] 1.6 Actualizar `src/routes/page.svelte.spec.ts` y agregar una prueba de navegación entre vistas.
+- [x] 1.6 Actualizar `src/routes/page.svelte.spec.ts` y agregar una prueba de navegación entre vistas.
 - [ ] 1.7 Validación y revisión con Codex de la fase 1.
 
 ## 2. Prueba documental (riesgo principal, antes de la captura)

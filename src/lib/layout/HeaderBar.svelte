@@ -1,14 +1,14 @@
 <!-- HeaderBar.svelte -->
-<script>
-  import { createEventDispatcher } from 'svelte';
+<script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 
-  export let pageTitle = 'Panel de Control';
+	export let pageTitle = 'Panel de Control';
 
-  const dispatch = createEventDispatcher();
+	const dispatch = createEventDispatcher<{ toggleMobileMenu: void }>();
 
-  function toggleMobileMenu() {
-    dispatch('toggleMobileMenu');
-  }
+	function toggleMobileMenu() {
+		dispatch('toggleMobileMenu');
+	}
 </script>
 
 <header class="header">
@@ -27,22 +27,13 @@
 				</svg>
 			</div>
 		</button>
-		<div class="header-title">{pageTitle}</div>
+		<h1 class="header-title">{pageTitle}</h1>
 	</div>
 
-	<div
-		style="
-      font-size: 0.9rem;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    "
-	>
-		<span>
-			style=" width: 8px; height: 8px; background: var(--success); border-radius: 50%; display:
-			block; "
-		</span>
+	<div style="font-size: 0.9rem; color: var(--muted); display: flex; align-items: center; gap: 8px">
+		<span
+			style="width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: block"
+		></span>
 		<span>Conectado</span>
 	</div>
 </header>

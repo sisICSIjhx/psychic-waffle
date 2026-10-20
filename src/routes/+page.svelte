@@ -1,5 +1,5 @@
-<script>
-  import DashboardView from '$lib/views/DashboardView.svelte';
+<script lang="ts">
+	import DashboardView from '$lib/components/views/DashboardView.svelte';
 </script>
 
 <DashboardView />
