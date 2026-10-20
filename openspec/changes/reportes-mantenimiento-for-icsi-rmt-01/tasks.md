@@ -46,7 +46,8 @@ Cada fase cierra con estos pasos:
       plantilla se sanea (sin propiedades de autor, comentarios, revisiones, customXml ni nombres) y
       una auditoría automatizada del paquete lo comprueba.
 - [ ] 2.2 Implementar en `src/lib/dominio/` las reglas puras, con pruebas: título, numeración
-      «Ilustración 2.n.m», agrupación de fotos por disposición y nombre de archivo.
+      «Ilustración 2.n.m», agrupación de fotos por disposición y nombre de archivo (sin TAG, con uno o
+      con varios).
 - [ ] 2.3 Implementar `src/lib/server/documentos/generar.ts` con `docx-templates` y la preparación de
       imágenes con `sharp`.
 - [ ] 2.4 Crear `scripts/prueba-documental.ts`, que genera 3 reportes desde datos JSON de ejemplo:
@@ -64,7 +65,8 @@ Cada fase cierra con estos pasos:
 - [ ] 3.1 Escribir `supabase/migrations/0001_catalogo.sql`: clientes, contratos, sitios, partidas,
       alcances, herramientas, equipos y firmantes, con sus restricciones `unique` y la normalización
       de la clave de sitio.
-- [ ] 3.2 Escribir `0002_programa.sql`: programas, meses, realizados manuales y la vista de realizado.
+- [ ] 3.2 Escribir `0002_programa.sql`: programas, meses, realizados manuales (con `registrado_en`) y la vista de
+      realizado.
 - [ ] 3.3 Escribir `0003_reportes.sql`: reportes, alcances, fotos, herramientas, equipos, documentos
       generados, columna `version`, estados y revisiones (`revision`, `sustituye_a`).
 - [ ] 3.4 Escribir `0004_rls.sql`: RLS habilitado con la política de servicio.

@@ -3,6 +3,15 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-19 — FOR-ICSI-RMT-01, fase 0: preparación y revisión con Codex
+
+- Motivo: el usuario aprobó el plan del cambio `reportes-mantenimiento-for-icsi-rmt-01` y autorizó ejecutarlo por fases, con revisión de Codex al cierre de cada una.
+- Alcance: rama `feat/reportes-rmt-01` desde `main` (commit inicial de la documentación), `.env.example`, `/storage/` en `.gitignore` y `scripts/revision-codex.ps1`. Ajustes a specs, diseño y tareas por los hallazgos de Codex: varios TAG por reporte y su nombre de archivo, «Ilustración 2.n.m», revisiones de reportes emitidos (`revision`, `sustituye_a`), realizados manuales con `registrado_en` y saneamiento de la plantilla.
+- Archivos: `.env.example`, `.gitignore`, `scripts/revision-codex.ps1`, `openspec/changes/reportes-mantenimiento-for-icsi-rmt-01/` y `docs/revisiones/fase-0.md`.
+- Decisiones de herramienta: Codex 0.146 no admite `--commit` con instrucciones propias, así que el diff va en el prompt; el modelo por defecto no está disponible con la cuenta de ChatGPT (se usa `gpt-5.6-sol`); el sandbox de Windows de Codex no inicia y no se tocó la configuración de seguridad del equipo.
+- Validación: prueba del script sobre el commit 0.1 con 0 comandos ejecutados por Codex; revisión de la fase (1 ronda, 3 hallazgos corregidos); `openspec validate --strict` válido. Línea base: `check` 5 errores, `lint` 8 archivos sin formato y `test` con el proyecto client fallido, todos preexistentes del shell (fase 1). Se instaló el Chromium de Playwright (la extracción automática se colgó y se completó a mano).
+- Pendientes: fase 1 (shell y navegación).
+
 ## 2026-10-19 — Análisis de reportes reales y plan de trabajo FOR-ICSI-RMT-01
 
 - Motivo: el usuario entregó, en `insumos/`, los reportes reales (157 DOCX de Cerritos, Proagroindustrias y Virtual) y el catálogo de alcances con el programa anual de Cerritos, y pidió un plan de trabajo para ajustar la captura, la base de datos y la generación de reportes.

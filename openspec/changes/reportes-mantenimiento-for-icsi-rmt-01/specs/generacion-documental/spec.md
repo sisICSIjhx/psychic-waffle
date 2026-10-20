@@ -72,12 +72,17 @@ de plantilla sin resolver.
 ### Requirement: Nombre y descarga del archivo
 
 El archivo SHALL nombrarse con el número de partida, la actividad abreviada, el TAG si existe y el
-periodo, sin caracteres no válidos para Windows. Solo SHALL descargarse desde el reporte correspondiente.
+periodo; con varios TAG se usa el primero en el orden del reporte seguido de «+N» (los restantes), sin caracteres no válidos para Windows. Solo SHALL descargarse desde el reporte correspondiente.
 
 #### Scenario: Nombre con TAG
 
 - **WHEN** se genera el reporte de la partida 13, TAG PI-0001, de junio de 2026
 - **THEN** el archivo se nombra de forma similar a «P13_MANOMETROS_PI-0001_2026-06.docx»
+
+#### Scenario: Nombre con varios TAG
+
+- **WHEN** se genera el reporte de la partida 17 de mayo de 2026 con los TAG PI-0001, PI-1001 y PI-1002
+- **THEN** el archivo se nombra de forma similar a «P17_MANOMETROS_PI-0001+2_2026-05.docx» y el encabezado lista los tres TAG
 
 ### Requirement: Prueba de conversión a PDF
 

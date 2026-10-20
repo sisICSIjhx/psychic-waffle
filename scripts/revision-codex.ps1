@@ -64,15 +64,37 @@ function Get-GitTexto([string[]]$argumentos) {
 	return ($lineas -join "`n")
 }
 
+# Rutas que nunca se envían a Codex, aunque llegaran a versionarse por error. .env.example se
+# revisa aparte porque es el único archivo de entorno permitido.
+$patronSensible = '(^|/)(insumos|storage)(/|$)|(^|/)\.env'
+$excluidas = @(':(exclude)package-lock.json', ':(exclude)insumos', ':(exclude)storage',
+	':(exclude,glob)**/insumos/**', ':(exclude,glob)**/storage/**', ':(exclude,glob)**/.env*')
+
+foreach ($ruta in $ArchivosContexto) {
+	if ($ruta.Replace('\', '/') -match $patronSensible) { throw "Ruta de contexto no permitida: $ruta" }
+}
+
+$archivosCommit = (Get-GitTexto @('-c', 'core.quotepath=off', 'show', '--name-only', '--format=',
+		$shaCompleto)) -split "`n" | Where-Object { $_ }
+$omitidos = $archivosCommit | Where-Object { $_ -match $patronSensible -and $_ -notmatch '(^|/)\.env\.example$' }
+if ($omitidos) {
+	Write-Warning "El commit contiene rutas sensibles que no se envían a Codex: $($omitidos -join ', ')"
+}
+
 $partes = New-Object System.Collections.Generic.List[string]
 $partes.Add($instrucciones)
 foreach ($ruta in $ArchivosContexto) {
 	$contenido = Get-GitTexto @('show', "${shaCompleto}:$ruta")
 	$partes.Add("`n===== CONTEXTO: $ruta (versión del commit) =====`n$contenido")
 }
-$diff = Get-GitTexto @('-c', 'core.quotepath=off', 'show', '--format=fuller', '--no-ext-diff',
-	'--unified=40', $shaCompleto, '--', '.', ':(exclude)package-lock.json')
+$diff = Get-GitTexto (@('-c', 'core.quotepath=off', 'show', '--format=fuller', '--no-ext-diff',
+		'--unified=40', $shaCompleto, '--', '.') + $excluidas)
 $partes.Add("`n===== DIFF DEL COMMIT $shaCompleto =====`n$diff")
+$diffEjemplo = Get-GitTexto @('-c', 'core.quotepath=off', 'show', '--format=', '--no-ext-diff',
+	$shaCompleto, '--', '.env.example')
+if ($diffEjemplo) {
+	$partes.Add("`n===== DIFF DE .env.example =====`n$diffEjemplo")
+}
 [System.IO.File]::WriteAllText($archivoPrompt, ($partes -join "`n"), (New-Object System.Text.UTF8Encoding $false))
 
 $codigo = 1

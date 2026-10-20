@@ -76,7 +76,7 @@ Tablas principales:
 | Grupo    | Tablas                                                                                                                                                                                        |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Catálogo | `clientes`, `contratos`, `sitios`, `contrato_sitios`, `partidas`, `partida_alcances` (orden y tipo `alcance\|nota\|norma`), `partida_herramientas`, `equipos`, `partida_equipos`, `firmantes` |
-| Programa | `programas` (contrato, sitio y periodo), `programa_meses` (partida, mes y cantidad programada), `programa_realizados_manuales` (partida, mes, cantidad y nota)                                |
+| Programa | `programas` (contrato, sitio y periodo), `programa_meses` (partida, mes y cantidad programada), `programa_realizados_manuales` (partida, mes, cantidad, nota y `registrado_en`)               |
 | Reportes | `reportes`, `reporte_alcances`, `reporte_fotos`, `reporte_herramientas`, `reporte_equipos`, `documentos_generados`                                                                            |
 
 Detalle de las tablas:
