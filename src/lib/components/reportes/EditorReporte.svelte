@@ -7,6 +7,7 @@
 	import {
 		aGuardado,
 		partesMes,
+		rangoDelPeriodo,
 		validarParaRevision,
 		type Observacion
 	} from '$lib/dominio/captura';
@@ -84,12 +85,15 @@
 	let temporizador: ReturnType<typeof setTimeout> | null = null;
 	let cola: Promise<unknown> = Promise.resolve();
 
-	$: editable = reporte.estado === 'borrador' && estadoGuardado !== 'conflicto';
+	// Mientras cambia el estado o se aplica el catálogo no se edita: lo escrito se perdería.
+	$: editable = reporte.estado === 'borrador' && estadoGuardado !== 'conflicto' && !ocupado;
+	$: ruta = resolve('/reportes/[id]', { id: reporte.id });
 	$: huellaActual = huella(reporte);
 	$: if (editable && huellaActual !== ultimaHuella && estadoGuardado !== 'guardando') programar();
 	$: pendientes = validarParaRevision(reporte, { requiereTag: equiposPartida.length > 0 });
 	$: mes = partesMes(reporte.periodoMes);
-	$: finDeMes = `${reporte.periodoMes.slice(0, 8)}${String(new Date(Date.UTC(mes.anio, mes.mes, 0)).getUTCDate()).padStart(2, '0')}`;
+	// Días válidos: el mes o, si aplica, la semana, quincena o día elegidos.
+	$: rango = rangoDelPeriodo(reporte.periodoMes, reporte.ocurrencia);
 	$: idsEquipos = new Set(reporte.equipos.map((e) => e.id));
 
 	function programar() {
@@ -145,7 +149,7 @@
 		estadoGuardado = 'guardando';
 		const datos = new FormData();
 		datos.set('reporte', JSON.stringify(paraGuardar(reporte)));
-		const resultado = await enviar('guardar', datos);
+		const resultado = await enviar('guardar', datos, ruta);
 		if (!resultado.ok) {
 			if (estadoGuardado === 'guardando') estadoGuardado = 'error';
 			manejarFallo(resultado);
@@ -184,7 +188,7 @@
 					datos.set('version', String(reporte.version));
 					if (momento) datos.set('momento', momento);
 					datos.append('archivo', archivo);
-					const resultado = await enviar('fotos', datos);
+					const resultado = await enviar('fotos', datos, ruta);
 					if (!resultado.ok) {
 						manejarFallo(resultado);
 						rechazadas = [...rechazadas, { nombre: archivo.name, motivo: mensaje }];
@@ -233,7 +237,7 @@
 				const datos = new FormData();
 				datos.set('version', String(reporte.version));
 				for (const [clave, valor] of Object.entries(campos)) datos.set(clave, valor);
-				const resultado = await enviar(accion, datos);
+				const resultado = await enviar(accion, datos, ruta);
 				if (!resultado.ok) {
 					manejarFallo(resultado);
 					return;
@@ -250,7 +254,7 @@
 	async function crearRevision() {
 		ocupado = true;
 		mensaje = '';
-		const resultado = await enviar('revision', new FormData());
+		const resultado = await enviar('revision', new FormData(), ruta);
 		if (!resultado.ok) manejarFallo(resultado);
 		ocupado = false;
 	}
@@ -325,15 +329,27 @@
 		reporte.incluyeVerificacion = casilla.checked;
 	}
 
+	/** Hay cambios sin guardar o un guardado en curso. */
+	export function hayCambiosPendientes(): boolean {
+		return (
+			reporte.estado === 'borrador' &&
+			(estadoGuardado === 'pendiente' ||
+				estadoGuardado === 'guardando' ||
+				huella(reporte) !== ultimaHuella)
+		);
+	}
+
+	/** Guarda de inmediato, después de lo que ya esté en curso. La página lo usa antes de navegar. */
+	export function guardarAhora(): Promise<boolean> {
+		return encolar(guardar);
+	}
+
 	function antesDeSalir(evento: BeforeUnloadEvent) {
-		if (estadoGuardado === 'pendiente' || estadoGuardado === 'guardando') evento.preventDefault();
+		if (hayCambiosPendientes()) evento.preventDefault();
 	}
 
 	onDestroy(() => {
-		if (temporizador) {
-			clearTimeout(temporizador);
-			encolar(guardar);
-		}
+		if (temporizador) clearTimeout(temporizador);
 	});
 </script>
 
@@ -462,8 +478,8 @@
 				<input
 					id="fecha"
 					type="date"
-					min={reporte.periodoMes}
-					max={finDeMes}
+					min={rango?.desde}
+					max={rango?.hasta}
 					bind:value={reporte.fechaEjecucion}
 					aria-invalid={pendientes.some((o) => o.campo === 'fechaEjecucion')}
 				/>

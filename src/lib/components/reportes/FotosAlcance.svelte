@@ -83,11 +83,14 @@
 				{#each grupo.fotos as foto, i (foto.id)}
 					{@const numero = numeracion.get(foto.id) ?? 0}
 					<li class="foto">
-						<img
-							src={`/reportes/${reporteId}/fotos/${foto.id}`}
-							alt={foto.descripcion || `Foto ${numero} del alcance ${posicionAlcance}`}
-							loading="lazy"
-						/>
+						<!-- Sin reporte (p. ej. en pruebas) no se pide la imagen al servidor. -->
+						{#if reporteId}
+							<img
+								src={`/reportes/${reporteId}/fotos/${foto.id}`}
+								alt={foto.descripcion || `Foto ${numero} del alcance ${posicionAlcance}`}
+								loading="lazy"
+							/>
+						{/if}
 						<p class="pie">{pieIlustracion(posicionAlcance, numero)}</p>
 						<label class="sr-only" for={`pie-${foto.id}`}
 							>Descripción de la {pieIlustracion(posicionAlcance, numero)}</label

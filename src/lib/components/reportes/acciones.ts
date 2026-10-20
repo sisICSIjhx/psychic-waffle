@@ -5,11 +5,17 @@ export type ResultadoAccion =
 	| { ok: true; datos: Record<string, unknown> }
 	| { ok: false; estado: number; datos: Record<string, unknown> };
 
-export type EnviarAccion = (accion: string, datos: FormData) => Promise<ResultadoAccion>;
+/** `ruta` es la página del reporte: una ruta relativa se resolvería contra la página de destino
+ * si el usuario ya navegó a otra. */
+export type EnviarAccion = (
+	accion: string,
+	datos: FormData,
+	ruta: string
+) => Promise<ResultadoAccion>;
 
-export const llamarAccion: EnviarAccion = async (accion, datos) => {
+export const llamarAccion: EnviarAccion = async (accion, datos, ruta) => {
 	try {
-		const respuesta = await fetch(`?/${accion}`, {
+		const respuesta = await fetch(`${ruta}?/${accion}`, {
 			method: 'POST',
 			body: datos,
 			headers: { 'x-sveltekit-action': 'true' }

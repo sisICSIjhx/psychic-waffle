@@ -163,6 +163,18 @@ describe('recorrido completo de la captura', () => {
 		expect(otraVez.documento.id).toBe(descarga.documento.id);
 		expect((await servicio.obtener(emitido.id)).documentos).toHaveLength(1);
 
+		// Un documento generado con una versión que ya cambió no se registra.
+		await expect(
+			repos.reportes.registrarDocumento({
+				reporteId: emitido.id,
+				reporteVersion: emitido.version - 1,
+				versionPlantilla: 'FOR-ICSI-RMT-01.v1',
+				ruta: 'documentos/obsoleto.docx',
+				nombreArchivo: 'obsoleto.docx',
+				bytes: 10
+			})
+		).rejects.toMatchObject({ tipo: 'conflicto' });
+
 		// La revisión conserva la huella del original: no ofrece cambios del catálogo inexistentes.
 		const revision = await servicio.crearRevision(emitido.id);
 		expect(revision).toMatchObject({ estado: 'borrador', revision: 1 });

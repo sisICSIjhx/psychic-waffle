@@ -34,8 +34,7 @@ describe('FotosAlcance', () => {
 	it('renumera los pies al mover la tercera foto del alcance 2 al primer lugar', async () => {
 		const { container } = render(FotosAlcance, {
 			fotos: [foto(1, 'Uno'), foto(2, 'Dos'), foto(3, 'Tres')],
-			posicionAlcance: 2,
-			reporteId: 'r'
+			posicionAlcance: 2
 		});
 		await page.getByRole('button', { name: 'Subir la Ilustración 2.2.3' }).click();
 		await page.getByRole('button', { name: 'Subir la Ilustración 2.2.2' }).click();
@@ -51,8 +50,7 @@ describe('FotosAlcance', () => {
 		const { container } = render(FotosAlcance, {
 			fotos: [foto(1, 'Después', 'despues'), foto(2, 'Antes', 'antes'), foto(3, 'Durante', null)],
 			posicionAlcance: 1,
-			disposicion: 'antes_durante_despues',
-			reporteId: 'r'
+			disposicion: 'antes_durante_despues'
 		});
 		const espacios = [...container.querySelectorAll('.etiqueta-espacio')].map((e) =>
 			e.textContent?.trim()
@@ -69,7 +67,6 @@ describe('FotosAlcance', () => {
 	it('en solo lectura no permite cargar ni mover fotos', async () => {
 		const { container } = render(FotosAlcance, {
 			fotos: [foto(1, 'Uno')],
-			reporteId: 'r',
 			soloLectura: true
 		});
 		expect(container.querySelectorAll('button')).toHaveLength(0);

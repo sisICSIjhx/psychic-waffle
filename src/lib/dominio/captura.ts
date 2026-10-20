@@ -2,6 +2,7 @@
 // enviar a revisión y aplicación explícita de los cambios del catálogo a un borrador.
 import {
 	diasDelMes,
+	MESES,
 	semanasDelMes,
 	tituloReporte,
 	type Ocurrencia,
@@ -214,12 +215,51 @@ export interface Observacion {
 	mensaje: string;
 }
 
-const RELLENO = /\bcambiar\b|^\s*(n\s*\/\s*a|x{2,}|-+|_+|\.+|pendiente|por definir)\s*$/i;
+/**
+ * Textos de relleno de las plantillas anteriores: «(Cambiar)» en cualquier parte, o un valor que solo
+ * dice «Cambiar», «N/A», «XX», guiones o «Pendiente». «CAMBIAR FILTROS» es un título legítimo.
+ */
+const RELLENO =
+	/\(\s*cambiar\s*\)|^\s*(cambiar|n\s*\/\s*a|x{2,}|-+|_+|\.+|pendiente|por definir)\s*$/i;
+
+/**
+ * Primer y último día («AAAA-MM-DD») en que puede ejecutarse el reporte del periodo: el mes completo
+ * o, si la partida es diaria, semanal o quincenal, el día, la semana (de lunes a domingo, dentro del
+ * mes) o la quincena elegidos. Devuelve null si la ocurrencia no existe en el mes.
+ */
+export function rangoDelPeriodo(
+	periodoMes: string,
+	ocurrencia: Ocurrencia | null
+): { desde: string; hasta: string } | null {
+	const { anio, mes } = partesMes(periodoMes);
+	const dias = diasDelMes(anio, mes);
+	const fecha = (dia: number) =>
+		`${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+	if (!ocurrencia) return { desde: fecha(1), hasta: fecha(dias) };
+	const n = ocurrencia.numero;
+	if (!ocurrenciasDelMes(ocurrencia.tipo, periodoMes).includes(n)) return null;
+	if (ocurrencia.tipo === 'dia') return { desde: fecha(n), hasta: fecha(n) };
+	if (ocurrencia.tipo === 'quincena') {
+		return n === 1
+			? { desde: fecha(1), hasta: fecha(15) }
+			: { desde: fecha(16), hasta: fecha(dias) };
+	}
+	// Días del mes antes del primer lunes que caen en la semana 1 (0 si el mes inicia en lunes).
+	const desplazamiento = (new Date(Date.UTC(anio, mes - 1, 1)).getUTCDay() + 6) % 7;
+	return {
+		desde: fecha(Math.max(1, (n - 1) * 7 - desplazamiento + 1)),
+		hasta: fecha(Math.min(dias, n * 7 - desplazamiento))
+	};
+}
+
+const textoDia = (fecha: string) =>
+	`${Number(fecha.slice(8, 10))} de ${MESES[Number(fecha.slice(5, 7)) - 1].toLocaleLowerCase('es-MX')}`;
 
 /** Datos mínimos de un reporte para validarlo, tal como los tiene el editor o la base. */
 export type ReporteValidable = Pick<
 	Reporte,
 	| 'periodoMes'
+	| 'ocurrencia'
 	| 'fechaEjecucion'
 	| 'titulo'
 	| 'usuario'
@@ -249,11 +289,20 @@ export function validarParaRevision(
 	const observaciones: Observacion[] = [];
 	const agregar = (campo: string, mensaje: string) => observaciones.push({ campo, mensaje });
 
-	const mes = reporte.periodoMes.slice(0, 7);
-	if (!reporte.fechaEjecucion || !/^\d{4}-\d{2}-\d{2}$/.test(reporte.fechaEjecucion)) {
+	const rango = rangoDelPeriodo(reporte.periodoMes, reporte.ocurrencia);
+	if (!rango) {
+		agregar('ocurrencia', 'La semana, quincena o día del reporte no existe en su mes.');
+	} else if (!reporte.fechaEjecucion || !/^\d{4}-\d{2}-\d{2}$/.test(reporte.fechaEjecucion)) {
 		agregar('fechaEjecucion', 'Capture la fecha completa de ejecución (día, mes y año).');
-	} else if (reporte.fechaEjecucion.slice(0, 7) !== mes) {
-		agregar('fechaEjecucion', 'La fecha de ejecución debe estar dentro del mes del reporte.');
+	} else if (reporte.fechaEjecucion < rango.desde || reporte.fechaEjecucion > rango.hasta) {
+		const periodo =
+			rango.desde === rango.hasta
+				? `el ${textoDia(rango.desde)}`
+				: `del ${textoDia(rango.desde)} al ${textoDia(rango.hasta)}`;
+		agregar(
+			'fechaEjecucion',
+			`La fecha de ejecución debe estar dentro del periodo del reporte (${periodo}).`
+		);
 	}
 
 	const encabezado = {

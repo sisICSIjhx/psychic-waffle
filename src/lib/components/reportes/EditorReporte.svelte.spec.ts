@@ -63,6 +63,7 @@ function reporte(cambios: Partial<Reporte> = {}): Reporte {
 }
 
 const sinRespuesta: EnviarAccion = vi.fn(async () => ({ ok: true as const, datos: {} }));
+const RUTA = `/reportes/${ID(1)}`;
 
 describe('EditorReporte', () => {
 	it('pide confirmación para omitir la tabla con estados capturados y los conserva', async () => {
@@ -118,14 +119,39 @@ describe('EditorReporte', () => {
 		await expect.element(page.getByText('Versión desactualizada')).toBeInTheDocument();
 
 		expect(enviar).toHaveBeenCalledTimes(1);
-		const [accion, datos] = enviar.mock.calls[0];
+		const [accion, datos, ruta] = enviar.mock.calls[0];
 		expect(accion).toBe('guardar');
+		// Siempre a la página del reporte, aunque el usuario ya haya navegado a otra.
+		expect(ruta).toBe(RUTA);
 		const enviado = JSON.parse(String(datos.get('reporte')));
 		expect(enviado).toMatchObject({ id: ID(1), version: 3, conclusiones: 'Texto nuevo' });
 		await expect
 			.element(page.getByRole('button', { name: 'Recargar el reporte' }))
 			.toBeInTheDocument();
 		await expect.element(page.getByLabelText('Conclusiones', { exact: true })).toBeDisabled();
+	});
+
+	it('guarda de inmediato lo pendiente cuando la página va a navegar', async () => {
+		const enviar = vi.fn<EnviarAccion>(async () => ({
+			ok: true as const,
+			datos: { reporte: { ...reporte(), version: 4 } }
+		}));
+		const { component } = render(EditorReporte, {
+			reporte: reporte(),
+			espera: 60_000,
+			enviar
+		});
+		expect(component.hayCambiosPendientes()).toBe(false);
+		await page.getByLabelText('Conclusiones', { exact: true }).fill('Antes de salir');
+		expect(component.hayCambiosPendientes()).toBe(true);
+
+		expect(await component.guardarAhora()).toBe(true);
+		expect(enviar).toHaveBeenCalledTimes(1);
+		expect(JSON.parse(String(enviar.mock.calls[0][1].get('reporte')))).toMatchObject({
+			version: 3,
+			conclusiones: 'Antes de salir'
+		});
+		expect(component.hayCambiosPendientes()).toBe(false);
 	});
 
 	it('un reporte emitido es de solo lectura y ofrece crear una revisión', async () => {

@@ -106,8 +106,13 @@ export class RepositorioReportes {
 		return esquemaPaginaReportes.parse(await this.sql.llamar('api_listar_reportes', entrada));
 	}
 
+	/**
+	 * Registra el DOCX generado con la versión del reporte que se usó; si el reporte cambió mientras
+	 * se generaba, lanza un ErrorDatos de tipo «conflicto».
+	 */
 	async registrarDocumento(documento: {
 		reporteId: string;
+		reporteVersion: number;
 		versionPlantilla: string;
 		ruta: string;
 		nombreArchivo: string;

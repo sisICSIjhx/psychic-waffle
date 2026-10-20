@@ -3,12 +3,13 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { mesesDeVigencia, tipoOcurrencia } from '$lib/dominio/captura';
 import type { Partida } from '$lib/dominio/esquemas';
+import { fechaEnZona } from '$lib/dominio/fechas';
 import { ErrorValidacion } from '$lib/server/captura';
 import { captura, datos } from '$lib/server/datos';
 import { mensajeDeError } from '$lib/server/errores';
 import type { Actions, PageServerLoad } from './$types';
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => fechaEnZona();
 
 export const load: PageServerLoad = async ({ url }) => {
 	const repos = await datos();
@@ -37,6 +38,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		partida = await repos.catalogo.obtenerPartida(idPartida);
 	}
 	const meses = contrato ? mesesDeVigencia(contrato.vigenciaInicio, contrato.vigenciaFin) : [];
+	// ?mes= llega desde una celda de la planeación; si no, se propone el mes en curso.
+	const mesPedido = url.searchParams.get('mes') ?? '';
 	const mesActual = `${hoy().slice(0, 7)}-01`;
 	const borradores = await repos.reportes.listar({
 		estado: 'borrador',
@@ -53,7 +56,11 @@ export const load: PageServerLoad = async ({ url }) => {
 		partida,
 		tipoOcurrencia: partida ? tipoOcurrencia(partida.periodicidad) : null,
 		meses,
-		mesSugerido: meses.includes(mesActual) ? mesActual : (meses[0] ?? null),
+		mesSugerido: meses.includes(mesPedido)
+			? mesPedido
+			: meses.includes(mesActual)
+				? mesActual
+				: (meses[0] ?? null),
 		borradores: borradores.filas
 	};
 };

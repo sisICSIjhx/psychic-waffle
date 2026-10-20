@@ -246,36 +246,46 @@ export class ServicioCaptura {
 	 * reutiliza; si no, se genera, se guarda y se registra en documentos_generados.
 	 */
 	async generarDocumento(id: string): Promise<DocumentoDescargable> {
-		const reporte = await this.repos.reportes.obtener(id);
-		const previo = reporte.documentos.find(
-			(d) => d.reporteVersion === reporte.version && d.versionPlantilla === VERSION_PLANTILLA
-		);
-		if (previo) {
-			const datos = await this.archivos.leer(previo.ruta).catch(() => null);
-			if (datos) return { datos, nombreArchivo: previo.nombreArchivo, documento: previo };
+		// Si el reporte cambia mientras se genera (un autoguardado), se descarta y se genera de nuevo.
+		for (let intento = 1; ; intento++) {
+			const reporte = await this.repos.reportes.obtener(id);
+			const previo = reporte.documentos.find(
+				(d) => d.reporteVersion === reporte.version && d.versionPlantilla === VERSION_PLANTILLA
+			);
+			if (previo) {
+				const datos = await this.archivos.leer(previo.ruta).catch(() => null);
+				if (datos) return { datos, nombreArchivo: previo.nombreArchivo, documento: previo };
+			}
+			if (!reporte.fechaEjecucion) {
+				throw new ErrorValidacion([
+					{
+						campo: 'fechaEjecucion',
+						mensaje: 'Capture la fecha de ejecución para generar el documento.'
+					}
+				]);
+			}
+			const plantilla = await this.plantilla();
+			const resultado = await generarDocx(await this.documentoDe(reporte, reporte.fechaEjecucion), {
+				plantilla
+			});
+			const ruta = `documentos/${reporte.id}/v${reporte.version}-${resultado.nombreArchivo}`;
+			await this.archivos.guardar(ruta, resultado.docx);
+			try {
+				const documento = await this.repos.reportes.registrarDocumento({
+					reporteId: reporte.id,
+					reporteVersion: reporte.version,
+					versionPlantilla: resultado.versionPlantilla,
+					ruta,
+					nombreArchivo: resultado.nombreArchivo,
+					bytes: resultado.bytes
+				});
+				return { datos: resultado.docx, nombreArchivo: resultado.nombreArchivo, documento };
+			} catch (error) {
+				await this.archivos.eliminar(ruta).catch(() => undefined);
+				const cambio = error instanceof ErrorDatos && error.tipo === 'conflicto';
+				if (!cambio || intento >= 3) throw error;
+			}
 		}
-		if (!reporte.fechaEjecucion) {
-			throw new ErrorValidacion([
-				{
-					campo: 'fechaEjecucion',
-					mensaje: 'Capture la fecha de ejecución para generar el documento.'
-				}
-			]);
-		}
-		const plantilla = await this.plantilla();
-		const resultado = await generarDocx(await this.documentoDe(reporte, reporte.fechaEjecucion), {
-			plantilla
-		});
-		const ruta = `documentos/${reporte.id}/v${reporte.version}-${resultado.nombreArchivo}`;
-		await this.archivos.guardar(ruta, resultado.docx);
-		const documento = await this.repos.reportes.registrarDocumento({
-			reporteId: reporte.id,
-			versionPlantilla: resultado.versionPlantilla,
-			ruta,
-			nombreArchivo: resultado.nombreArchivo,
-			bytes: resultado.bytes
-		});
-		return { datos: resultado.docx, nombreArchivo: resultado.nombreArchivo, documento };
 	}
 
 	private async documentoDe(reporte: Reporte, fecha: string): Promise<ReporteDocumento> {

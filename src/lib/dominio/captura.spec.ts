@@ -4,6 +4,7 @@ import {
 	mesesDeVigencia,
 	ocurrenciasDelMes,
 	prellenarReporte,
+	rangoDelPeriodo,
 	separarAlcance,
 	tipoOcurrencia,
 	validarParaRevision,
@@ -183,6 +184,7 @@ describe('prellenado desde el catálogo', () => {
 function validable(cambios: Partial<ReporteValidable> = {}): ReporteValidable {
 	return {
 		periodoMes: '2026-05-01',
+		ocurrencia: null,
 		fechaEjecucion: '2026-05-18',
 		titulo: '07.- TOMA DE POTENCIALES TUBO-SUELO. MAYO 2026',
 		usuario: 'CLIENTE FICTICIO',
@@ -213,16 +215,58 @@ describe('validaciones para enviar a revisión', () => {
 		expect(validarParaRevision(validable({ fechaEjecucion: null })).map((o) => o.campo)).toEqual([
 			'fechaEjecucion'
 		]);
-		expect(validarParaRevision(validable({ fechaEjecucion: '2026-06-01' }))[0].mensaje).toMatch(
-			/dentro del mes/
+		expect(validarParaRevision(validable({ fechaEjecucion: '2026-06-01' }))[0].mensaje).toBe(
+			'La fecha de ejecución debe estar dentro del periodo del reporte (del 1 de mayo al 31 de mayo).'
 		);
+	});
+
+	it('exige la fecha dentro de la semana, quincena o día del reporte', () => {
+		// Mayo de 2026 inicia en viernes: la semana 1 va del 1 al 3 y la 2 del 4 al 10.
+		expect(rangoDelPeriodo('2026-05-01', { tipo: 'semana', numero: 1 })).toEqual({
+			desde: '2026-05-01',
+			hasta: '2026-05-03'
+		});
+		expect(rangoDelPeriodo('2026-05-01', { tipo: 'semana', numero: 5 })).toEqual({
+			desde: '2026-05-25',
+			hasta: '2026-05-31'
+		});
+		expect(rangoDelPeriodo('2026-05-01', { tipo: 'quincena', numero: 2 })).toEqual({
+			desde: '2026-05-16',
+			hasta: '2026-05-31'
+		});
+		expect(rangoDelPeriodo('2026-02-01', { tipo: 'dia', numero: 29 })).toBeNull();
+
+		const semana2 = { ocurrencia: { tipo: 'semana' as const, numero: 2 } };
+		expect(validarParaRevision(validable({ ...semana2, fechaEjecucion: '2026-05-08' }))).toEqual(
+			[]
+		);
+		expect(
+			validarParaRevision(validable({ ...semana2, fechaEjecucion: '2026-05-31' }))[0].mensaje
+		).toBe(
+			'La fecha de ejecución debe estar dentro del periodo del reporte (del 4 de mayo al 10 de mayo).'
+		);
+		expect(validarParaRevision(validable({ ocurrencia: { tipo: 'dia', numero: 18 } }))).toEqual([]);
+		expect(
+			validarParaRevision(validable({ ocurrencia: { tipo: 'semana', numero: 7 } })).map(
+				(o) => o.campo
+			)
+		).toEqual(['ocurrencia']);
 	});
 
 	it('rechaza textos de relleno en el encabezado', () => {
 		const campos = validarParaRevision(
-			validable({ usuario: 'Cambiar', sitioTexto: 'N/A', tipoMantenimiento: '' })
+			validable({
+				usuario: 'Cambiar',
+				sitioTexto: 'N/A',
+				tipoMantenimiento: '',
+				contratoTexto: '4500057477 (Cambiar)'
+			})
 		).map((o) => o.campo);
-		expect(campos).toEqual(['usuario', 'sitioTexto', 'tipoMantenimiento']);
+		expect(campos).toEqual(['usuario', 'contratoTexto', 'sitioTexto', 'tipoMantenimiento']);
+		// «Cambiar» dentro de un título legítimo no es relleno.
+		expect(
+			validarParaRevision(validable({ titulo: '05.- CAMBIAR FILTROS DE GAS. MAYO 2026' }))
+		).toEqual([]);
 	});
 
 	it('exige la observación de un alcance «Con observación» y el estado de cada alcance', () => {

@@ -465,6 +465,7 @@ describe('historial y documentos', () => {
 		expect(pagina.filas[0].tags).toBe('PSV-2001');
 
 		const documento = await repos.reportes.registrarDocumento({
+			reporteVersion: (await repos.reportes.obtener(mayo.id)).version,
 			reporteId: mayo.id,
 			versionPlantilla: 'FOR-ICSI-RMT-01.v1',
 			ruta: 'documentos/x.docx',
