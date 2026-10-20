@@ -5,6 +5,8 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	// La plantilla DOCX se importa con «?inline» desde el servidor (plantillas/vigente.ts).
+	assetsInclude: ['**/*.docx'],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

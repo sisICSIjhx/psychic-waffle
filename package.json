@@ -19,10 +19,15 @@
 		"graph:sync": "codegraph sync",
 		"spec": "openspec",
 		"spec:check": "openspec validate --all --strict",
-		"spec:list": "openspec list --specs"
+		"spec:list": "openspec list --specs",
+		"plantilla:construir": "node scripts/construir-plantilla.ts",
+		"prueba:documental": "node scripts/prueba-documental.ts",
+		"verificar:datos": "node scripts/verificar-datos-personales.ts",
+		"importar": "node scripts/importar-catalogo.ts"
 	},
 	"devDependencies": {
 		"@colbymchenry/codegraph": "1.6.2",
+		"@electric-sql/pglite": "0.5.10",
 		"@eslint/compat": "^1.4.0",
 		"@eslint/js": "^9.39.1",
 		"@fission-ai/openspec": "1.14.2",
@@ -50,5 +55,16 @@
 		"vite": "^7.2.2",
 		"vitest": "^4.0.10",
 		"vitest-browser-svelte": "^2.0.1"
+	},
+	"dependencies": {
+		"@supabase/supabase-js": "2.118.0",
+		"docx-templates": "4.15.0",
+		"heic-decode": "2.1.0",
+		"jszip": "3.10.2",
+		"sharp": "0.35.5",
+		"zod": "4.6.7"
+	},
+	"overrides": {
+		"libheif-js": "1.23.2"
 	}
 }

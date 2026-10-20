@@ -1,0 +1,328 @@
+{
+	"$comentario": "Datos de ejemplo para scripts/prueba-documental.ts. Firmantes ficticios; las fotos se toman de fuenteFotos solo en local.",
+	"salida": "prueba-2-antes-durante-despues",
+	"fuenteFotos": {
+		"ruta": "insumos/PROAGROINDUSTRIAS/REPORTES ERM 30184/PARTIDA 15/PARTIDA 15 psv 1001.docx",
+		"orden": "documento"
+	},
+	"reporte": {
+		"numeroPartida": 16,
+		"actividad": "Verificación a PSV 1801",
+		"actividadCorta": "PSV",
+		"periodo": {
+			"anio": 2026,
+			"mes": 5
+		},
+		"tags": ["PSV-1801"],
+		"encabezado": {
+			"usuario": "VIRTUAL PIPELINES DE MÉXICO S.A.P.I. DE C.V.",
+			"contrato": "OC-EJEMPLO-0001",
+			"sitio": "EM-30179 AGUA DULCE, VER.",
+			"periodicidad": "Semestral",
+			"fecha": "2026-05-20",
+			"tipoMantenimiento": "Preventivo"
+		},
+		"firmantes": {
+			"elaboro": {
+				"nombre": "Ing. Firmante Ficticio Uno",
+				"cargo": "Encargado de Operación y Mantenimiento",
+				"empresa": "INGENIERÍA, CONSTRUCCIÓN Y SERVICIOS INTEGRALES OIL & GAS SA DE CV"
+			},
+			"aprobo": {
+				"nombre": "Ing. Firmante Ficticio Dos",
+				"cargo": "Gerencia de Operaciones",
+				"empresa": "INGENIERÍA, CONSTRUCCIÓN Y SERVICIOS INTEGRALES OIL & GAS SA DE CV"
+			},
+			"recibio": {
+				"nombre": "Ing. Firmante Ficticio Tres",
+				"cargo": "Representante del cliente",
+				"empresa": "VIRTUAL PIPELINES DE MÉXICO"
+			}
+		},
+		"objetivo": "Asegurar el correcto funcionamiento, hermeticidad y capacidad de apertura de la válvula de seguridad mediante actividades de inspección, pruebas operativas y mantenimiento preventivo, contribuyendo a la protección y seguridad del sistema de gas natural.",
+		"introduccion": "Este reporte documenta los trabajos realizados en la Estación de Medición 30179 Virtual Agua Dulce, abarcando los siguientes puntos:\nInspección Visual: Revisión de las condiciones físicas de la PSV, conexiones y componentes asociados para identificar daños, corrosión o desgaste.\nVerificación Mecánica: Inspección de conexiones, tornillería y componentes de unión para asegurar integridad mecánica y correcta fijación del equipo.\nControl de Emisiones: Inspección de emisiones fugitivas para detectar posibles fugas en la válvula y conexiones asociadas.\nPruebas Operativas: Verificación de apertura y funcionamiento de la PSV mediante pruebas pre-pop y banco de presión.\nLimpieza y Conservación: Limpieza de superficies y remoción de corrosión para mantener condiciones adecuadas de operación y conservación del equipo.\nProtección Anticorrosiva: Aplicación de compuesto antiferrante y recubrimientos de pintura para disminuir afectaciones por corrosión y agentes ambientales.\nPruebas de Hermeticidad: Verificación de ausencia de fugas posterior a las actividades de mantenimiento y verificación.\nIdentificación del Equipo: Colocación de etiqueta de verificación para control y seguimiento de las actividades realizadas.",
+		"disposicionFotos": "antes_durante_despues",
+		"incluyeVerificacion": false,
+		"alcances": [
+			{
+				"titulo": "Inspección visual",
+				"descripcion": "Se realiza una revisión general de la PSV y componentes asociados para identificar daños visibles, corrosión, desgaste o condiciones que pudieran afectar su funcionamiento.",
+				"fotos": [
+					{
+						"foto": 1,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 2,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 3,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Revisión física de conexiones y tornillería en punto de unión",
+				"descripcion": "Se inspecciona conexiones, espárragos y elementos de fijación para verificar condiciones mecánicas y correcto ajuste del sistema.",
+				"fotos": [
+					{
+						"foto": 4,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 5,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 6,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Inspección previa de emisiones fugitivas",
+				"descripcion": "Revisión en la válvula y puntos de conexión para detectar posibles emisiones fugitivas o indicios de fuga.",
+				"fotos": [
+					{
+						"foto": 7,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 8,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 9,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Retiro de PSV para verificación de sello y apertura de válvula (Prueba Pre-Pop)",
+				"descripcion": "Se realiza el desmontaje de la válvula PSV para efectuar pruebas de verificación del sello y presión de apertura.",
+				"fotos": [
+					{
+						"foto": 10,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 11,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 12,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Instalar banco de presión para verificar su apertura",
+				"descripcion": "Se instala banco de presión para validar el correcto funcionamiento y punto de apertura de la válvula de seguridad.",
+				"fotos": [
+					{
+						"foto": 13,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 14,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 15,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Remover óxido y escamas de pintura existente en puntos de corrosión",
+				"descripcion": "Se realiza limpieza mecánica en áreas con corrosión mediante remoción de óxido y recubrimientos deteriorados presentes en la superficie del equipo.",
+				"fotos": [
+					{
+						"foto": 16,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 17,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 18,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Aplicar compuesto antiaferrante en espárragos",
+				"descripcion": "Se aplicó compuesto antiferrante en espárragos y elementos roscados para reducir efectos de corrosión y facilitar futuras actividades de mantenimiento.",
+				"fotos": [
+					{
+						"foto": 19,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 20,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 21,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Limpiar exterior de válvula con ayuda de solvente desengrasante",
+				"descripcion": "Se realizó limpieza exterior de la válvula utilizando solvente desengrasante para retirar residuos, grasa y suciedad acumulada.",
+				"fotos": [
+					{
+						"foto": 1,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 2,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 3,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Aplicar pintura primaria y de color roja, conforme a las DAGS",
+				"descripcion": "Aplicación de recubrimiento primario y pintura color rojo conforme a especificaciones establecidas para protección y conservación de la válvula.",
+				"fotos": [
+					{
+						"foto": 4,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 5,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 6,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Realizar inspección de hermeticidad",
+				"descripcion": "Se efectúa pruebas de hermeticidad para verificar ausencia de fugas y correcto sellado posterior a las actividades realizadas.",
+				"fotos": [
+					{
+						"foto": 7,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 8,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 9,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Aplicación de pintura",
+				"descripcion": "Se aplica pintura en el tubo de desfogue para protección superficial y conservación de sus condiciones físicas.",
+				"fotos": [
+					{
+						"foto": 10,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 11,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 12,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Colocación de etiqueta de verificación de equipo",
+				"descripcion": "Se coloca la etiqueta correspondiente para identificación y control de las actividades de verificación y mantenimiento realizadas.",
+				"fotos": [
+					{
+						"foto": 13,
+						"momento": "antes",
+						"descripcion": ""
+					},
+					{
+						"foto": 14,
+						"momento": "durante",
+						"descripcion": ""
+					},
+					{
+						"foto": 15,
+						"momento": "despues",
+						"descripcion": ""
+					}
+				]
+			}
+		],
+		"herramientas": [
+			{
+				"cantidad": null,
+				"descripcion": "Grasa lubricante"
+			},
+			{
+				"cantidad": null,
+				"descripcion": "Grasa sellante"
+			},
+			{
+				"cantidad": null,
+				"descripcion": "Aflojatodo"
+			},
+			{
+				"cantidad": null,
+				"descripcion": "Cinta teflón"
+			},
+			{
+				"cantidad": null,
+				"descripcion": "Inyector de grasa"
+			},
+			{
+				"cantidad": null,
+				"descripcion": "Antiaferrante"
+			}
+		],
+		"conclusiones": "Tras la realización de las actividades de verificación a PSV 1801, se presentan las siguientes conclusiones derivadas de las inspecciones, pruebas y trabajos efectuados para asegurar la confiabilidad y seguridad operativa del sistema.\nCondiciones Operativas:\nLa inspección y pruebas realizadas permitieron verificar el correcto funcionamiento de la válvula PSV y sus componentes asociados dentro de las condiciones operativas requeridas.\nVerificación Mecánica:\nLa revisión de conexiones, tornillería y puntos de unión permitió confirmar condiciones adecuadas de integridad mecánica y fijación del equipo.\nPruebas de Apertura:\nLas pruebas pre-pop y verificación mediante banco de presión permitieron validar el punto de apertura y comportamiento operativo de la válvula de seguridad.\nControl de Emisiones y Hermeticidad:\nLas inspecciones efectuadas permitieron verificar ausencia de emisiones fugitivas y confirmar condiciones adecuadas de hermeticidad posterior al mantenimiento realizado.\nProtección y Conservación:\nLas actividades de limpieza, aplicación de compuesto antiferrante y recubrimientos de pintura contribuyeron a proteger la válvula y componentes metálicos contra corrosión y agentes ambientales.\nCumplimiento Normativo:\nLas actividades realizadas contribuyen al cumplimiento de las disposiciones aplicables establecidas en la NOM-020-ASEA-2024, ASME Section VIII y lineamientos aplicables para válvulas de seguridad y sistemas de protección en instalaciones de gas natural."
+	}
+}
