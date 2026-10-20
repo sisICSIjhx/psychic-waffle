@@ -7,6 +7,8 @@ export interface PartidaSintetica {
 	numero: number;
 	actividad: string;
 	periodicidad: string;
+	/** Periodicidad distinta (o vacía) en el programa anual; por omisión, la misma del catálogo. */
+	periodicidadPrograma?: string;
 	cantidad: number | null;
 	distribucion: 'Producción' | 'Mantenimiento';
 	/** Meses marcados en la fila P (0 = primer mes del periodo). */
@@ -113,7 +115,7 @@ export async function crearLibroSintetico({
 	for (const p of partidas) {
 		poner(programa, fila, 1, { valor: p.numero });
 		poner(programa, fila, 2, { valor: p.actividad });
-		poner(programa, fila, 3, { valor: p.periodicidad });
+		poner(programa, fila, 3, { valor: p.periodicidadPrograma ?? p.periodicidad });
 		if (p.cantidad !== null) poner(programa, fila, 4, { valor: p.cantidad });
 		poner(programa, fila, 5, { valor: p.distribucion });
 		poner(programa, fila, 6, { valor: 'P' });

@@ -63,6 +63,7 @@
 	let equipo = equipoVacio();
 	let firmante = firmanteVacio();
 	let equipoAbierto = false;
+	let firmanteAbierto = false;
 
 	async function enfocar(id: string) {
 		// Espera a que se abra el panel del formulario antes de enfocar el campo.
@@ -94,6 +95,7 @@
 			vigenteDesde: f.vigenteDesde,
 			vigenteHasta: f.vigenteHasta ?? ''
 		};
+		firmanteAbierto = true;
 		enfocar('firmante-nombre');
 	}
 
@@ -104,6 +106,7 @@
 			cargo: propuesto.cargo,
 			empresa: propuesto.empresa
 		};
+		firmanteAbierto = true;
 		enfocar('firmante-nombre');
 	}
 
@@ -394,7 +397,7 @@
 	{:else}
 		<p class="view-note">Sin firmantes. Los reportes nuevos copian los firmantes vigentes.</p>
 	{/if}
-	<details open={firmante.nombre !== '' || firmante.id !== ''}>
+	<details bind:open={firmanteAbierto}>
 		<summary>{firmante.id ? 'Editar firmante' : 'Registrar firmante'}</summary>
 		<form
 			method="POST"

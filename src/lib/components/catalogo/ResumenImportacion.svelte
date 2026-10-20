@@ -49,7 +49,11 @@
 		ninguno: 'el archivo no trae programa'
 	} as const;
 
-	$: hayCambios = resultado.resumen.crear + resultado.resumen.actualizar > 0;
+	// Un programa nuevo o con otro periodo también es un cambio, aunque las partidas no cambien.
+	$: hayCambios =
+		resultado.resumen.crear + resultado.resumen.actualizar > 0 ||
+		resultado.programa.accion === 'crear' ||
+		resultado.programa.accion === 'actualizar';
 </script>
 
 <div class="resumen-importacion" aria-live="polite">

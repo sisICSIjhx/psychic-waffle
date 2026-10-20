@@ -140,7 +140,10 @@ mayúsculas y con espacios simples.
 - Primero hace un ensayo («dry-run») con el resumen y después aplica todo en una transacción
   (`api_importar_catalogo`). La reimportación es idempotente y solo actualiza los campos que trae
   el Excel; lo capturado a mano (objetivo, conclusiones, equipos) se conserva. Las columnas de entrega
-  de OMA y propuesta se guardan en `partidas.entrega_oma` y `partidas.entrega_propuesta`.
+  de OMA y propuesta se guardan en `partidas.entrega_oma` y `partidas.entrega_propuesta`. Las marcas
+  R se guardan como realizados con `origen = 'importacion'` y se reemplazan en cada reimportación;
+  los capturados a mano (`origen = 'manual'`) no se tocan. Las cantidades P y R se calculan con la
+  periodicidad del catálogo, que prevalece sobre la del programa.
 - El importador acepta un archivo cargado desde la interfaz, y además se ofrece un script
   `npm run importar -- <archivo>` para el uso local.
 - Los nombres de firmantes de la hoja no se importan automáticamente: se proponen y se confirman en
@@ -148,6 +151,8 @@ mayúsculas y con espacios simples.
 - Las partidas de clientes sin catálogo oficial (Proagro, Virtual) se derivan de sus reportes con
   `scripts/derivar-partidas.ts` y quedan «por confirmar». Cada alcance derivado guarda su título en
   el primer renglón y la descripción base en los siguientes; la captura (fase 5) los separa así.
+  La clave del sitio conserva el prefijo que escriben los reportes; las estaciones de Proagro son
+  «EM» (confirmado por el usuario el 2026-10-20).
 
 ### D5. Generación DOCX con `docx-templates` y plantilla en `src/lib/server/plantillas/FOR-ICSI-RMT-01.v1.docx`
 

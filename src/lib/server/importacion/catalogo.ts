@@ -207,8 +207,9 @@ interface FilaPrograma {
 	textoPeriodicidad: string;
 	cantidadAnual: number | null;
 	distribucion: string;
-	meses: { mes: string; cantidad: number }[];
-	realizados: { mes: string; cantidad: number }[];
+	/** Meses marcados en las filas P y R; las cantidades se calculan con la periodicidad final. */
+	mesesMarcados: string[];
+	realizadosMarcados: string[];
 }
 
 function analizarPrograma(hoja: Hoja, advertencias: string[]) {
@@ -281,17 +282,12 @@ function analizarPrograma(hoja: Hoja, advertencias: string[]) {
 		const periodicidad = periodicidadDeTexto(textoPeriodicidad);
 		const cantidad = valorEn(hoja, fila, columnas.CANTIDAD);
 		const filaR = normalizar(hoja.filas[fila + 1]?.[columnas['P/R']]) === 'R' ? fila + 1 : -1;
-		const meses: FilaPrograma['meses'] = [];
-		const realizados: FilaPrograma['realizados'] = [];
+		const mesesMarcados: string[] = [];
+		const realizadosMarcados: string[] = [];
 		for (const rango of rangoDeMes) {
-			if (periodicidad && marcado(fila, rango.columna, rango.hasta)) {
-				const porMes = cantidadDelMes(periodicidad, rango.mes);
-				if (porMes !== null) meses.push({ mes: rango.mes, cantidad: porMes });
-			}
+			if (marcado(fila, rango.columna, rango.hasta)) mesesMarcados.push(rango.mes);
 			if (filaR !== -1 && marcado(filaR, rango.columna, rango.hasta)) {
-				// Un mes realizado cuenta lo mismo que lo programado para ese mes.
-				const porMes = periodicidad ? cantidadDelMes(periodicidad, rango.mes) : null;
-				realizados.push({ mes: rango.mes, cantidad: porMes ?? 1 });
+				realizadosMarcados.push(rango.mes);
 			}
 		}
 		filas.push({
@@ -304,8 +300,8 @@ function analizarPrograma(hoja: Hoja, advertencias: string[]) {
 				columnas.DISTRIBUCION !== undefined
 					? texto(valorEn(hoja, fila, columnas.DISTRIBUCION))
 					: '',
-			meses,
-			realizados
+			mesesMarcados,
+			realizadosMarcados
 		});
 	}
 	return { programa, filas, filaMeses };
@@ -486,6 +482,15 @@ export function analizarHojas(hojas: Hoja[]): CatalogoImportado {
 			);
 		}
 		const material = normalizar(c.material);
+		// Lo programado por mes depende de la periodicidad; un mes realizado cuenta lo mismo.
+		const meses = (p?.mesesMarcados ?? []).flatMap((mes) => {
+			const cantidad = cantidadDelMes(periodicidad, mes);
+			return cantidad === null ? [] : [{ mes, cantidad }];
+		});
+		const realizados = (p?.realizadosMarcados ?? []).map((mes) => ({
+			mes,
+			cantidad: cantidadDelMes(periodicidad, mes) ?? 1
+		}));
 		return {
 			numero: c.numero,
 			actividad: c.actividad || p?.actividad || `Partida ${c.numero}`,
@@ -501,8 +506,8 @@ export function analizarHojas(hojas: Hoja[]): CatalogoImportado {
 			materialesPor: material === 'ICSI' ? 'icsi' : material ? 'cliente' : null,
 			reportesHomologados: c.reportesHomologados || null,
 			alcances: c.alcances,
-			meses: p?.meses ?? [],
-			realizados: p?.realizados ?? []
+			meses,
+			realizados
 		};
 	});
 	for (const p of filasPrograma) {

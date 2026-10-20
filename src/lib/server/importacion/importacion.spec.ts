@@ -85,6 +85,29 @@ describe('análisis del libro de catálogo', () => {
 		await esperarErrorImportacion(analizarLibroCatalogo(new Uint8Array([1, 2, 3])));
 	});
 
+	it('calcula lo programado y lo realizado con la periodicidad del catálogo', async () => {
+		const distinta = [
+			{
+				...PARTIDAS_EJEMPLO[0],
+				periodicidadPrograma: 'Diario',
+				meses: [0],
+				realizados: [0]
+			}
+		];
+		const catalogo = await analizarLibroCatalogo(await crearLibroSintetico({ partidas: distinta }));
+		expect(catalogo.partidas[0]).toMatchObject({
+			periodicidad: 'mensual',
+			meses: [{ mes: '2026-05-01', cantidad: 1 }],
+			realizados: [{ mes: '2026-05-01', cantidad: 1 }]
+		});
+		expect(catalogo.advertencias.join(' ')).toContain('se usa la del catálogo');
+		const sinFrecuencia = [{ ...PARTIDAS_EJEMPLO[1], periodicidadPrograma: '', meses: [0] }];
+		const diaria = await analizarLibroCatalogo(
+			await crearLibroSintetico({ partidas: sinFrecuencia })
+		);
+		expect(diaria.partidas[0].meses).toEqual([{ mes: '2026-05-01', cantidad: 31 }]);
+	});
+
 	it('clasifica alcances, notas y normas', () => {
 		expect(clasificarLinea('·    Inspección visual')).toEqual({
 			tipo: 'alcance',
@@ -335,6 +358,27 @@ describe('correcciones de la revisión de la fase 4', () => {
 		)!.celdas;
 		expect(celdas[0].realizado).toBe(0);
 		expect(celdas[1].realizado).toBe(5);
+	});
+
+	it('no borra un realizado capturado a mano aunque use la nota de la importación', async () => {
+		const [programa] = await repos.programa.listarProgramas({ contratoId });
+		const mensual = (await repos.catalogo.listarPartidas({ contratoId })).find(
+			(p) => p.numero === '1'
+		)!;
+		await repos.programa.registrarRealizadoManual({
+			programaId: programa.id,
+			partidaId: mensual.id,
+			mes: '2026-07-01',
+			nota: 'Marcado como realizado en el programa importado'
+		});
+		const conR = PARTIDAS_EJEMPLO.map((p) => (p.numero === 1 ? { ...p, realizados: [0] } : p));
+		await repos.catalogo.importarCatalogo(await carga(conR), false);
+		await repos.catalogo.importarCatalogo(await carga(), false);
+		const celdas = (await repos.programa.obtenerAvance(programa.id)).partidas.find(
+			(p) => p.numero === '1'
+		)!.celdas;
+		expect(celdas[0].realizado).toBe(0);
+		expect(celdas[2].realizado).toBe(1);
 	});
 
 	it('actualiza el fin del periodo de un programa existente', async () => {

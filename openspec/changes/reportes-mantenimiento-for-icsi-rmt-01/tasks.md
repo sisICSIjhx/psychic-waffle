@@ -93,7 +93,7 @@ Cada fase cierra con estos pasos:
 - [x] 4.5 Importar el catálogo de Cerritos en local. Derivar las partidas de Proagro y Virtual desde
       sus reportes, marcadas «por confirmar». Agregar en `/catalogo` el filtro y la acción de
       confirmar, y permitir reemplazarlas al importar el catálogo oficial.
-- [ ] 4.6 Validación y revisión con Codex de la fase 4.
+- [x] 4.6 Validación y revisión con Codex de la fase 4.
 
 ## 5. Captura de reportes
 

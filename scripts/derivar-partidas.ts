@@ -198,7 +198,16 @@ try {
 		const nombre = masFrecuente(
 			lecturas.filter((l) => l.sitioClave === clave).map((l) => l.encabezado?.nombre ?? '')
 		);
-		const existente = (await repos.catalogo.listarSitios()).find((s) => iguales(s.clave, clave));
+		// Mismo número con el otro prefijo (EM/ERM): se reutiliza si es el único, para no duplicar.
+		const registrados = await repos.catalogo.listarSitios();
+		const numeroEstacion = clave.replace(/^\D+-/, '');
+		const mismoNumero = registrados.filter((s) => separarSitio(s.clave)?.numero === numeroEstacion);
+		const existente =
+			registrados.find((s) => iguales(s.clave, clave)) ??
+			(mismoNumero.length === 1 ? mismoNumero[0] : undefined);
+		if (existente && !iguales(existente.clave, clave)) {
+			console.log(`Se reutiliza el sitio ${existente.clave} registrado para la estación ${clave}.`);
+		}
 		const sitio = existente ?? (await repos.catalogo.guardarSitio({ clave, nombre }));
 		await repos.catalogo.asociarSitio(contrato.id, sitio.id);
 		sitios.set(clave, sitio.id);
