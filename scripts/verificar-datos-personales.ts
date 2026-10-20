@@ -8,7 +8,12 @@ import { execFileSync } from 'node:child_process';
 import { readdir, readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { normalizarParaComparar } from '../src/lib/server/documentos/auditoria.ts';
-import { bloquesCuerpo, elementos, texto } from '../src/lib/server/documentos/ooxml.ts';
+import {
+	bloquesCuerpo,
+	decodificarXml,
+	elementos,
+	texto
+} from '../src/lib/server/documentos/ooxml.ts';
 
 const carpetaInsumos = process.argv[2] ?? 'insumos';
 const EXTENSIONES_TEXTO = new Set([
@@ -65,28 +70,44 @@ async function nombresDe(ruta: string): Promise<string[]> {
 	return nombres;
 }
 
-function archivosVersionables(): string[] {
-	const salida = execFileSync(
-		'git',
-		['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-		{
-			encoding: 'utf8',
-			maxBuffer: 64 * 1024 * 1024
-		}
-	);
-	return salida.split('\0').filter(Boolean);
+function listarGit(argumentos: string[]): string[] {
+	return execFileSync('git', ['ls-files', ...argumentos, '-z'], {
+		encoding: 'utf8',
+		maxBuffer: 64 * 1024 * 1024
+	})
+		.split('\0')
+		.filter(Boolean);
 }
 
-async function contenidoTextual(ruta: string): Promise<string | null> {
+/** Versión preparada en el índice: es la que entraría en el próximo commit. */
+function blobDelIndice(ruta: string): Buffer {
+	return execFileSync('git', ['show', `:${ruta}`], { maxBuffer: 512 * 1024 * 1024 });
+}
+
+async function contenidoTextual(ruta: string, datos: Buffer): Promise<string | null> {
 	const extension = extname(ruta).toLowerCase();
 	if (extension === '.docx') {
-		const zip = await JSZip.loadAsync(await readFile(ruta));
+		const zip = await JSZip.loadAsync(datos);
 		const partes = Object.keys(zip.files).filter((n) => n.endsWith('.xml') || n.endsWith('.rels'));
 		const xml = await Promise.all(partes.map((n) => zip.file(n)!.async('string')));
-		return xml.join(' ').replace(/<[^>]+>/g, '');
+		// Se conservan los valores de atributos (descr, title…) además del texto visible.
+		return xml.join(' ').replace(/<[^>]*?((?:\s[\w:.-]+="[^"]*")*)\s*\/?>/g, '$1 ');
 	}
 	if (!EXTENSIONES_TEXTO.has(extension)) return null;
-	return readFile(ruta, 'utf8');
+	return datos.toString('utf8');
+}
+
+/** Versiones a revisar: la del índice (archivos rastreados) y la del árbol de trabajo. */
+async function* versiones(): AsyncGenerator<{ etiqueta: string; ruta: string; datos: Buffer }> {
+	for (const ruta of listarGit(['--cached'])) {
+		yield { etiqueta: `${ruta} (índice)`, ruta, datos: blobDelIndice(ruta) };
+		const local = await readFile(ruta).catch(() => null);
+		if (local) yield { etiqueta: `${ruta} (árbol de trabajo)`, ruta, datos: local };
+	}
+	for (const ruta of listarGit(['--others', '--exclude-standard'])) {
+		const local = await readFile(ruta).catch(() => null);
+		if (local) yield { etiqueta: `${ruta} (sin rastrear)`, ruta, datos: local };
+	}
 }
 
 const nombres = new Set<string>();
@@ -102,14 +123,14 @@ for await (const ruta of docxEn(carpetaInsumos)) {
 
 let revisados = 0;
 const hallazgos: string[] = [];
-for (const ruta of archivosVersionables()) {
+for await (const { etiqueta, ruta, datos } of versiones()) {
 	if (ruta.startsWith(`${carpetaInsumos}/`)) continue;
-	const contenido = await contenidoTextual(ruta).catch(() => null);
+	const contenido = await contenidoTextual(ruta, datos).catch(() => null);
 	if (contenido === null) continue;
 	revisados++;
-	const plano = normalizarParaComparar(contenido);
+	const plano = normalizarParaComparar(decodificarXml(contenido));
 	const coincidencias = [...nombres].filter((n) => plano.includes(n)).length;
-	if (coincidencias) hallazgos.push(`${ruta}: ${coincidencias} coincidencia(s)`);
+	if (coincidencias) hallazgos.push(`${etiqueta}: ${coincidencias} coincidencia(s)`);
 }
 
 console.log(

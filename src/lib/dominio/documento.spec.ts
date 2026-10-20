@@ -9,6 +9,7 @@ import {
 	ordenDeAparicion,
 	pieIlustracion,
 	textoPeriodo,
+	semanasDelMes,
 	textoTags,
 	tituloPortada,
 	tituloReporte,
@@ -49,6 +50,22 @@ describe('título del reporte', () => {
 		expect(() =>
 			textoPeriodo({ anio: 2026, mes: 5, ocurrencia: { tipo: 'semana', numero: 0 } })
 		).toThrow(RangeError);
+	});
+
+	it('limita la ocurrencia según su tipo y el calendario del mes', () => {
+		expect(semanasDelMes(2026, 2)).toBe(5);
+		expect(semanasDelMes(2026, 3)).toBe(6);
+		const periodo = (tipo: 'semana' | 'quincena' | 'dia', numero: number, mes = 2) => ({
+			anio: 2026,
+			mes,
+			ocurrencia: { tipo, numero }
+		});
+		expect(textoPeriodo(periodo('semana', 5))).toBe('SEMANA 5 FEBRERO 2026');
+		expect(() => textoPeriodo(periodo('semana', 6))).toThrow(/máximo 5/);
+		expect(() => textoPeriodo(periodo('quincena', 3))).toThrow(RangeError);
+		expect(textoPeriodo(periodo('dia', 28))).toBe('DÍA 28 FEBRERO 2026');
+		expect(() => textoPeriodo(periodo('dia', 29))).toThrow(RangeError);
+		expect(() => textoPeriodo(periodo('dia', 32, 1))).toThrow(RangeError);
 	});
 });
 

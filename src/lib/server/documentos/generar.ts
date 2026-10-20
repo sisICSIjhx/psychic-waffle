@@ -121,36 +121,94 @@ export function parrafos(valor: unknown): string[] {
 		.filter(Boolean);
 }
 
+/** Aplica `limpiarTexto` a todas las cadenas de una estructura; los datos binarios se conservan. */
+export function sanear<T>(valor: T): T {
+	if (typeof valor === 'string') return limpiarTexto(valor) as T;
+	if (Array.isArray(valor)) return valor.map((elemento) => sanear(elemento)) as T;
+	if (valor && typeof valor === 'object' && !(valor instanceof Uint8Array)) {
+		return Object.fromEntries(Object.entries(valor).map(([clave, v]) => [clave, sanear(v)])) as T;
+	}
+	return valor;
+}
+
+/** Perfiles de optimización, del preferido al más ligero (la caja de 8 cm admite los cuatro). */
+export const PERFILES_IMAGEN = [
+	{ ladoMayor: 1600, calidad: 80 },
+	{ ladoMayor: 1280, calidad: 75 },
+	{ ladoMayor: 1024, calidad: 70 },
+	{ ladoMayor: 800, calidad: 65 }
+] as const;
+
+/** Margen para el XML, las relaciones y la compresión del paquete. */
+const RESERVA_BYTES = 1024 * 1024;
+
 interface CeldaFoto {
 	imagen: { width: number; height: number; data: Buffer; extension: '.jpg' };
 	pie: string;
 	momento: MomentoFoto | null;
 }
 
-async function prepararCeldas(
-	alcance: AlcanceDocumento,
-	posicionAlcance: number,
-	disposicion: DisposicionFotos,
-	paralelo: number
-): Promise<CeldaFoto[]> {
-	const ordenadas = ordenDeAparicion(alcance.fotos, disposicion);
-	const caja = CAJA_FOTO[disposicion];
-	return enParalelo(ordenadas, paralelo, async (foto, i) => {
-		const preparada: ImagenPreparada = foto.optimizada
-			? { datos: Buffer.from(foto.datos), ancho: foto.optimizada.ancho, alto: foto.optimizada.alto }
-			: await prepararImagen(foto.datos);
-		const medida = ajustarACaja(preparada.ancho, preparada.alto, caja);
+async function prepararSegunPerfil(foto: FotoDocumento, perfil: number): Promise<ImagenPreparada> {
+	if (perfil === 0 && foto.optimizada) {
 		return {
-			imagen: {
-				width: medida.ancho,
-				height: medida.alto,
-				data: preparada.datos,
-				extension: '.jpg'
-			},
-			pie: pieIlustracion(posicionAlcance, i + 1, limpiarTexto(foto.descripcion)),
-			momento: foto.momento ?? null
+			datos: Buffer.from(foto.datos),
+			ancho: foto.optimizada.ancho,
+			alto: foto.optimizada.alto
 		};
-	});
+	}
+	return prepararImagen(foto.datos, PERFILES_IMAGEN[perfil]);
+}
+
+/**
+ * Prepara todas las fotos con el perfil preferido y, si su suma no cabe en el presupuesto del
+ * documento, reprocesa con perfiles más ligeros solo las que exceden la cuota por foto.
+ */
+async function prepararFotos(
+	fotos: readonly FotoDocumento[],
+	presupuesto: number,
+	paralelo: number
+): Promise<ImagenPreparada[]> {
+	let preparadas = await enParalelo(fotos, paralelo, (foto) => prepararSegunPerfil(foto, 0));
+	const total = () => preparadas.reduce((suma, p) => suma + p.datos.length, 0);
+	for (let perfil = 1; perfil < PERFILES_IMAGEN.length && total() > presupuesto; perfil++) {
+		const cuota = presupuesto / preparadas.length;
+		preparadas = await enParalelo(preparadas, paralelo, (preparada, i) =>
+			preparada.datos.length > cuota
+				? prepararSegunPerfil(fotos[i], perfil)
+				: Promise.resolve(preparada)
+		);
+	}
+	return preparadas;
+}
+
+async function prepararAlcances(
+	reporte: ReporteDocumento,
+	presupuesto: number,
+	paralelo: number
+): Promise<{ titulo: string; descripcion: string[]; celdas: CeldaFoto[] }[]> {
+	const disposicion = reporte.disposicionFotos;
+	const ordenadas = reporte.alcances.map((alcance) => ordenDeAparicion(alcance.fotos, disposicion));
+	const preparadas = await prepararFotos(ordenadas.flat(), presupuesto, paralelo);
+	const caja = CAJA_FOTO[disposicion];
+	let siguiente = 0;
+	return reporte.alcances.map((alcance, i) => ({
+		titulo: limpiarTexto(alcance.titulo),
+		descripcion: parrafos(alcance.descripcion),
+		celdas: ordenadas[i].map((foto, j) => {
+			const preparada = preparadas[siguiente++];
+			const medida = ajustarACaja(preparada.ancho, preparada.alto, caja);
+			return {
+				imagen: {
+					width: medida.ancho,
+					height: medida.alto,
+					data: preparada.datos,
+					extension: '.jpg'
+				},
+				pie: pieIlustracion(i + 1, j + 1, limpiarTexto(foto.descripcion)),
+				momento: foto.momento ?? null
+			};
+		})
+	}));
 }
 
 export async function generarDocx(
@@ -165,21 +223,19 @@ export async function generarDocx(
 		empresa: limpiarTexto(f?.empresa)
 	});
 
-	let totalFotos = 0;
-	const alcances = [];
-	for (const [i, alcance] of reporte.alcances.entries()) {
-		const celdas = await prepararCeldas(alcance, i + 1, disposicion, paralelo);
-		totalFotos += celdas.length;
-		alcances.push({
-			titulo: limpiarTexto(alcance.titulo),
-			descripcion: parrafos(alcance.descripcion),
-			cuadricula: disposicion === 'cuadricula' ? agruparCuadricula(celdas) : [],
-			antesDuranteDespues:
-				disposicion === 'antes_durante_despues' ? agruparAntesDuranteDespues(celdas) : []
-		});
-	}
+	const plantillaUsada = plantilla ?? (await plantillaPredeterminada());
+	const presupuesto = limiteBytes - plantillaUsada.length - RESERVA_BYTES;
+	const preparados = await prepararAlcances(reporte, presupuesto, paralelo);
+	const totalFotos = preparados.reduce((suma, a) => suma + a.celdas.length, 0);
+	const alcances = preparados.map(({ celdas, ...alcance }) => ({
+		...alcance,
+		cuadricula: disposicion === 'cuadricula' ? agruparCuadricula(celdas) : [],
+		antesDuranteDespues:
+			disposicion === 'antes_durante_despues' ? agruparAntesDuranteDespues(celdas) : []
+	}));
 
-	const datos = {
+	// Todo texto, incluidos los derivados (portada, TAG, índice), pasa por limpiarTexto.
+	const datos = sanear({
 		portada: tituloPortada(reporte),
 		encabezado: {
 			usuario: limpiarTexto(reporte.encabezado.usuario),
@@ -215,10 +271,10 @@ export async function generarDocx(
 		},
 		secciones: { conclusiones: String(secciones.conclusiones) },
 		conclusiones: parrafos(reporte.conclusiones)
-	};
+	});
 
 	const resultado = await createReport({
-		template: plantilla ?? (await plantillaPredeterminada()),
+		template: plantillaUsada,
 		data: datos,
 		cmdDelimiter: '+++',
 		literalXmlDelimiter: DELIMITADOR_XML_LITERAL,

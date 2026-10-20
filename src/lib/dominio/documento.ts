@@ -54,12 +54,34 @@ const CODIGO_OCURRENCIA: Record<Ocurrencia['tipo'], string> = {
 	dia: 'D'
 };
 
+export function diasDelMes(anio: number, mes: number): number {
+	return new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+}
+
+/** Semanas de lunes a domingo que toca el mes (de 4 a 6). */
+export function semanasDelMes(anio: number, mes: number): number {
+	const desplazamiento = (new Date(Date.UTC(anio, mes - 1, 1)).getUTCDay() + 6) % 7;
+	return Math.ceil((desplazamiento + diasDelMes(anio, mes)) / 7);
+}
+
+const MAXIMO_OCURRENCIA: Record<Ocurrencia['tipo'], (anio: number, mes: number) => number> = {
+	semana: semanasDelMes,
+	quincena: () => 2,
+	dia: diasDelMes
+};
+
 function validarPeriodo({ anio, mes, ocurrencia }: Periodo): void {
 	if (!Number.isInteger(anio) || anio < 2000 || anio > 2999)
 		throw new RangeError(`Año inválido: ${anio}`);
 	if (!Number.isInteger(mes) || mes < 1 || mes > 12) throw new RangeError(`Mes inválido: ${mes}`);
-	if (ocurrencia && (!Number.isInteger(ocurrencia.numero) || ocurrencia.numero < 1)) {
-		throw new RangeError(`Ocurrencia inválida: ${ocurrencia.numero}`);
+	if (!ocurrencia) return;
+	const maximo = MAXIMO_OCURRENCIA[ocurrencia.tipo];
+	if (!maximo) throw new RangeError(`Tipo de ocurrencia inválido: ${ocurrencia.tipo}`);
+	const tope = maximo(anio, mes);
+	if (!Number.isInteger(ocurrencia.numero) || ocurrencia.numero < 1 || ocurrencia.numero > tope) {
+		throw new RangeError(
+			`Ocurrencia inválida: ${ocurrencia.tipo} ${ocurrencia.numero} (máximo ${tope} en ${anio}-${mes})`
+		);
 	}
 }
 

@@ -16,6 +16,9 @@ import { convertirPdf } from '../src/lib/server/documentos/pdf.ts';
 import type { MomentoFoto } from '../src/lib/dominio/documento.ts';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// SOFFICE_PATH y STORAGE_DIR pueden venir del .env local (no versionado).
+const ARCHIVO_ENTORNO = join(RAIZ, '.env');
+if (existsSync(ARCHIVO_ENTORNO)) process.loadEnvFile(ARCHIVO_ENTORNO);
 const CARPETA_DATOS = join(RAIZ, 'scripts/datos-prueba');
 const SALIDA = join(resolve(RAIZ, process.env.STORAGE_DIR ?? 'storage'), 'prueba-documental');
 

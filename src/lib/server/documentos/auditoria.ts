@@ -1,6 +1,7 @@
 // Auditoría de un paquete DOCX: detecta metadatos personales, comentarios, revisiones, texto
 // oculto y restos de la fuente antes de versionar la plantilla o entregar un documento.
 import JSZip from 'jszip';
+import { decodificarXml } from './ooxml.ts';
 
 export interface OpcionesAuditoria {
 	/** Textos que no deben aparecer en ninguna parte del paquete (p. ej. nombres de la fuente). */
@@ -39,9 +40,14 @@ export function normalizarParaComparar(texto: string): string {
 		.trim();
 }
 
-function textoPlano(xml: string): string {
-	// Une los w:t para encontrar nombres partidos en varios runs.
-	return xml.replace(/<w:tab\/>|<w:br\/>|<\/w:p>/g, ' ').replace(/<[^>]+>/g, '');
+/**
+ * Texto visible (uniendo los w:t para encontrar nombres partidos en varios runs) más los valores de
+ * atributos (descr, title, Target…), donde también pueden quedar nombres.
+ */
+function textoYAtributos(xml: string): string {
+	const visible = xml.replace(/<w:tab\/>|<w:br\/>|<\/w:p>/g, ' ').replace(/<[^>]+>/g, '');
+	const atributos = [...xml.matchAll(/\s[\w:.-]+="([^"]*)"/g)].map((m) => m[1]).join(' ');
+	return decodificarXml(`${visible} ${atributos}`);
 }
 
 export async function auditarPaquete(
@@ -69,6 +75,10 @@ export async function auditarPaquete(
 	}
 
 	const prohibidos = textosProhibidos.map(normalizarParaComparar).filter((t) => t.length >= 4);
+	const rutas = normalizarParaComparar(nombres.join(' '));
+	if (prohibidos.some((texto) => rutas.includes(texto))) {
+		problemas.push('Nombres de partes del paquete con un texto prohibido de la fuente');
+	}
 	for (const nombre of nombres.filter((n) => n.endsWith('.xml') || n.endsWith('.rels'))) {
 		const xml = await zip.file(nombre)!.async('string');
 		// Los estilos pueden declarar w:vanish sin ocultar contenido del documento.
@@ -78,7 +88,7 @@ export async function auditarPaquete(
 			if (patron.test(xml)) problemas.push(`${nombre}: ${descripcion}`);
 		}
 		if (prohibidos.length) {
-			const plano = normalizarParaComparar(textoPlano(xml));
+			const plano = normalizarParaComparar(textoYAtributos(xml));
 			for (const texto of prohibidos) {
 				if (plano.includes(texto))
 					problemas.push(`${nombre}: contiene un texto prohibido de la fuente`);

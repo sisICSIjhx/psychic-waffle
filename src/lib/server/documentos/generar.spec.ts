@@ -254,6 +254,42 @@ describe('generación del DOCX FOR-ICSI-RMT-01', () => {
 		expect(await auditarPaquete(resultado.docx)).toEqual([]);
 	});
 
+	it('sanea también los textos derivados, como el TAG', async () => {
+		const reporte = await reporteBase({ tags: ['PI-0001\u001e\u001e<w:br/>\u001e\u001e'] });
+		const { documento } = await abrir((await generarDocx(reporte)).docx);
+		expect(documento).toContain('PI-0001&lt;w:br/&gt;');
+		expect(documento).not.toContain('\u001e');
+	});
+
+	it('reduce las fotos de alta resolución hasta que el documento cabe en el límite', async () => {
+		const ruido = await sharp({
+			create: {
+				width: 2000,
+				height: 1500,
+				channels: 3,
+				background: '#808080',
+				noise: { type: 'gaussian', mean: 128, sigma: 60 }
+			}
+		})
+			.jpeg({ quality: 90 })
+			.toBuffer();
+		const fotos = Array.from({ length: 12 }, () => ({ datos: ruido }));
+		const reporte = await reporteBase({
+			alcances: [{ titulo: 'Alta resolución', descripcion: 'Fotos pesadas.', fotos }]
+		});
+		const plantilla = await readFile(PLANTILLA);
+		const limiteBytes = plantilla.length + 1024 * 1024 + 4 * 1024 * 1024;
+		const resultado = await generarDocx(reporte, { limiteBytes });
+		expect(resultado.fotos).toBe(12);
+		expect(resultado.bytes).toBeLessThanOrEqual(limiteBytes);
+		const zip = await JSZip.loadAsync(resultado.docx);
+		const medio = Object.keys(zip.files).find(
+			(n) => n.startsWith('word/media/') && n.endsWith('.jpg')
+		)!;
+		const { width } = await sharp(await zip.file(medio)!.async('nodebuffer')).metadata();
+		expect(width).toBeLessThan(1600);
+	}, 120_000);
+
 	it('elimina caracteres de control de los textos', () => {
 		expect(limpiarTexto('a\u0000b\u001ec\r\nd ')).toBe('abc\nd');
 		expect(limpiarTexto(null)).toBe('');
@@ -268,6 +304,25 @@ describe('plantilla FOR-ICSI-RMT-01.v1', () => {
 		const ajustes = await zip.file('word/settings.xml')!.async('string');
 		expect(ajustes).toContain('<w:removePersonalInformation/>');
 		expect(ajustes).toContain('<w:updateFields w:val="true"/>');
+	});
+});
+
+describe('auditoría del paquete', () => {
+	it('detecta textos prohibidos en atributos y en nombres de partes', async () => {
+		const zip = new JSZip();
+		zip.file(
+			'word/document.xml',
+			'<w:document><w:body><wp:docPr id="1" descr="Persona Prohibida Ejemplo"/></w:body></w:document>'
+		);
+		zip.file('word/media/Otra Persona Prohibida.png', new Uint8Array([1]));
+		const paquete = await zip.generateAsync({ type: 'uint8array' });
+		const problemas = await auditarPaquete(paquete, {
+			textosProhibidos: ['Persona Prohibida Ejemplo', 'Otra Persona Prohibida']
+		});
+		expect(problemas).toContain('word/document.xml: contiene un texto prohibido de la fuente');
+		expect(problemas).toContain(
+			'Nombres de partes del paquete con un texto prohibido de la fuente'
+		);
 	});
 });
 
