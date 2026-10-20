@@ -1,0 +1,220 @@
+{
+	"$comentario": "Datos de ejemplo para scripts/prueba-documental.ts. Firmantes ficticios; las fotos se toman de fuenteFotos solo en local.",
+	"salida": "prueba-1-cuadricula-verificacion",
+	"fuenteFotos": {
+		"ruta": "insumos/PROAGROINDUSTRIAS/REPORTES ERM 30184/PARTIDA 13/PARTIDA 13  MANOMETROS PI-0001(01 JUNIO) OK.docx",
+		"orden": "documento"
+	},
+	"reporte": {
+		"numeroPartida": 13,
+		"actividad": "Mantenimiento y verificación de indicadores de presión (manómetros)",
+		"actividadCorta": "Manómetros",
+		"periodo": {
+			"anio": 2026,
+			"mes": 6
+		},
+		"tags": ["PI-0001"],
+		"encabezado": {
+			"usuario": "PRO-AGROINDUSTRIA S.A. DE C.V.",
+			"contrato": "PRO-AGRO-PRV-016-2026",
+			"sitio": "EM-30184 PAJARITOS",
+			"periodicidad": "Trimestral",
+			"fecha": "2026-06-01",
+			"tipoMantenimiento": "Preventivo"
+		},
+		"firmantes": {
+			"elaboro": {
+				"nombre": "Ing. Firmante Ficticio Uno",
+				"cargo": "Encargado de Operación y Mantenimiento",
+				"empresa": "INGENIERÍA, CONSTRUCCIÓN Y SERVICIOS INTEGRALES OIL & GAS SA DE CV"
+			},
+			"aprobo": {
+				"nombre": "Ing. Firmante Ficticio Dos",
+				"cargo": "Gerencia de Operaciones",
+				"empresa": "INGENIERÍA, CONSTRUCCIÓN Y SERVICIOS INTEGRALES OIL & GAS SA DE CV"
+			},
+			"recibio": {
+				"nombre": "Ing. Firmante Ficticio Tres",
+				"cargo": "Representante del cliente",
+				"empresa": "PRO-AGROINDUSTRIA S.A. DE C.V."
+			}
+		},
+		"objetivo": "El objetivo del mantenimiento y verificación de indicadores de presión en una estación de regulación y medición de gas natural es garantizar la precisión, confiabilidad y seguridad operativa del sistema de monitoreo de presión. Esta actividad busca asegurar que los instrumentos funcionen correctamente dentro de sus rangos establecidos, permitiendo una lectura exacta que facilite la toma de decisiones técnicas, la detección oportuna de anomalías.",
+		"introduccion": "Inspección visual, Desmontaje de indicador de presión, Verificación con equipo patrón, Limpieza física, Montaje y normalización del indicador, Detección de emisiones fugitivas.",
+		"disposicionFotos": "cuadricula",
+		"incluyeVerificacion": true,
+		"alcances": [
+			{
+				"titulo": "Inspección visual",
+				"descripcion": "Se realiza la inspección visual identificando el estado en que se encuentra el indicador de presión.",
+				"estado": "ok",
+				"observaciones": "",
+				"fotos": [
+					{
+						"foto": 1,
+						"descripcion": "PI-0001 Marca Dewit Alcance 0-105 KG/CM2"
+					}
+				]
+			},
+			{
+				"titulo": "Desmontaje de indicador de presión",
+				"descripcion": "Se procede a cerrar válvula de proceso posteriormente se abre la válvula de venteo, se retira indicador de presión con llave mixta de 7/8” y finalmente se instala tapón de ½” en el manifold con la finalidad de evitar fuga.",
+				"estado": "ok",
+				"observaciones": "",
+				"fotos": [
+					{
+						"foto": 2,
+						"descripcion": "Cierre de válvulas para el retiro del indicardor"
+					},
+					{
+						"foto": 3,
+						"descripcion": "Retiro del indicador de presión"
+					}
+				]
+			},
+			{
+				"titulo": "Verificación con equipo patrón",
+				"descripcion": "Se realiza la verificación de los manómetros con un equipo patrón certificado, utilizando como referencia el 25%, 50%, 75% y 100% de su escala, se realiza para asegurar que el instrumento mantiene una lectura precisa y confiable en todo su rango operativo.",
+				"estado": "ok",
+				"observaciones": "",
+				"fotos": [
+					{
+						"foto": 4,
+						"descripcion": "Verificación con equipo patrón al 0%"
+					},
+					{
+						"foto": 5,
+						"descripcion": "Verificación con equipo patrón al 0%"
+					},
+					{
+						"foto": 6,
+						"descripcion": "Verificación con equipo patrón al 25%"
+					},
+					{
+						"foto": 7,
+						"descripcion": "Verificación con equipo patrón al 25%"
+					},
+					{
+						"foto": 8,
+						"descripcion": "Verificación con equipo patrón al 50%"
+					},
+					{
+						"foto": 9,
+						"descripcion": "Verificación con equipo patrón al 50%"
+					},
+					{
+						"foto": 10,
+						"descripcion": "Verificación con equipo patrón al 75%"
+					},
+					{
+						"foto": 11,
+						"descripcion": "Verificación con equipo patrón al 75%"
+					},
+					{
+						"foto": 12,
+						"descripcion": "Verificación con equipo patrón al 100%"
+					},
+					{
+						"foto": 13,
+						"descripcion": "Verificación con equipo patrón al 100%"
+					}
+				]
+			},
+			{
+				"titulo": "Limpieza física",
+				"descripcion": "Se realiza la limpieza física de los indicadores de presión con la finalidad de obtener una visibilidad clara de las escalas de medición, prevenir la acumulación de polvo, grasa o residuos que puedan interferir con la lectura, y evitar el deterioro prematuro de componentes sensibles.",
+				"estado": "ok",
+				"observaciones": "",
+				"fotos": [
+					{
+						"foto": 14,
+						"descripcion": "Se realiza retiro de cinta teflón"
+					},
+					{
+						"foto": 15,
+						"descripcion": "se realiza limpieza manual"
+					},
+					{
+						"foto": 16,
+						"descripcion": "se realiza limpieza manual"
+					}
+				]
+			},
+			{
+				"titulo": "Montaje y normalización del indicador",
+				"descripcion": "Posterior de su verificación y limpieza física se aplica cinta teflón en conector de indicador, para proceder a realizar el a montaje del equipo y a normalizar su operación.",
+				"estado": "ok",
+				"observaciones": "",
+				"fotos": [
+					{
+						"foto": 17,
+						"descripcion": "se realiza montaje del indicador de presión"
+					},
+					{
+						"foto": 18,
+						"descripcion": "Se realiza el montaje del indicador"
+					},
+					{
+						"foto": 19,
+						"descripcion": "se realiza apertura de la válvula y queda operando el indicador de presión al 100%"
+					}
+				]
+			},
+			{
+				"titulo": "Detección de emisiones fugitivas",
+				"descripcion": "Posterior a la instalación del indicador en la línea de gas de proceso se procede a realizar la apertura de válvula de bloqueo y se realiza detección de emisiones fugitivas con el objetivo de asegurar una buena hermeticidad del indicador de presión durante su operación.",
+				"estado": "ok",
+				"observaciones": "",
+				"fotos": [
+					{
+						"foto": 20,
+						"descripcion": "Se realiza la búsqueda de emisiones fugitivas"
+					}
+				]
+			}
+		],
+		"herramientas": [
+			{
+				"cantidad": "1 unidad",
+				"descripcion": "Manómetro patrón"
+			},
+			{
+				"cantidad": "1 unidad",
+				"descripcion": "Tanque de nitrógeno"
+			},
+			{
+				"cantidad": "8 piezas",
+				"descripcion": "Arreglo para tanque de nitrógeno"
+			},
+			{
+				"cantidad": "3 piezas",
+				"descripcion": "Llave mixta 7/8”, 1 ¼”, 1 1/8”"
+			},
+			{
+				"cantidad": "1 pieza",
+				"descripcion": "Perica de 10”"
+			},
+			{
+				"cantidad": "1 pieza",
+				"descripcion": "Atomizador"
+			},
+			{
+				"cantidad": "1 pieza",
+				"descripcion": "Aire comprimido"
+			},
+			{
+				"cantidad": "1 pieza",
+				"descripcion": "Clemero"
+			},
+			{
+				"cantidad": "1 pieza",
+				"descripcion": "Cinta Teflón"
+			},
+			{
+				"cantidad": "1 litro",
+				"descripcion": "Glicerina"
+			}
+		],
+		"conclusiones": "Se realiza la verificación de los Indicadores de presión identificando el fallo del mecanismo en los siguientes Manómetros, recomendando realizar el reemplazo de estos. Se anexa reporte de falla."
+	}
+}

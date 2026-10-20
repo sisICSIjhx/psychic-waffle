@@ -40,22 +40,22 @@ Cada fase cierra con estos pasos:
 
 ## 2. Prueba documental (riesgo principal, antes de la captura)
 
-- [ ] 2.1 Construir `FOR-ICSI-RMT-01.v1.docx` a partir de cualquier reporte real, ya que todos
+- [x] 2.1 Construir `FOR-ICSI-RMT-01.v1.docx` a partir de cualquier reporte real, ya que todos
       comparten el mismo diseño. Limpiar el contenido,
       conservar logotipos, encabezado y pie, y añadir marcadores de campos y bloques repetidos. La
       plantilla se sanea (sin propiedades de autor, comentarios, revisiones, customXml ni nombres) y
       una auditoría automatizada del paquete lo comprueba.
-- [ ] 2.2 Implementar en `src/lib/dominio/` las reglas puras, con pruebas: título, numeración
+- [x] 2.2 Implementar en `src/lib/dominio/` las reglas puras, con pruebas: título, numeración
       «Ilustración 2.n.m», agrupación de fotos por disposición y nombre de archivo (sin TAG, con uno o
       con varios).
-- [ ] 2.3 Implementar `src/lib/server/documentos/generar.ts` con `docx-templates` y la preparación de
+- [x] 2.3 Implementar `src/lib/server/documentos/generar.ts` con `docx-templates` y la preparación de
       imágenes con `sharp`.
-- [ ] 2.4 Crear `scripts/prueba-documental.ts`, que genera 3 reportes desde datos JSON de ejemplo:
+- [x] 2.4 Crear `scripts/prueba-documental.ts`, que genera 3 reportes desde datos JSON de ejemplo:
       cuadrícula con verificación (manómetros), antes/durante/después (PSV) y un reporte con más de
       70 fotos. Los JSON llevan firmantes ficticios; las fotos se toman de `insumos/` solo en local.
-- [ ] 2.5 Agregar una prueba automatizada: el DOCX se abre, no conserva marcadores sin resolver,
+- [x] 2.5 Agregar una prueba automatizada: el DOCX se abre, no conserva marcadores sin resolver,
       respeta el orden de las secciones y numera según tenga o no verificación.
-- [ ] 2.6 Convertir a PDF con LibreOffice, si está instalado, y comparar visualmente con los
+- [x] 2.6 Convertir a PDF con LibreOffice, si está instalado, y comparar visualmente con los
       originales. Dejar las capturas de la comparación para la revisión del usuario.
 - [ ] 2.7 Validación y revisión con Codex de la fase 2. **Punto de control:** se presentan los 3 DOCX al
       usuario antes de cerrar la plantilla v1.

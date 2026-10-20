@@ -1,0 +1,424 @@
+{
+	"$comentario": "Datos de ejemplo para scripts/prueba-documental.ts. Firmantes ficticios; las fotos se toman de fuenteFotos solo en local.",
+	"salida": "prueba-3-volumen-alto",
+	"fuenteFotos": {
+		"ruta": "insumos/CERRITOS/06.- Mantenimiento a Postes Tipo R (Protección Catódica)..docx",
+		"orden": "medios"
+	},
+	"reporte": {
+		"numeroPartida": 6,
+		"actividad": "Mantenimiento a postes tipo \"R\" (protección catódica)",
+		"actividadCorta": "Postes tipo R",
+		"periodo": {
+			"anio": 2026,
+			"mes": 5
+		},
+		"tags": [],
+		"encabezado": {
+			"usuario": "TEMEX GAS",
+			"contrato": "4500057477",
+			"sitio": "EM-30167 CERRITOS",
+			"periodicidad": "Mensual",
+			"fecha": "2026-05-18",
+			"tipoMantenimiento": "Preventivo"
+		},
+		"firmantes": {
+			"elaboro": {
+				"nombre": "Ing. Firmante Ficticio Uno",
+				"cargo": "Encargado de Operación y Mantenimiento",
+				"empresa": "INGENIERÍA, CONSTRUCCIÓN Y SERVICIOS INTEGRALES OIL & GAS SA DE CV"
+			},
+			"aprobo": {
+				"nombre": "Ing. Firmante Ficticio Dos",
+				"cargo": "Gerencia de Operaciones",
+				"empresa": "INGENIERÍA, CONSTRUCCIÓN Y SERVICIOS INTEGRALES OIL & GAS SA DE CV"
+			},
+			"recibio": {
+				"nombre": "Ing. Firmante Ficticio Tres",
+				"cargo": "Representante del cliente",
+				"empresa": "ALPEK Polyester"
+			}
+		},
+		"objetivo": "El Mantenimiento preventivo a postes tipo R tiene como finalidad conservar la obra civil, pintura, señalamientos (Kilometraje, Diámetro del ducto, Propietario del DDV) en buen estado con el objetivo de preservar la confiabilidad de operación de la protección catódica.",
+		"introduccion": "Este reporte documenta los trabajos realizados en la Estación de Medición 30167 Cerritos, abarcando los siguientes puntos:\nLimpieza y retoque de pintura, mantenimiento a placas.\nMantenimiento a placas de señalamientos (Remplazo de rotulo y remachado en caso de que se requiera)\nRemoción de oxido y escamas de pintura existente en puntos de corrosión\nMantenimiento preventivo a postes de señalización, alineación, reposición de placa metálica y/o sustitución de postes en caso de que aplique\nAplicación de pintura",
+		"disposicionFotos": "cuadricula",
+		"incluyeVerificacion": false,
+		"alcances": [
+			{
+				"titulo": "Inspección visual",
+				"descripcion": "Inspección visual del estado físico actual de los postes tipo “R”",
+				"fotos": [
+					{
+						"foto": 1,
+						"descripcion": ""
+					},
+					{
+						"foto": 2,
+						"descripcion": ""
+					},
+					{
+						"foto": 3,
+						"descripcion": ""
+					},
+					{
+						"foto": 4,
+						"descripcion": ""
+					},
+					{
+						"foto": 5,
+						"descripcion": ""
+					},
+					{
+						"foto": 6,
+						"descripcion": ""
+					},
+					{
+						"foto": 7,
+						"descripcion": ""
+					},
+					{
+						"foto": 8,
+						"descripcion": ""
+					},
+					{
+						"foto": 9,
+						"descripcion": ""
+					},
+					{
+						"foto": 10,
+						"descripcion": ""
+					},
+					{
+						"foto": 11,
+						"descripcion": ""
+					},
+					{
+						"foto": 12,
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Verificación de cables y conexiones eléctricas",
+				"descripcion": "Se verifica el estado de las conexiones para la toma de potenciales y mantenimiento preventivo del mismo.",
+				"fotos": [
+					{
+						"foto": 13,
+						"descripcion": ""
+					},
+					{
+						"foto": 14,
+						"descripcion": ""
+					},
+					{
+						"foto": 15,
+						"descripcion": ""
+					},
+					{
+						"foto": 16,
+						"descripcion": ""
+					},
+					{
+						"foto": 17,
+						"descripcion": ""
+					},
+					{
+						"foto": 18,
+						"descripcion": ""
+					},
+					{
+						"foto": 19,
+						"descripcion": ""
+					},
+					{
+						"foto": 20,
+						"descripcion": ""
+					},
+					{
+						"foto": 21,
+						"descripcion": ""
+					},
+					{
+						"foto": 22,
+						"descripcion": ""
+					},
+					{
+						"foto": 23,
+						"descripcion": ""
+					},
+					{
+						"foto": 24,
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Medición de potenciales tubo-suelo",
+				"descripcion": "Se realiza la medición de potenciales de cada poste con multímetro certificado para verificar voltaje y continuidad.",
+				"fotos": [
+					{
+						"foto": 25,
+						"descripcion": ""
+					},
+					{
+						"foto": 26,
+						"descripcion": ""
+					},
+					{
+						"foto": 27,
+						"descripcion": ""
+					},
+					{
+						"foto": 28,
+						"descripcion": ""
+					},
+					{
+						"foto": 29,
+						"descripcion": ""
+					},
+					{
+						"foto": 30,
+						"descripcion": ""
+					},
+					{
+						"foto": 31,
+						"descripcion": ""
+					},
+					{
+						"foto": 32,
+						"descripcion": ""
+					},
+					{
+						"foto": 33,
+						"descripcion": ""
+					},
+					{
+						"foto": 34,
+						"descripcion": ""
+					},
+					{
+						"foto": 35,
+						"descripcion": ""
+					},
+					{
+						"foto": 36,
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Limpieza y chapodeo del área perimetral de postes tipo “R”",
+				"descripcion": "Se realiza limpieza manual y remoción de hierbas alrededor del poste, con el propósito de conservar su integridad física y mantener su visibilidad.",
+				"fotos": [
+					{
+						"foto": 37,
+						"descripcion": ""
+					},
+					{
+						"foto": 38,
+						"descripcion": ""
+					},
+					{
+						"foto": 39,
+						"descripcion": ""
+					},
+					{
+						"foto": 40,
+						"descripcion": ""
+					},
+					{
+						"foto": 41,
+						"descripcion": ""
+					},
+					{
+						"foto": 42,
+						"descripcion": ""
+					},
+					{
+						"foto": 43,
+						"descripcion": ""
+					},
+					{
+						"foto": 44,
+						"descripcion": ""
+					},
+					{
+						"foto": 45,
+						"descripcion": ""
+					},
+					{
+						"foto": 46,
+						"descripcion": ""
+					},
+					{
+						"foto": 47,
+						"descripcion": ""
+					},
+					{
+						"foto": 48,
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Mantenimiento preventivo a poste tipo “R”",
+				"descripcion": "Se realiza limpieza física de los postes con la finalidad de mantener la superficie libre de polvo o lodo previo a la aplicación de pintura.",
+				"fotos": [
+					{
+						"foto": 49,
+						"descripcion": ""
+					},
+					{
+						"foto": 50,
+						"descripcion": ""
+					},
+					{
+						"foto": 51,
+						"descripcion": ""
+					},
+					{
+						"foto": 52,
+						"descripcion": ""
+					},
+					{
+						"foto": 53,
+						"descripcion": ""
+					},
+					{
+						"foto": 54,
+						"descripcion": ""
+					},
+					{
+						"foto": 55,
+						"descripcion": ""
+					},
+					{
+						"foto": 56,
+						"descripcion": ""
+					},
+					{
+						"foto": 57,
+						"descripcion": ""
+					},
+					{
+						"foto": 58,
+						"descripcion": ""
+					},
+					{
+						"foto": 59,
+						"descripcion": ""
+					},
+					{
+						"foto": 60,
+						"descripcion": ""
+					},
+					{
+						"foto": 61,
+						"descripcion": ""
+					}
+				]
+			},
+			{
+				"titulo": "Retoque de pintura y mantenimiento preventivo",
+				"descripcion": "Se aplica pintura a lo largo de todo el poste y se realiza el retoque en las letras de señalización, asegurando uniformidad y visibilidad.",
+				"fotos": [
+					{
+						"foto": 62,
+						"descripcion": ""
+					},
+					{
+						"foto": 63,
+						"descripcion": ""
+					},
+					{
+						"foto": 64,
+						"descripcion": ""
+					},
+					{
+						"foto": 65,
+						"descripcion": ""
+					},
+					{
+						"foto": 66,
+						"descripcion": ""
+					},
+					{
+						"foto": 67,
+						"descripcion": ""
+					},
+					{
+						"foto": 68,
+						"descripcion": ""
+					},
+					{
+						"foto": 69,
+						"descripcion": ""
+					},
+					{
+						"foto": 70,
+						"descripcion": ""
+					},
+					{
+						"foto": 71,
+						"descripcion": ""
+					},
+					{
+						"foto": 72,
+						"descripcion": ""
+					},
+					{
+						"foto": 73,
+						"descripcion": ""
+					},
+					{
+						"foto": 74,
+						"descripcion": ""
+					}
+				]
+			}
+		],
+		"herramientas": [
+			{
+				"cantidad": "1 unidad",
+				"descripcion": "Cepillo de alambre"
+			},
+			{
+				"cantidad": "1 unidad",
+				"descripcion": "Atomizador"
+			},
+			{
+				"cantidad": "100 gramos",
+				"descripcion": "Trapos"
+			},
+			{
+				"cantidad": "1 galón",
+				"descripcion": "Pintura de esmalte naranja"
+			},
+			{
+				"cantidad": "1 litro",
+				"descripcion": "Pintura de esmalte negra"
+			},
+			{
+				"cantidad": "1 galón",
+				"descripcion": "Tinnher"
+			},
+			{
+				"cantidad": "2 unidades",
+				"descripcion": "Brochas"
+			},
+			{
+				"cantidad": "2 unidades",
+				"descripcion": "Pinceles"
+			},
+			{
+				"cantidad": "1 unidad",
+				"descripcion": "Multímetro certificado"
+			},
+			{
+				"cantidad": "1 unidad",
+				"descripcion": "Celda"
+			}
+		],
+		"conclusiones": "Se realiza mantenimiento preventivo a los postes Tipo “R”, no se encontraron anomalías que afecten su operación. Se recomienda continuar con el plan de mantenimiento actual para preservar la confiabilidad de operación de la protección catódica."
+	}
+}

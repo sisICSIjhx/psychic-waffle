@@ -19,7 +19,10 @@
 		"graph:sync": "codegraph sync",
 		"spec": "openspec",
 		"spec:check": "openspec validate --all --strict",
-		"spec:list": "openspec list --specs"
+		"spec:list": "openspec list --specs",
+		"plantilla:construir": "node scripts/construir-plantilla.ts",
+		"prueba:documental": "node scripts/prueba-documental.ts",
+		"verificar:datos": "node scripts/verificar-datos-personales.ts"
 	},
 	"devDependencies": {
 		"@colbymchenry/codegraph": "1.6.2",
@@ -50,5 +53,10 @@
 		"vite": "^7.2.2",
 		"vitest": "^4.0.10",
 		"vitest-browser-svelte": "^2.0.1"
+	},
+	"dependencies": {
+		"docx-templates": "4.15.0",
+		"jszip": "3.10.2",
+		"sharp": "0.35.5"
 	}
 }
