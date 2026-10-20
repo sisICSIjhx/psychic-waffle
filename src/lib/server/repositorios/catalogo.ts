@@ -33,8 +33,45 @@ export type EquipoEntrada = Omit<
 export type FirmanteEntrada = Omit<Firmante, 'id' | 'vigenteHasta'> &
 	Partial<Pick<Firmante, 'id' | 'vigenteHasta'>>;
 
+export const esquemaResultadoImportacion = z.object({
+	ensayo: z.boolean(),
+	programa: z.object({
+		accion: z.enum(['crear', 'existente', 'ninguno']),
+		id: z.uuid().nullable()
+	}),
+	resumen: z.object({
+		crear: z.number().int(),
+		actualizar: z.number().int(),
+		sinCambios: z.number().int()
+	}),
+	partidas: z.array(
+		z.object({
+			numero: z.string(),
+			actividad: z.string(),
+			accion: z.enum(['crear', 'actualizar', 'sin_cambios']),
+			alcances: z.number().int(),
+			mesesProgramados: z.number().int(),
+			cambiaPrograma: z.boolean(),
+			estabaPorConfirmar: z.boolean()
+		})
+	)
+});
+export type ResultadoImportacion = z.infer<typeof esquemaResultadoImportacion>;
+
+/** Partidas del catálogo de Excel ya analizadas (véase importacion/catalogo.ts). */
+export interface CargaImportacion {
+	contratoId: string;
+	sitioId: string;
+	programa: { periodoInicio: string; periodoFin: string; nombre?: string | null } | null;
+	partidas: unknown[];
+}
+
 export class RepositorioCatalogo {
-	constructor(private readonly sql: ClienteSql) {}
+	private readonly sql: ClienteSql;
+
+	constructor(sql: ClienteSql) {
+		this.sql = sql;
+	}
 
 	async guardarCliente(cliente: ClienteEntrada): Promise<Cliente> {
 		return esquemaCliente.parse(await this.sql.llamar('api_guardar_cliente', cliente));
@@ -69,7 +106,7 @@ export class RepositorioCatalogo {
 
 	async guardarPartida(partida: PartidaEntrada): Promise<Partida> {
 		const entrada = esquemaPartidaEntrada.parse(partida);
-		return esquemaPartida.parse(await this.sql.llamar('api_guardar_partida', entrada));
+		return esquemaPartida.parse(await this.sql.llamar('api_guardar_partida_completa', entrada));
 	}
 
 	async obtenerPartida(id: string): Promise<Partida> {
@@ -106,6 +143,16 @@ export class RepositorioCatalogo {
 		return z
 			.array(esquemaFirmante)
 			.parse(await this.sql.llamar('api_listar_firmantes', { contratoId }));
+	}
+
+	/**
+	 * Importa el catálogo y el programa P/R. Con `ensayo` solo resume qué se crearía, actualizaría u
+	 * omitiría; sin él aplica todo en una transacción (sin cambios parciales si algo falla).
+	 */
+	async importarCatalogo(carga: CargaImportacion, ensayo: boolean): Promise<ResultadoImportacion> {
+		return esquemaResultadoImportacion.parse(
+			await this.sql.llamar('api_importar_catalogo', { ...carga, ensayo })
+		);
 	}
 
 	/** Firmante vigente de cada función en la fecha indicada (hoy por omisión). */

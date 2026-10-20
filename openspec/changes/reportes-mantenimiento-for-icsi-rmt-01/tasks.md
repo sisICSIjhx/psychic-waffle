@@ -82,15 +82,15 @@ Cada fase cierra con estos pasos:
 
 ## 4. Catálogo e importación
 
-- [ ] 4.1 Implementar el importador de `CATALOGO DE ALCANCES.xlsx`: búsqueda de cabeceras, agrupación
+- [x] 4.1 Implementar el importador de `CATALOGO DE ALCANCES.xlsx`: búsqueda de cabeceras, agrupación
       de viñetas, clasificación en alcance, nota o norma, y el programa P/R.
-- [ ] 4.2 Agregar pruebas del importador con un `.xlsx` sintético versionado, sin datos personales:
+- [x] 4.2 Agregar pruebas del importador con un `.xlsx` sintético versionado, sin datos personales:
       estructura válida, columnas faltantes e idempotencia.
-- [ ] 4.3 Crear la vista `/catalogo`: contratos, sitios, partidas con edición de alcances, objetivo,
+- [x] 4.3 Crear la vista `/catalogo`: contratos, sitios, partidas con edición de alcances, objetivo,
       herramientas, conclusiones, disposición de fotos, equipos/TAG y firmantes.
-- [ ] 4.4 Implementar la importación desde la interfaz con ensayo previo y confirmación, y el script
+- [x] 4.4 Implementar la importación desde la interfaz con ensayo previo y confirmación, y el script
       `npm run importar`.
-- [ ] 4.5 Importar el catálogo de Cerritos en local. Derivar las partidas de Proagro y Virtual desde
+- [x] 4.5 Importar el catálogo de Cerritos en local. Derivar las partidas de Proagro y Virtual desde
       sus reportes, marcadas «por confirmar». Agregar en `/catalogo` el filtro y la acción de
       confirmar, y permitir reemplazarlas al importar el catálogo oficial.
 - [ ] 4.6 Validación y revisión con Codex de la fase 4.

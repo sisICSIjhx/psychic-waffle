@@ -877,3 +877,190 @@ tr:last-child td {
 		min-height: 60px;
 	}
 }
+
+/* Catálogo y formularios de captura */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+.tabla-desplazable {
+	overflow-x: auto;
+}
+.enlace {
+	color: var(--primary);
+	font-weight: 500;
+}
+.enlace:hover {
+	text-decoration: underline;
+}
+.migas {
+	margin: 0 0 16px 0;
+	color: var(--muted);
+	font-size: 0.85rem;
+}
+.boton {
+	background: var(--bg-soft);
+	color: var(--text);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 8px 16px;
+	cursor: pointer;
+}
+.boton:hover {
+	background: var(--hover);
+}
+.boton.primario {
+	background: var(--primary);
+	color: #fff;
+	border: none;
+	font-weight: 600;
+}
+.boton:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+.status-badge.vigente,
+.status-badge.accion-sin_cambios {
+	background: rgba(34, 197, 94, 0.15);
+	color: var(--success);
+}
+.status-badge.por-confirmar,
+.status-badge.accion-actualizar {
+	background: rgba(234, 179, 8, 0.18);
+	color: var(--warning);
+	margin-left: 6px;
+}
+.status-badge.accion-crear {
+	background: var(--primary-soft);
+	color: var(--primary);
+}
+.aviso {
+	padding: 10px 14px;
+	border-radius: 8px;
+	margin: 0 0 16px 0;
+	font-size: 0.9rem;
+}
+.aviso-error {
+	background: rgba(239, 68, 68, 0.12);
+	color: var(--danger);
+}
+.aviso-exito {
+	background: rgba(34, 197, 94, 0.12);
+	color: var(--success);
+}
+.aviso-alerta {
+	background: rgba(234, 179, 8, 0.15);
+	color: var(--text);
+}
+.acciones-fila {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+}
+.acciones-formulario {
+	justify-content: flex-end;
+}
+.campo-ancho {
+	grid-column: span 2;
+}
+.subtitulo {
+	margin: 20px 0 8px 0;
+	font-size: 0.95rem;
+}
+.separado {
+	margin-top: 20px;
+}
+.lista-editable {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-left: 20px;
+	margin: 8px 0 12px 0;
+}
+.lista-editable li {
+	display: flex;
+	gap: 8px;
+	align-items: flex-start;
+}
+.lista-editable select,
+.lista-editable input,
+.lista-editable textarea {
+	padding: 8px;
+	border-radius: 8px;
+	border: 1px solid var(--border);
+	background: var(--bg);
+	color: var(--text);
+}
+.lista-editable textarea,
+.lista-editable input:not(.campo-cantidad) {
+	flex: 1;
+}
+.campo-cantidad {
+	width: 130px;
+}
+.botones-fila {
+	display: flex;
+	gap: 2px;
+}
+.casillas {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	border: none;
+	padding: 0;
+	margin: 8px 0 16px 0;
+}
+.casillas legend {
+	font-size: 0.85rem;
+	color: var(--muted);
+	margin-bottom: 6px;
+}
+.casilla-sola {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+.resumen-importacion {
+	margin-top: 16px;
+	border-top: 1px solid var(--border);
+	padding-top: 16px;
+}
+.resumen-importacion h3 {
+	margin: 0 0 8px 0;
+	font-size: 1rem;
+}
+.lista-advertencias {
+	color: var(--warning);
+	font-size: 0.85rem;
+}
+.firmantes-propuestos ul {
+	list-style: none;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.firmantes-propuestos li {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+details > summary {
+	cursor: pointer;
+}
+@media (max-width: 768px) {
+	.campo-ancho {
+		grid-column: auto;
+	}
+	.lista-editable li {
+		flex-wrap: wrap;
+	}
+}

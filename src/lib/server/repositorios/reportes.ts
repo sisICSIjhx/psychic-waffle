@@ -45,7 +45,11 @@ const esquemaResultadoGuardado = z.object({
 });
 
 export class RepositorioReportes {
-	constructor(private readonly sql: ClienteSql) {}
+	private readonly sql: ClienteSql;
+
+	constructor(sql: ClienteSql) {
+		this.sql = sql;
+	}
 
 	async insertar(reporte: ReporteNuevo): Promise<Reporte> {
 		const entrada = esquemaReporteNuevo.parse(reporte);

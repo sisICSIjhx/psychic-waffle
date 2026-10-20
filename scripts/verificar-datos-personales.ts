@@ -1,5 +1,6 @@
 // Verificación local previa a un commit: extrae en memoria los nombres de firmantes y autores de los
-// reportes de insumos/ y comprueba que no aparezcan en los archivos versionables (incluidos los DOCX).
+// reportes y libros de Excel de insumos/ y comprueba que no aparezcan en los archivos versionables
+// (incluidos los DOCX y XLSX).
 // Nunca imprime los nombres; solo rutas y número de coincidencias.
 //
 // Uso: node scripts/verificar-datos-personales.ts [carpeta de insumos]
@@ -14,6 +15,8 @@ import {
 	elementos,
 	texto
 } from '../src/lib/server/documentos/ooxml.ts';
+import { firmantesDeHoja } from '../src/lib/server/importacion/catalogo.ts';
+import { leerLibro } from '../src/lib/server/importacion/xlsx.ts';
 
 const carpetaInsumos = process.argv[2] ?? 'insumos';
 const EXTENSIONES_TEXTO = new Set([
@@ -34,21 +37,34 @@ const EXTENSIONES_TEXTO = new Set([
 	''
 ]);
 
-async function* docxEn(carpeta: string): AsyncGenerator<string> {
+async function* archivosEn(carpeta: string): AsyncGenerator<string> {
 	for (const entrada of await readdir(carpeta, { withFileTypes: true })) {
 		const ruta = join(carpeta, entrada.name);
-		if (entrada.isDirectory()) yield* docxEn(ruta);
-		else if (entrada.name.toLowerCase().endsWith('.docx') && !entrada.name.startsWith('~$'))
-			yield ruta;
+		if (entrada.isDirectory()) yield* archivosEn(ruta);
+		else if (/\.(docx|xlsx)$/i.test(entrada.name) && !entrada.name.startsWith('~$')) yield ruta;
 	}
+}
+
+/** Nombres bajo las etiquetas de firma de cada hoja (OPERADOR, AUTORIZA…) y autores del libro. */
+async function nombresDeLibro(datos: Buffer): Promise<string[]> {
+	const nombres = await autores(await JSZip.loadAsync(datos));
+	for (const hoja of await leerLibro(datos)) {
+		nombres.push(...firmantesDeHoja(hoja).map((f) => f.nombre));
+	}
+	return nombres;
+}
+
+async function autores(zip: JSZip): Promise<string[]> {
+	const core = (await zip.file('docProps/core.xml')?.async('string')) ?? '';
+	return [...core.matchAll(/<(?:dc:creator|cp:lastModifiedBy)>([^<]+)</g)].map((m) => m[1]);
 }
 
 /** Nombres de la tabla de firmas (todas las líneas salvo la última de cada celda) y del autor. */
 async function nombresDe(ruta: string): Promise<string[]> {
-	const zip = await JSZip.loadAsync(await readFile(ruta));
-	const nombres: string[] = [];
-	const core = (await zip.file('docProps/core.xml')?.async('string')) ?? '';
-	for (const m of core.matchAll(/<(?:dc:creator|cp:lastModifiedBy)>([^<]+)</g)) nombres.push(m[1]);
+	const datos = await readFile(ruta);
+	if (ruta.toLowerCase().endsWith('.xlsx')) return nombresDeLibro(datos);
+	const zip = await JSZip.loadAsync(datos);
+	const nombres = await autores(zip);
 	const documento = (await zip.file('word/document.xml')?.async('string')) ?? '';
 	const firmas = bloquesCuerpo(documento).find((b) => {
 		const t = normalizarParaComparar(texto(b.xml));
@@ -86,7 +102,7 @@ function blobDelIndice(ruta: string): Buffer {
 
 async function contenidoTextual(ruta: string, datos: Buffer): Promise<string | null> {
 	const extension = extname(ruta).toLowerCase();
-	if (extension === '.docx') {
+	if (extension === '.docx' || extension === '.xlsx') {
 		const zip = await JSZip.loadAsync(datos);
 		const partes = Object.keys(zip.files).filter((n) => n.endsWith('.xml') || n.endsWith('.rels'));
 		const xml = await Promise.all(partes.map((n) => zip.file(n)!.async('string')));
@@ -121,8 +137,10 @@ async function* versiones(): AsyncGenerator<{ etiqueta: string; ruta: string; da
 
 const nombres = new Set<string>();
 let reportes = 0;
-for await (const ruta of docxEn(carpetaInsumos)) {
-	reportes++;
+let libros = 0;
+for await (const ruta of archivosEn(carpetaInsumos)) {
+	if (ruta.toLowerCase().endsWith('.xlsx')) libros++;
+	else reportes++;
 	for (const nombre of await nombresDe(ruta)) {
 		const normalizado = normalizarParaComparar(nombre.replace(/^(ing|lic|arq|c|sr|sra)\.\s*/i, ''));
 		// Solo nombres de al menos dos palabras, para no confundir palabras comunes.
@@ -143,7 +161,7 @@ for await (const { etiqueta, ruta, datos } of versiones()) {
 }
 
 console.log(
-	`Reportes analizados: ${reportes}. Nombres de referencia: ${nombres.size}. Archivos revisados: ${revisados}.`
+	`Reportes analizados: ${reportes}. Libros de Excel: ${libros}. Nombres de referencia: ${nombres.size}. Archivos revisados: ${revisados}.`
 );
 if (hallazgos.length) {
 	console.error(

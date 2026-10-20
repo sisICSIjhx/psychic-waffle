@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-20 — FOR-ICSI-RMT-01, fase 4: catálogo e importación
+
+- Motivo: cargar el catálogo de partidas, alcances y programa anual desde el Excel oficial y dar de alta lo que falta desde la interfaz (tareas 4.1 a 4.6).
+- Alcance: lector XLSX propio sobre `jszip` y analizador del «CATALOGO DE ALCANCES» en `src/lib/server/importacion/` (cabeceras por texto, viñetas clasificadas en alcance, nota o norma, programa P/R por relleno de celda, firmantes solo propuestos); migración `0005_importacion.sql` (`api_importar_catalogo` con ensayo, aplicación en una transacción e idempotencia; columnas de entrega de OMA y propuesta); vistas `/catalogo`, `/catalogo/contratos/[id]` y `/catalogo/partidas/[id]` con edición de partidas, sitios, equipos/TAG, firmantes, filtro y confirmación de partidas «por confirmar», e importación con ensayo previo; scripts `npm run importar` y `scripts/derivar-partidas.ts` (partidas por confirmar desde reportes existentes, sin leer firmas). `verificar-datos-personales` revisa ahora también los nombres de los libros de Excel.
+- Decisiones: se descartó `exceljs` (depende de `uuid` con aviso de seguridad); el formulario del editor conserva sus campos tras guardar (`update({ reset: false })`), porque Svelte 5 los reiniciaba; el alcance derivado guarda «título\ndescripción» (diseño D4 actualizado).
+- Validación: `check` 0/0; `lint` sin observaciones; `test` 11 archivos y 90 pruebas (importador con `.xlsx` sintético versionado: estructura, columnas faltantes, idempotencia, reemplazo de partidas por confirmar y atomicidad; lectura de un DOCX generado; confirmación y filtro). Importación local del libro de Cerritos: 55 partidas creadas y reimportación sin cambios; derivación de 55 partidas de Proagro y 37 de Virtual con contrato provisional. Interfaz revisada en el navegador (alta de cliente, contrato y sitio, ensayo con el libro sintético, uso de un firmante propuesto y dos guardados de una partida con 6 alcances). Verificación de datos personales sin coincidencias (157 reportes y 1 libro).
+- Pendientes: confirmar con el usuario el número de contrato de Virtual y las partidas derivadas.
+
 ## 2026-10-20 — FOR-ICSI-RMT-01, fase 3: modelo de datos y repositorios
 
 - Motivo: crear desde cero el esquema PostgreSQL del catálogo, el programa anual y los reportes, probado con PGlite porque el proyecto de Supabase aún no existe (tareas 3.1 a 3.9).

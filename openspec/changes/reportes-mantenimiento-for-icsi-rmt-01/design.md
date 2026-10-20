@@ -130,14 +130,24 @@ mayúsculas y con espacios simples.
 
 ### D4. Importador del catálogo en `src/lib/server/importacion/`
 
-- Lee el `.xlsx` con `exceljs` y localiza las cabeceras por texto, no por coordenada fija.
+- Lee el `.xlsx` con un lector propio sobre `jszip` (`importacion/xlsx.ts`: celdas, celdas
+  combinadas y rellenos) y localiza las cabeceras por texto, no por coordenada fija. Se descartó
+  `exceljs` porque arrastra `uuid` con un aviso de seguridad (fase 4, 2026-10-20).
 - Agrupa las viñetas por partida. Una viñeta «·» es un alcance, «Nota:» es una nota y «NOM-…» o
   «CONTROL DE…» es una norma.
-- Primero hace un ensayo («dry-run») con el resumen y después aplica todo en una transacción.
+- El programa P/R sale del relleno de las celdas de cada mes; la cantidad por mes se deriva de la
+  periodicidad (diaria = días del mes, semanal = lunes del mes, quincenal = 2).
+- Primero hace un ensayo («dry-run») con el resumen y después aplica todo en una transacción
+  (`api_importar_catalogo`). La reimportación es idempotente y solo actualiza los campos que trae
+  el Excel; lo capturado a mano (objetivo, conclusiones, equipos) se conserva. Las columnas de entrega
+  de OMA y propuesta se guardan en `partidas.entrega_oma` y `partidas.entrega_propuesta`.
 - El importador acepta un archivo cargado desde la interfaz, y además se ofrece un script
   `npm run importar -- <archivo>` para el uso local.
 - Los nombres de firmantes de la hoja no se importan automáticamente: se proponen y se confirman en
   la interfaz.
+- Las partidas de clientes sin catálogo oficial (Proagro, Virtual) se derivan de sus reportes con
+  `scripts/derivar-partidas.ts` y quedan «por confirmar». Cada alcance derivado guarda su título en
+  el primer renglón y la descripción base en los siguientes; la captura (fase 5) los separa así.
 
 ### D5. Generación DOCX con `docx-templates` y plantilla en `src/lib/server/plantillas/FOR-ICSI-RMT-01.v1.docx`
 

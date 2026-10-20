@@ -28,7 +28,11 @@ export interface MesProgramado {
 }
 
 export class RepositorioPrograma {
-	constructor(private readonly sql: ClienteSql) {}
+	private readonly sql: ClienteSql;
+
+	constructor(sql: ClienteSql) {
+		this.sql = sql;
+	}
 
 	async guardarPrograma(programa: ProgramaEntrada): Promise<Programa> {
 		return esquemaPrograma.parse(await this.sql.llamar('api_guardar_programa', { ...programa }));
