@@ -3,7 +3,14 @@ import { readFile } from 'node:fs/promises';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 import { auditarPaquete } from './auditoria';
-import { generarDocx, limpiarTexto, type ReporteDocumento } from './generar';
+import {
+	generarDocx,
+	limpiarTexto,
+	PERFILES_IMAGEN,
+	prepararFotos,
+	type ReporteDocumento
+} from './generar';
+import { prepararImagen } from './imagenes';
 import { bloquesCuerpo, elementos, texto } from './ooxml';
 import { convertirPdf } from './pdf';
 
@@ -305,6 +312,38 @@ describe('plantilla FOR-ICSI-RMT-01.v1', () => {
 		expect(ajustes).toContain('<w:removePersonalInformation/>');
 		expect(ajustes).toContain('<w:updateFields w:val="true"/>');
 	});
+});
+
+describe('presupuesto de fotografías', () => {
+	const ruido = (ancho: number, alto: number) =>
+		sharp({
+			create: {
+				width: ancho,
+				height: alto,
+				channels: 3,
+				background: '#808080',
+				noise: { type: 'gaussian', mean: 128, sigma: 60 }
+			}
+		})
+			.jpeg({ quality: 95 })
+			.toBuffer();
+	const tamano = async (datos: Buffer, perfil: number) =>
+		(await prepararImagen(datos, PERFILES_IMAGEN[perfil])).datos.length;
+
+	it('degrada también las fotos bajo la cuota cuando una foto pesada no basta', async () => {
+		const pesada = await ruido(2000, 1500);
+		const ligera = await ruido(200, 150);
+		const ultimo = PERFILES_IMAGEN.length - 1;
+		const presupuesto = (await tamano(pesada, ultimo)) + 10 * (await tamano(ligera, ultimo)) + 1024;
+		// Precondición del caso: al inicio las ligeras quedan bajo la cuota por foto.
+		expect(await tamano(ligera, 0)).toBeLessThan(presupuesto / 11);
+
+		const fotos = [pesada, ...Array.from({ length: 10 }, () => ligera)].map((datos) => ({ datos }));
+		const preparadas = await prepararFotos(fotos, presupuesto, 4);
+		const total = preparadas.reduce((suma, p) => suma + p.datos.length, 0);
+		expect(preparadas).toHaveLength(11);
+		expect(total).toBeLessThanOrEqual(presupuesto);
+	}, 60_000);
 });
 
 describe('auditoría del paquete', () => {

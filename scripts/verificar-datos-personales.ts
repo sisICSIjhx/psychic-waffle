@@ -90,8 +90,17 @@ async function contenidoTextual(ruta: string, datos: Buffer): Promise<string | n
 		const zip = await JSZip.loadAsync(datos);
 		const partes = Object.keys(zip.files).filter((n) => n.endsWith('.xml') || n.endsWith('.rels'));
 		const xml = await Promise.all(partes.map((n) => zip.file(n)!.async('string')));
+		// Nombres de todas las partes (incluidas las huérfanas o binarias), decodificados como URI.
+		const nombresPartes = Object.keys(zip.files).map((n) => {
+			try {
+				return decodeURIComponent(n);
+			} catch {
+				return n;
+			}
+		});
 		// Se conservan los valores de atributos (descr, title…) además del texto visible.
-		return xml.join(' ').replace(/<[^>]*?((?:\s[\w:.-]+="[^"]*")*)\s*\/?>/g, '$1 ');
+		const contenido = xml.join(' ').replace(/<[^>]*?((?:\s[\w:.-]+="[^"]*")*)\s*\/?>/g, '$1 ');
+		return `${nombresPartes.join(' ')} ${contenido}`;
 	}
 	if (!EXTENSIONES_TEXTO.has(extension)) return null;
 	return datos.toString('utf8');

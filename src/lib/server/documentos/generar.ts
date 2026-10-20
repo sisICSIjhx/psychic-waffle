@@ -160,23 +160,32 @@ async function prepararSegunPerfil(foto: FotoDocumento, perfil: number): Promise
 }
 
 /**
- * Prepara todas las fotos con el perfil preferido y, si su suma no cabe en el presupuesto del
- * documento, reprocesa con perfiles más ligeros solo las que exceden la cuota por foto.
+ * Prepara todas las fotos con el perfil preferido. Si su suma no cabe en el presupuesto del
+ * documento, en cada perfil más ligero reprocesa primero las que exceden la cuota por foto y, si
+ * aún no cabe, todas las demás; así se agotan los perfiles antes de rechazar el documento.
  */
-async function prepararFotos(
+export async function prepararFotos(
 	fotos: readonly FotoDocumento[],
 	presupuesto: number,
 	paralelo: number
 ): Promise<ImagenPreparada[]> {
 	let preparadas = await enParalelo(fotos, paralelo, (foto) => prepararSegunPerfil(foto, 0));
+	const perfiles = fotos.map(() => 0);
 	const total = () => preparadas.reduce((suma, p) => suma + p.datos.length, 0);
+	const degradar = async (
+		perfil: number,
+		debeDegradar: (p: ImagenPreparada, i: number) => boolean
+	) => {
+		preparadas = await enParalelo(preparadas, paralelo, (preparada, i) => {
+			if (perfiles[i] >= perfil || !debeDegradar(preparada, i)) return Promise.resolve(preparada);
+			perfiles[i] = perfil;
+			return prepararSegunPerfil(fotos[i], perfil);
+		});
+	};
 	for (let perfil = 1; perfil < PERFILES_IMAGEN.length && total() > presupuesto; perfil++) {
 		const cuota = presupuesto / preparadas.length;
-		preparadas = await enParalelo(preparadas, paralelo, (preparada, i) =>
-			preparada.datos.length > cuota
-				? prepararSegunPerfil(fotos[i], perfil)
-				: Promise.resolve(preparada)
-		);
+		await degradar(perfil, (preparada) => preparada.datos.length > cuota);
+		if (total() > presupuesto) await degradar(perfil, () => true);
 	}
 	return preparadas;
 }
