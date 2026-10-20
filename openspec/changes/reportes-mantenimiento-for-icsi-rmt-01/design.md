@@ -90,6 +90,8 @@ Detalle de las tablas:
   estado, `version` para la concurrencia optimista, copia de los firmantes, `revision` (0, 1, …) y
   `sustituye_a` (reporte emitido que corrige; al emitirse, el anterior pasa a `sustituido`).
 - `reporte_alcances`: título, descripción, estado de verificación y observaciones.
+- `reporte_equipos`: equipo y `orden`, único por reporte; define el orden del encabezado y el primer TAG
+  del nombre de archivo.
 - `reporte_fotos`: alcance, orden, pie, momento (antes, durante o después) y referencia de
   almacenamiento.
 - `documentos_generados`: versión de plantilla, ruta y fecha.

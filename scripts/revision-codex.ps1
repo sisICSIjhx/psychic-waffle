@@ -5,9 +5,12 @@
 .DESCRIPTION
 	Arma un prompt con instrucciones fijas, los archivos de contexto del cambio OpenSpec y el diff
 	del commit (sin package-lock.json), y lo entrega a «codex review» por stdin con el sandbox en
-	solo lectura. Codex no necesita leer archivos por su cuenta: todo lo que revisa va en el prompt,
-	así que no puede abrir insumos/, storage/ ni .env*. Además se ejecuta dentro de un worktree
-	temporal del commit, que no contiene esas rutas porque no están versionadas.
+	solo lectura. Codex no necesita leer archivos por su cuenta: todo lo que revisa va en el prompt.
+
+	Protecciones para insumos/, storage/ y .env* (salvo .env.example):
+	- Si el commit contiene alguna de esas rutas, el script se detiene antes de enviar nada.
+	- Codex se ejecuta en un directorio temporal vacío (repositorio Git sin historia), sin acceso al
+	  árbol del proyecto ni a su historial.
 
 	Notas de compatibilidad (Codex 0.146 en Windows):
 	- «--commit» no admite instrucciones propias, por eso el SHA y el diff van en el prompt.
@@ -42,7 +45,7 @@ $corto = $shaCompleto.Substring(0, 7)
 New-Item -ItemType Directory -Force $DirectorioSalida | Out-Null
 $salida = Join-Path $DirectorioSalida "fase-$Fase-ronda-$Ronda-$corto.txt"
 $temporal = [System.IO.Path]::GetTempPath()
-$worktree = Join-Path $temporal "revision-codex-$corto-$PID"
+$aislado = Join-Path $temporal "revision-codex-$corto-$PID"
 $archivoPrompt = Join-Path $temporal "revision-codex-$corto-$PID.txt"
 
 $instrucciones = @"
@@ -64,21 +67,20 @@ function Get-GitTexto([string[]]$argumentos) {
 	return ($lineas -join "`n")
 }
 
-# Rutas que nunca se envían a Codex, aunque llegaran a versionarse por error. .env.example se
-# revisa aparte porque es el único archivo de entorno permitido.
+# Rutas que nunca se envían a Codex. .env.example se revisa aparte porque es el único archivo de
+# entorno permitido.
 $patronSensible = '(^|/)(insumos|storage)(/|$)|(^|/)\.env'
-$excluidas = @(':(exclude)package-lock.json', ':(exclude)insumos', ':(exclude)storage',
-	':(exclude,glob)**/insumos/**', ':(exclude,glob)**/storage/**', ':(exclude,glob)**/.env*')
+$esSensible = { param($ruta) $ruta.Replace('\', '/') -match $patronSensible -and $ruta -notmatch '(^|[/\\])\.env\.example$' }
 
 foreach ($ruta in $ArchivosContexto) {
-	if ($ruta.Replace('\', '/') -match $patronSensible) { throw "Ruta de contexto no permitida: $ruta" }
+	if (& $esSensible $ruta) { throw "Ruta de contexto no permitida: $ruta" }
 }
 
 $archivosCommit = (Get-GitTexto @('-c', 'core.quotepath=off', 'show', '--name-only', '--format=',
 		$shaCompleto)) -split "`n" | Where-Object { $_ }
-$omitidos = $archivosCommit | Where-Object { $_ -match $patronSensible -and $_ -notmatch '(^|/)\.env\.example$' }
-if ($omitidos) {
-	Write-Warning "El commit contiene rutas sensibles que no se envían a Codex: $($omitidos -join ', ')"
+$sensibles = @($archivosCommit | Where-Object { & $esSensible $_ })
+if ($sensibles.Count -gt 0) {
+	throw "El commit contiene rutas que no deben revisarse con Codex ($($sensibles -join ', ')). Retíralas del commit antes de revisar."
 }
 
 $partes = New-Object System.Collections.Generic.List[string]
@@ -87,22 +89,18 @@ foreach ($ruta in $ArchivosContexto) {
 	$contenido = Get-GitTexto @('show', "${shaCompleto}:$ruta")
 	$partes.Add("`n===== CONTEXTO: $ruta (versión del commit) =====`n$contenido")
 }
-$diff = Get-GitTexto (@('-c', 'core.quotepath=off', 'show', '--format=fuller', '--no-ext-diff',
-		'--unified=40', $shaCompleto, '--', '.') + $excluidas)
+$diff = Get-GitTexto @('-c', 'core.quotepath=off', 'show', '--format=fuller', '--no-ext-diff',
+	'--unified=40', $shaCompleto, '--', '.', ':(exclude)package-lock.json')
 $partes.Add("`n===== DIFF DEL COMMIT $shaCompleto =====`n$diff")
-$diffEjemplo = Get-GitTexto @('-c', 'core.quotepath=off', 'show', '--format=', '--no-ext-diff',
-	$shaCompleto, '--', '.env.example')
-if ($diffEjemplo) {
-	$partes.Add("`n===== DIFF DE .env.example =====`n$diffEjemplo")
-}
 [System.IO.File]::WriteAllText($archivoPrompt, ($partes -join "`n"), (New-Object System.Text.UTF8Encoding $false))
 
 $codigo = 1
 try {
-	git -C $raiz worktree add --detach $worktree $shaCompleto | Out-Null
+	New-Item -ItemType Directory -Force $aislado | Out-Null
+	git -C $aislado init -q
 
 	# cmd redirige stdin, stdout y stderr a archivos para conservar la salida en UTF-8 sin envolverla.
-	Push-Location $worktree
+	Push-Location $aislado
 	try {
 		cmd /c "codex review -c sandbox_mode=read-only -c model=$Modelo - < `"$archivoPrompt`" > `"$salida`" 2>&1"
 		$codigo = $LASTEXITCODE
@@ -127,8 +125,8 @@ try {
 }
 finally {
 	Remove-Item -Force -ErrorAction SilentlyContinue $archivoPrompt
-	if (Test-Path $worktree) {
-		git -C $raiz worktree remove --force $worktree | Out-Null
+	if (Test-Path $aislado) {
+		Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $aislado
 	}
 }
 exit $codigo

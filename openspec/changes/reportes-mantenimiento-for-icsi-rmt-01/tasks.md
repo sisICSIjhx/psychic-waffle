@@ -68,7 +68,7 @@ Cada fase cierra con estos pasos:
 - [ ] 3.2 Escribir `0002_programa.sql`: programas, meses, realizados manuales (con `registrado_en`) y la vista de
       realizado.
 - [ ] 3.3 Escribir `0003_reportes.sql`: reportes, alcances, fotos, herramientas, equipos, documentos
-      generados, columna `version`, estados y revisiones (`revision`, `sustituye_a`).
+      generados, columna `version`, estados, revisiones (`revision`, `sustituye_a`) y `orden` en `reporte_equipos`.
 - [ ] 3.4 Escribir `0004_rls.sql`: RLS habilitado con la política de servicio.
 - [ ] 3.5 Crear en `src/lib/dominio/` los tipos y esquemas Zod de cada entidad.
 - [ ] 3.6 Crear los repositorios `catalogo`, `programa` y `reportes` en `src/lib/server/repositorios/`,

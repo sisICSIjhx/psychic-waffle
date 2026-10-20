@@ -8,7 +8,7 @@ Cambio OpenSpec: `reportes-mantenimiento-for-icsi-rmt-01`. Rama: `feat/reportes-
   sandbox de solo lectura).
 - Codex 0.146 no admite `--commit` junto con instrucciones propias. El script envía en el prompt
   las instrucciones fijas, `design.md`, `tasks.md` y el diff del commit; Codex no necesita leer el
-  disco. Además se ejecuta en un worktree temporal del commit, que no contiene rutas ignoradas.
+  disco. Se ejecuta en un directorio temporal vacío y se detiene si el commit contiene rutas sensibles.
 - El modelo configurado por defecto (`gpt-6.1-sol`) no está disponible con la cuenta de ChatGPT;
   el script fija un modelo disponible con `-Modelo`.
 - El sandbox de Windows de Codex no inicia (`codex-windows-sandbox-setup.exe` no se encuentra y su
@@ -36,6 +36,15 @@ Cambio OpenSpec: `reportes-mantenimiento-for-icsi-rmt-01`. Rama: `feat/reportes-
 | Alta      | El diff enviado podía incluir `insumos/`, `storage/` o `.env*` versionados | Corregido: exclusiones por pathspec, aviso y rechazo de contexto |
 | Media     | Faltaba definir el nombre de archivo con varios TAG                        | Corregido: primer TAG más «+N», escenario nuevo y tarea 2.2      |
 | Media     | Los realizados manuales no guardaban su fecha de registro                  | Corregido: `registrado_en` en diseño y tarea 3.2                 |
+
+## Ronda 2 (commit f85efff, última permitida)
+
+| Severidad | Hallazgo                                                                                     | Resolución                                                           |
+| --------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Alta      | Con rutas sensibles versionadas el script solo avisaba y Codex conservaba acceso al worktree | Corregido: el script se detiene y Codex corre en un directorio vacío |
+| Media     | El «primer TAG» del nombre de archivo dependía de un orden no persistido                     | Corregido: `orden` en `reporte_equipos` (diseño D1 y tarea 3.3)      |
+
+El script corregido se valida con la revisión de la fase 1 (no se abrió una tercera ronda).
 
 ## Validación de la fase
 
