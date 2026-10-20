@@ -23,7 +23,7 @@ export interface FotoNueva {
 	reporteId: string;
 	alcanceId: string;
 	/** Versión que conoce quien carga la foto; si no coincide hay conflicto. */
-	version?: number;
+	version: number;
 	rutaOriginal: string;
 	rutaOptimizada: string;
 	ancho: number;

@@ -88,14 +88,36 @@ create table public.reporte_herramientas (
 	constraint reporte_herramientas_orden_unico unique (reporte_id, orden) deferrable initially deferred
 );
 
--- El orden define el encabezado y el primer TAG del nombre de archivo.
+-- El orden define el encabezado y el primer TAG del nombre de archivo. El TAG se copia al asociar
+-- el equipo, para que una corrección posterior del catálogo no altere reportes ya capturados.
 create table public.reporte_equipos (
 	reporte_id uuid not null references public.reportes (id) on delete cascade,
 	equipo_id uuid not null references public.equipos (id) on delete restrict,
 	orden integer not null check (orden > 0),
+	tag text not null,
 	primary key (reporte_id, equipo_id),
 	constraint reporte_equipos_orden_unico unique (reporte_id, orden) deferrable initially deferred
 );
+
+-- Solo equipos del sitio del reporte; el TAG se toma del catálogo si no viene.
+create or replace function public.validar_reporte_equipo()
+returns trigger
+language plpgsql
+as $$
+declare
+	equipo public.equipos;
+begin
+	select * into equipo from public.equipos where id = new.equipo_id;
+	if equipo.sitio_id is distinct from (select sitio_id from public.reportes where id = new.reporte_id) then
+		perform public.error_api('IC422', 'El equipo no pertenece al sitio del reporte',
+			jsonb_build_object('motivo', 'equipo_de_otro_sitio', 'equipoId', new.equipo_id));
+	end if;
+	new.tag := coalesce(new.tag, equipo.tag);
+	return new;
+end
+$$;
+create trigger reporte_equipos_mismo_sitio before insert or update on public.reporte_equipos
+	for each row execute function public.validar_reporte_equipo();
 
 create table public.documentos_generados (
 	id uuid primary key default gen_random_uuid(),
@@ -163,7 +185,8 @@ as $$
 			from public.reporte_herramientas h where h.reporte_id = r.id
 		), '[]'::jsonb),
 		'equipos', coalesce((
-			select jsonb_agg(public.json_equipo(e) || jsonb_build_object('orden', re.orden) order by re.orden)
+			select jsonb_agg(public.json_equipo(e) || jsonb_build_object('orden', re.orden, 'tag', re.tag)
+				order by re.orden)
 			from public.reporte_equipos re join public.equipos e on e.id = re.equipo_id
 			where re.reporte_id = r.id
 		), '[]'::jsonb),
@@ -365,6 +388,13 @@ begin
 
 		delete from public.reporte_fotos f using public.reporte_alcances a
 		where a.id = f.reporte_alcance_id and a.reporte_id = id_reporte and not (f.id = any (ids_fotos));
+
+		-- Las revisiones comparten archivos con el original: solo se devuelven las rutas sin uso.
+		select coalesce(jsonb_agg(q.ruta), '[]'::jsonb)
+		into eliminadas
+		from jsonb_array_elements(eliminadas) as q(ruta)
+		where not exists (select 1 from public.reporte_fotos f
+			where f.ruta_original = q.ruta ->> 'rutaOriginal' or f.ruta_optimizada = q.ruta ->> 'rutaOptimizada');
 		delete from public.reporte_alcances where reporte_id = id_reporte and not (id = any (ids_alcances));
 	end if;
 
@@ -380,9 +410,14 @@ returns jsonb
 language plpgsql
 as $$
 declare
-	actual public.reportes := public.reporte_para_editar((p ->> 'reporteId')::uuid, (p ->> 'version')::integer);
+	actual public.reportes;
 	fila public.reporte_fotos;
 begin
+	if coalesce((p ->> 'version')::integer, 0) < 1 then
+		perform public.error_api('IC422', 'Falta la versión del reporte',
+			jsonb_build_object('motivo', 'version_requerida'));
+	end if;
+	actual := public.reporte_para_editar((p ->> 'reporteId')::uuid, (p ->> 'version')::integer);
 	if actual.estado <> 'borrador' then
 		perform public.error_api('IC409', 'Solo se pueden agregar fotos a un reporte en borrador',
 			jsonb_build_object('motivo', 'estado', 'estado', actual.estado));
@@ -478,8 +513,8 @@ begin
 	end loop;
 	insert into public.reporte_herramientas (reporte_id, orden, cantidad, descripcion)
 	select id_nuevo, orden, cantidad, descripcion from public.reporte_herramientas where reporte_id = original.id;
-	insert into public.reporte_equipos (reporte_id, equipo_id, orden)
-	select id_nuevo, equipo_id, orden from public.reporte_equipos where reporte_id = original.id;
+	insert into public.reporte_equipos (reporte_id, equipo_id, orden, tag)
+	select id_nuevo, equipo_id, orden, tag from public.reporte_equipos where reporte_id = original.id;
 	return public.json_reporte(id_nuevo);
 end
 $$;
@@ -492,8 +527,8 @@ stable
 as $$
 	with filtrados as (
 		select r.*, c.clave as cliente_clave,
-			(select string_agg(e.tag, ', ' order by re.orden) from public.reporte_equipos re
-				join public.equipos e on e.id = re.equipo_id where re.reporte_id = r.id) as tags
+			(select string_agg(re.tag, ', ' order by re.orden) from public.reporte_equipos re
+				where re.reporte_id = r.id) as tags
 		from public.reportes r
 		join public.contratos k on k.id = r.contrato_id
 		join public.clientes c on c.id = k.cliente_id
@@ -505,8 +540,8 @@ as $$
 			and (p ->> 'desde' is null or r.periodo_mes >= public.primer_dia_mes((p ->> 'desde')::date))
 			and (p ->> 'hasta' is null or r.periodo_mes <= (p ->> 'hasta')::date)
 			and (p ->> 'tag' is null or exists (
-				select 1 from public.reporte_equipos re join public.equipos e on e.id = re.equipo_id
-				where re.reporte_id = r.id and e.tag_normalizado = public.normalizar_clave(p ->> 'tag')))
+				select 1 from public.reporte_equipos re
+				where re.reporte_id = r.id and public.normalizar_clave(re.tag) = public.normalizar_clave(p ->> 'tag')))
 	),
 	pagina as (
 		select greatest(coalesce((p ->> 'pagina')::integer, 1), 1) as numero,
@@ -566,31 +601,34 @@ $$;
 -- Realizado del programa
 -- ---------------------------------------------------------------------------------------------
 
--- Realizado por partida y mes: ejecuciones distintas (periodo y ocurrencia) de reportes emitidos
--- —varios reportes por TAG en la misma ocurrencia cuentan una vez— más los realizados manuales.
--- Los borradores, los que están en revisión y los sustituidos no cuentan.
+-- Ejecuciones por partida y mes: ocurrencias distintas (periodo y ocurrencia) de reportes
+-- emitidos; varios reportes por TAG en la misma ocurrencia cuentan una vez. Los borradores, los que
+-- están en revisión y los sustituidos no cuentan.
+create view public.v_ejecuciones_reportes with (security_invoker = true) as
+select r.partida_id, r.periodo_mes as mes,
+	count(distinct coalesce(r.ocurrencia_tipo || ':' || r.ocurrencia_numero, '')) as ejecuciones,
+	jsonb_agg(r.id order by r.emitido_en) as reportes
+from public.reportes r
+where r.estado = 'emitido'
+group by r.partida_id, r.periodo_mes;
+
+-- Realizado de cada programa por partida y mes del periodo: ejecuciones de reportes más los
+-- realizados manuales registrados en ese mismo programa.
 create view public.v_realizado with (security_invoker = true) as
-with por_reportes as (
-	select r.partida_id, r.periodo_mes as mes,
-		count(distinct coalesce(r.ocurrencia_tipo || ':' || r.ocurrencia_numero, '')) as ejecuciones,
-		jsonb_agg(r.id order by r.emitido_en) as reportes
-	from public.reportes r
-	where r.estado = 'emitido'
-	group by r.partida_id, r.periodo_mes
-),
-manuales as (
-	select partida_id, mes, sum(cantidad) as cantidad
-	from public.programa_realizados_manuales
-	group by partida_id, mes
-)
-select coalesce(a.partida_id, m.partida_id) as partida_id,
-	coalesce(a.mes, m.mes) as mes,
-	coalesce(a.ejecuciones, 0) as ejecuciones_reportes,
-	coalesce(m.cantidad, 0) as cantidad_manual,
-	coalesce(a.ejecuciones, 0) + coalesce(m.cantidad, 0) as realizado,
-	coalesce(a.reportes, '[]'::jsonb) as reportes
-from por_reportes a
-full join manuales m on m.partida_id = a.partida_id and m.mes = a.mes;
+select g.id as programa_id, t.id as partida_id, m.mes,
+	coalesce(e.ejecuciones, 0) as ejecuciones_reportes,
+	coalesce(manual.cantidad, 0) as cantidad_manual,
+	coalesce(e.ejecuciones, 0) + coalesce(manual.cantidad, 0) as realizado,
+	coalesce(e.reportes, '[]'::jsonb) as reportes
+from public.programas g
+join public.partidas t on t.contrato_id = g.contrato_id and t.sitio_id = g.sitio_id
+cross join lateral public.meses_del_periodo(g.periodo_inicio, g.periodo_fin) as m(mes)
+left join public.v_ejecuciones_reportes e on e.partida_id = t.id and e.mes = m.mes
+left join lateral (
+	select sum(x.cantidad) as cantidad
+	from public.programa_realizados_manuales x
+	where x.programa_id = g.id and x.partida_id = t.id and x.mes = m.mes
+) manual on true;
 
 -- Avance de un programa: por partida y mes, lo programado y lo realizado, con totales y la
 -- diferencia frente a la cantidad anual.
@@ -628,7 +666,8 @@ begin
 				from public.meses_del_periodo(programa.periodo_inicio, programa.periodo_fin) as m(mes)
 				left join public.programa_meses pm
 					on pm.programa_id = programa.id and pm.partida_id = t.id and pm.mes = m.mes
-				left join public.v_realizado v on v.partida_id = t.id and v.mes = m.mes
+				left join public.v_realizado v
+					on v.programa_id = programa.id and v.partida_id = t.id and v.mes = m.mes
 			) celdas
 			where t.contrato_id = programa.contrato_id and t.sitio_id = programa.sitio_id
 		), '[]'::jsonb)

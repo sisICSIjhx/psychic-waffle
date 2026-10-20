@@ -250,6 +250,8 @@ as $$
 declare
 	traslape uuid;
 begin
+	-- Serializa las altas concurrentes del mismo contrato antes de comprobar el traslape.
+	perform 1 from public.contratos where id = new.contrato_id for update;
 	select f.id into traslape
 	from public.firmantes f
 	where f.contrato_id = new.contrato_id

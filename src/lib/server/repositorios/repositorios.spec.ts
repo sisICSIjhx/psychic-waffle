@@ -505,3 +505,111 @@ describe('seguridad', () => {
 		expect(() => validarFuncion('api_x; drop table reportes')).toThrow();
 	});
 });
+
+describe('correcciones de la revisión de la fase 3', () => {
+	const foto = (reporte: Reporte, version: number, n: number) => ({
+		reporteId: reporte.id,
+		alcanceId: reporte.alcances[0].id,
+		version,
+		rutaOriginal: `o/${reporte.id}-${n}.jpg`,
+		rutaOptimizada: `x/${reporte.id}-${n}.jpg`,
+		ancho: 800,
+		alto: 600,
+		bytes: 500,
+		tipoMime: 'image/jpeg'
+	});
+
+	it('no devuelve para borrar las rutas que comparte una revisión con el original', async () => {
+		const base = await crearBase(repos, 'c1');
+		const borrador = await nuevoReporte(repos, base);
+		await repos.reportes.agregarFoto(foto(borrador, borrador.version, 1));
+		const original = await emitir(repos, await repos.reportes.obtener(borrador.id));
+		const revision = await repos.reportes.crearRevision(original.id);
+		const sinFoto = aGuardado(revision);
+		sinFoto.alcances[0].fotos = [];
+		const { fotosEliminadas } = await repos.reportes.guardar(sinFoto);
+		expect(fotosEliminadas).toEqual([]);
+		expect((await repos.reportes.obtener(original.id)).alcances[0].fotos).toHaveLength(1);
+	});
+
+	it('exige la versión al agregar una foto', async () => {
+		const base = await crearBase(repos, 'c2');
+		const reporte = await nuevoReporte(repos, base);
+		const sinVersion = {
+			...foto(reporte, reporte.version, 1),
+			version: undefined as unknown as number
+		};
+		expect((await esperarError(repos.reportes.agregarFoto(sinVersion))).detalle).toMatchObject({
+			motivo: 'version_requerida'
+		});
+		const obsoleta = await esperarError(
+			repos.reportes.agregarFoto(foto(reporte, reporte.version + 5, 1))
+		);
+		expect(obsoleta.tipo).toBe('conflicto');
+	});
+
+	it('rechaza equipos de otro sitio y conserva el TAG copiado aunque cambie el catálogo', async () => {
+		const base = await crearBase(repos, 'c3');
+		const equipo = await repos.catalogo.guardarEquipo({ sitioId: base.sitioId, tag: 'PI-0001' });
+		const ajeno = await repos.catalogo.guardarSitio({ clave: 'EM-C3-AJENO', nombre: '' });
+		const equipoAjeno = await repos.catalogo.guardarEquipo({ sitioId: ajeno.id, tag: 'PI-0002' });
+		expect(
+			(await esperarError(nuevoReporte(repos, base, { equipoIds: [equipoAjeno.id] }))).detalle
+		).toMatchObject({
+			motivo: 'equipo_de_otro_sitio'
+		});
+		const reporte = await nuevoReporte(repos, base, { equipoIds: [equipo.id] });
+		await repos.catalogo.guardarEquipo({ ...equipo, tag: 'PI-0001-CORREGIDO' });
+		expect((await repos.reportes.obtener(reporte.id)).equipos[0].tag).toBe('PI-0001');
+		expect(
+			(await repos.reportes.listar({ tag: 'PI-0001', clienteClave: 'cliente-c3' })).total
+		).toBe(1);
+	});
+
+	it('rechaza programas superpuestos y periodos que dejan meses fuera', async () => {
+		const base = await crearBase(repos, 'c4');
+		const superpuesto = await esperarError(
+			repos.programa.guardarPrograma({
+				contratoId: base.contratoId,
+				sitioId: base.sitioId,
+				periodoInicio: '2026-11-01',
+				periodoFin: '2027-10-31'
+			})
+		);
+		expect(superpuesto.detalle).toMatchObject({ motivo: 'programa_superpuesto' });
+		await repos.programa.guardarMeses(base.programaId, [
+			{ partidaId: base.partidaId, mes: '2027-03-01', cantidad: 1 }
+		]);
+		const fuera = await esperarError(
+			repos.programa.guardarPrograma({
+				id: base.programaId,
+				contratoId: base.contratoId,
+				sitioId: base.sitioId,
+				periodoInicio: '2026-05-01',
+				periodoFin: '2026-12-31'
+			})
+		);
+		expect(fuera.detalle).toMatchObject({ motivo: 'periodo_con_datos_fuera' });
+	});
+
+	it('cuenta los realizados manuales solo en su programa', async () => {
+		const base = await crearBase(repos, 'c5');
+		const siguiente = await repos.programa.guardarPrograma({
+			contratoId: base.contratoId,
+			sitioId: base.sitioId,
+			periodoInicio: '2027-05-01',
+			periodoFin: '2028-04-30'
+		});
+		await repos.programa.registrarRealizadoManual({
+			programaId: base.programaId,
+			partidaId: base.partidaId,
+			mes: '2026-05-01',
+			nota: 'Trabajo documentado fuera del sistema'
+		});
+		const enOtro = (await repos.programa.obtenerAvance(siguiente.id)).partidas[0];
+		expect(enOtro.totalRealizado).toBe(0);
+		expect((await repos.programa.obtenerAvance(base.programaId)).partidas[0].totalRealizado).toBe(
+			1
+		);
+	});
+});
