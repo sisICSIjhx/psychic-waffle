@@ -62,18 +62,18 @@ Cada fase cierra con estos pasos:
 
 ## 3. Modelo de datos y repositorios
 
-- [ ] 3.1 Escribir `supabase/migrations/0001_catalogo.sql`: clientes, contratos, sitios, partidas,
+- [x] 3.1 Escribir `supabase/migrations/0001_catalogo.sql`: clientes, contratos, sitios, partidas,
       alcances, herramientas, equipos y firmantes, con sus restricciones `unique` y la normalización
       de la clave de sitio.
-- [ ] 3.2 Escribir `0002_programa.sql`: programas, meses, realizados manuales (con `registrado_en`) y la vista de
-      realizado.
-- [ ] 3.3 Escribir `0003_reportes.sql`: reportes, alcances, fotos, herramientas, equipos, documentos
+- [x] 3.2 Escribir `0002_programa.sql`: programas, meses, realizados manuales (con `registrado_en`) y la vista de
+      realizado (la vista se crea al final de `0003` porque depende de `reportes`).
+- [x] 3.3 Escribir `0003_reportes.sql`: reportes, alcances, fotos, herramientas, equipos, documentos
       generados, columna `version`, estados, revisiones (`revision`, `sustituye_a`) y `orden` en `reporte_equipos`.
-- [ ] 3.4 Escribir `0004_rls.sql`: RLS habilitado con la política de servicio.
-- [ ] 3.5 Crear en `src/lib/dominio/` los tipos y esquemas Zod de cada entidad.
-- [ ] 3.6 Crear los repositorios `catalogo`, `programa` y `reportes` en `src/lib/server/repositorios/`,
+- [x] 3.4 Escribir `0004_rls.sql`: RLS habilitado con la política de servicio.
+- [x] 3.5 Crear en `src/lib/dominio/` los tipos y esquemas Zod de cada entidad.
+- [x] 3.6 Crear los repositorios `catalogo`, `programa` y `reportes` en `src/lib/server/repositorios/`,
       con sus implementaciones PGlite y Supabase.
-- [ ] 3.7 Agregar pruebas del servidor sobre PGlite: unicidad de sitio y partida, cálculo del realizado
+- [x] 3.7 Agregar pruebas del servidor sobre PGlite: unicidad de sitio y partida, cálculo del realizado
       y conflicto de versión.
 - [ ] 3.8 (Depende del usuario) El usuario crea el proyecto de Supabase, que aún no existe, y llena
       `.env` siguiendo `.env.example`. Después se aplican las migraciones y se prueba la conexión.

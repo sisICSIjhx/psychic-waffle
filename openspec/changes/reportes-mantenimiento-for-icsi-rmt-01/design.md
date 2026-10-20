@@ -107,9 +107,16 @@ mayúsculas y con espacios simples.
 ### D2. Acceso a datos detrás de repositorios en `src/lib/server/repositorios/`
 
 - La interfaz se define por agregado (catálogo, programa, reportes).
-- Hay dos implementaciones:
-  - Supabase, con `@supabase/ssr` en `hooks.server.ts` y la clave de servicio solo en servidor;
-  - PGlite, para pruebas y desarrollo sin credenciales.
+- Cada operación es una función SQL `api_*` (jsonb → jsonb) definida en las migraciones, con su
+  validación y su transacción. Las reglas de negocio (título, prellenado, validaciones para enviar a
+  revisión) quedan en el dominio TypeScript (D3).
+- Hay dos implementaciones del cliente SQL, que llaman las mismas funciones:
+  - Supabase, con `@supabase/supabase-js` (`rpc`) y la clave de servicio solo en servidor;
+  - PGlite, para pruebas y desarrollo sin credenciales (persistido en `storage/pglite`).
+- `@supabase/ssr` y `hooks.server.ts` llegan con el cambio de autenticación: hoy no hay sesiones de
+  usuario que manejar.
+- Errores con SQLSTATE propios: IC404 (no encontrado), IC409 (conflicto de versión o de estado) e
+  IC422 (dato inválido o duplicado), con detalle JSON para la interfaz.
 - Las pruebas `*.spec.ts` (proyecto server de Vitest) aplican las mismas migraciones en PGlite. Así
   las fases 1 a 5 avanzan aunque todavía no exista el proyecto de Supabase.
 - RLS: se habilita en todas las tablas con una política de servicio. Las políticas por rol llegan con

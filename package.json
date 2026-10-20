@@ -26,6 +26,7 @@
 	},
 	"devDependencies": {
 		"@colbymchenry/codegraph": "1.6.2",
+		"@electric-sql/pglite": "0.5.10",
 		"@eslint/compat": "^1.4.0",
 		"@eslint/js": "^9.39.1",
 		"@fission-ai/openspec": "1.14.2",
@@ -55,8 +56,10 @@
 		"vitest-browser-svelte": "^2.0.1"
 	},
 	"dependencies": {
+		"@supabase/supabase-js": "2.118.0",
 		"docx-templates": "4.15.0",
 		"jszip": "3.10.2",
-		"sharp": "0.35.5"
+		"sharp": "0.35.5",
+		"zod": "4.6.7"
 	}
 }
