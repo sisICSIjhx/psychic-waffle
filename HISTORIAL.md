@@ -3,13 +3,19 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-20 — FOR-ICSI-RMT-01, fase 7: cierre (parcial)
+
+- Motivo: dejar el cambio listo para su uso local y para archivarlo (tareas 7.1 a 7.4).
+- Alcance: `docs/CONTEXTO_PROYECTO.md` reescrito con la arquitectura, rutas, datos locales, Git y pendientes vigentes (7.2); índice de CodeGraph sincronizado (105 archivos); `npm run spec:check` aprobado (7.4). El archivado se hará después de la medición con el usuario.
+- Pendientes para cambios posteriores (7.3): medir con el usuario el tiempo de un reporte real de principio a fin frente a la meta de 30 minutos (7.1, requiere al usuario); autenticación y permisos por usuario (hoy cualquiera con acceso a la aplicación puede capturar y emitir); almacenamiento en SharePoint detrás de la interfaz de `almacenamiento.ts`; ciclo de revisiones con flujo de aprobación (hoy la revisión es un borrador nuevo vinculado); proyecto de Supabase (3.8) y destino de despliegue (`adapter-node` con `BODY_SIZE_LIMIT` ≥ 16 MB, o el que se elija); conversión a PDF (LibreOffice no está instalado); confirmar el contrato de Virtual y las partidas por confirmar de Proagro y Virtual; probar HEIC con una foto real; `AGENTS.md` aún dice que el proyecto no usa Git.
+
 ## 2026-10-20 — FOR-ICSI-RMT-01, fase 6: planeación anual, historial y panel
 
 - Motivo: dar seguimiento al programa anual con lo realizado de los reportes y localizar cualquier reporte (tareas 6.1 a 6.5).
 - Alcance: reglas puras en `src/lib/dominio/planeacion.ts` (estado de cada celda P/R, pendientes vencidos, filtros, resumen del mes y programa vigente); `/planeacion` (matriz P/R por mes con filtros por contrato, sitio, programa, distribución y periodicidad, vencidos agrupados por mes, celda pendiente que abre `/captura` con partida y mes elegidos, enlace del realizado a sus reportes y registro de realizados hechos fuera del sistema); `/historial` (filtros por cliente, contrato, sitio, partida, TAG, estado y periodo en la URL, paginación, apertura y descarga); panel de control con partidas programadas, cumplidas y pendientes del mes, vencidos, borradores y reportes recientes.
 - Decisiones: el panel cuenta partidas y no cantidades (una partida diaria programa unos 30 por mes y dominaría cualquier suma); un mes vence al terminar, según la fecha de la zona del negocio.
 - Validación: `check` 0/0; `lint` sin observaciones; suite completa aprobada (dominio de planeación, filtros del historial y realizado solo de emitidos sobre PGlite, componentes de planeación, historial y panel). Navegador con la base local: matriz de Cerritos (55 partidas, 12 meses), enlace «Capturar» con partida y mes preseleccionados, historial filtrado por cliente y estado, y panel con los indicadores de octubre.
-- Pendientes: revisión de Codex de la fase.
+- Revisión de Codex en 2 rondas: 4 hallazgos corregidos (`docs/revisiones/fase-6.md`): el realizado separa las ejecuciones con reporte de lo realizado sin reporte (`0012`), el historial vuelve a la última página válida y valida los meses de la URL.
 
 ## 2026-10-20 — FOR-ICSI-RMT-01, fase 5: captura de reportes
 
@@ -17,7 +23,8 @@ Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 - Alcance: reglas puras en `src/lib/dominio/captura.ts` (periodos y ocurrencias, prellenado, validaciones para revisión, huella del catálogo y aplicación explícita de sus cambios); servicio `src/lib/server/captura.ts` (alta, guardado, fotos, estados, revisión y DOCX), almacenamiento local y validación de fotos (JPEG, PNG y HEIC de hasta 15 MB); migraciones `0007` (huella del catálogo por reporte) y `0009` (la importación conserva alcances si el libro solo trae notas); rutas `/captura` (selección guiada con `?cliente=` y borradores recientes) y `/reportes/[id]` (editor con autoguardado de 1,5 s, conflicto de versión, fotos por alcance con antes/durante/después, tabla de verificación con confirmación, estados, revisión y descarga en `/reportes/[id]/documento`). `derivar-partidas --complementar` llena con los reportes lo que les falta a las partidas confirmadas (el Excel de Cerritos solo trae viñetas).
 - Decisiones: la plantilla se empaqueta con `?inline` para el build; HEIC con `heic-decode` 2.1.0 y `libheif-js` 1.23.2 fijado (LGPL-3.0); una foto por petición (en `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB). Diseño D5, D6 y D7 actualizados.
 - Validación: `check` 0/0; `lint` sin observaciones; `test` 16 archivos y 125 pruebas (dominio de captura, recorrido completo crear → fotos → emitir → DOCX → revisión, fotos y almacenamiento, componentes del editor en Chromium). Navegador con la base local: partida 7 de Cerritos («07.- TOMA DE POTENCIALES TUBO-SUELO. MAYO 2026»), autoguardado, carga con un PDF rechazado, conflicto entre dos pestañas, confirmación de la tabla, revisión, emisión, descarga del DOCX (658 KB) y aplicación de los cambios del catálogo. Complemento de Cerritos: 39 partidas (la 43 se omitió por actividad distinta) y reimportación del Excel sin cambios. `vite build` incrusta la plantilla.
-- Pendientes: la decodificación HEIC no se probó con una foto HEIC real (no hay en los insumos); revisión de Codex de la fase.
+- Revisión de Codex en 2 rondas: 9 hallazgos corregidos (`docs/revisiones/fase-5.md`): guardado antes de navegar y acciones con la URL del reporte, DOCX registrado con su versión (`0010`, `0011`) en una ruta exclusiva, fecha dentro de la semana, quincena o día, edición bloqueada durante los cambios de estado, fechas en America/Mexico_City y detección de «Cambiar» por campo.
+- Pendientes: la decodificación HEIC no se probó con una foto HEIC real (no hay en los insumos).
 
 ## 2026-10-20 — FOR-ICSI-RMT-01, fase 4: catálogo e importación
 

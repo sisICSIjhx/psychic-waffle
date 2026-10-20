@@ -123,14 +123,14 @@ Cada fase cierra con estos pasos:
 - [x] 6.3 Mostrar en el panel de control los indicadores del mes: programado, realizado, pendientes y
       borradores.
 - [x] 6.4 Agregar pruebas de la vista de realizado y de los filtros.
-- [ ] 6.5 Validación y revisión con Codex de la fase 6.
+- [x] 6.5 Validación y revisión con Codex de la fase 6.
 
 ## 7. Cierre
 
 - [ ] 7.1 Medir con el usuario el tiempo de elaboración de un reporte real de principio a fin, frente
       a la meta de 30 minutos.
-- [ ] 7.2 Actualizar `docs/CONTEXTO_PROYECTO.md`: arquitectura, rutas, estado y el nuevo repositorio
+- [x] 7.2 Actualizar `docs/CONTEXTO_PROYECTO.md`: arquitectura, rutas, estado y el nuevo repositorio
       Git.
-- [ ] 7.3 Registrar los resultados y pendientes en `HISTORIAL.md`: autenticación, SharePoint, ciclo de
+- [x] 7.3 Registrar los resultados y pendientes en `HISTORIAL.md`: autenticación, SharePoint, ciclo de
       revisiones y despliegue.
-- [ ] 7.4 Ejecutar `npm run spec:check` y preparar el archivado del cambio.
+- [x] 7.4 Ejecutar `npm run spec:check` y preparar el archivado del cambio.
