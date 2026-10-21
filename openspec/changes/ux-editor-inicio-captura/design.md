@@ -78,7 +78,9 @@ El elemento quitado se oculta y se marca como pendiente de quitar, pero sigue en
 autoguarda hasta que vence el plazo (10 s) o el usuario confirma otra acción que depende del contenido
 guardado (descargar, enviar, emitir, navegar o cerrar la pestaña): en ese momento se aplica la baja.
 «Deshacer» solo retira la marca, por eso restaura fotos, pies, orden y espacio aunque haya habido
-autoguardados. La numeración de ilustraciones ignora lo marcado.
+autoguardados. La numeración de ilustraciones ignora lo marcado. Al cerrar o recargar la pestaña
+(`pagehide`, que solo ocurre si la salida se confirmó), las bajas pendientes se aplican y se guardan
+con un envío `keepalive`.
 Alternativa descartada: borrado lógico con restauración en el servidor: exige migración y cambia el
 contrato de guardado; volver a subir la foto tampoco sirve porque el original ya no estaría.
 
@@ -165,8 +167,9 @@ del dominio y ordena primero la coincidencia exacta por número.
 
 - [El editor crece y es difícil de probar] → se extraen componentes (índice, resumen de sección, barra,
   verificación) con pruebas propias en Chromium; las reglas van al dominio con pruebas de servidor.
-- [Una baja aplazada (D4) se pierde si el navegador se cierra de golpe] → el aviso de salida ya existe;
-  si no se confirma, el elemento simplemente sigue en el reporte (no hay pérdida de datos).
+- [El guardado `keepalive` al cerrar no llega (cuerpo mayor a 64 KB, cierre forzado o un guardado en
+  curso con otra versión)] → el elemento sigue en el reporte: no hay pérdida de datos, solo hay que
+  volver a quitarlo.
 - [Muchos borradores en el rango de meses] → `listarTodos` hace una petición por cada 100; con el
   volumen actual (decenas) es una sola. Si creciera, se agrega un filtro por partidas al SQL.
 - [La migración 0013 no se aplica sin reiniciar el servidor] → la tarea lo indica y el esquema acepta

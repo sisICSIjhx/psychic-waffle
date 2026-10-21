@@ -25,7 +25,13 @@
 	import BotonesSegmentados from '$lib/components/ui/BotonesSegmentados.svelte';
 	import Dialogo from '$lib/components/ui/Dialogo.svelte';
 	import { notificaciones, PLAZO_DESHACER } from '$lib/components/ui/notificaciones';
-	import { llamarAccion, type EnviarAccion, type ResultadoAccion } from './acciones';
+	import {
+		enviarAlCerrar,
+		llamarAccion,
+		type EnviarAccion,
+		type EnviarAlCerrar,
+		type ResultadoAccion
+	} from './acciones';
 	import ErrorCampo from './ErrorCampo.svelte';
 	import FotosAlcance from './FotosAlcance.svelte';
 	import IndiceSecciones from './IndiceSecciones.svelte';
@@ -43,6 +49,13 @@
 	export let hoy = fechaEnZona();
 	/** Tiempo para deshacer una foto o un alcance quitados, en milisegundos. */
 	export let plazoDeshacer = PLAZO_DESHACER;
+	/** Guardado que sobrevive al cierre de la pestaña, para lo quitado dentro del plazo. */
+	export let alCerrar: EnviarAlCerrar = enviarAlCerrar;
+	/**
+	 * Pide las imágenes de las fotos al servidor. Las pruebas lo desactivan: su servidor de Vite no
+	 * debe abrir la base de datos local, que ya tiene abierta el servidor de desarrollo.
+	 */
+	export let conImagenes = true;
 
 	type EstadoGuardado = 'guardado' | 'pendiente' | 'guardando' | 'conflicto' | 'error';
 	type Momento = 'antes' | 'durante' | 'despues';
@@ -313,7 +326,16 @@
 			await encolar(async () => {
 				try {
 					// El alcance debe existir en el servidor antes de recibir fotos.
-					if (!(await guardar())) return;
+					if (!(await guardar())) {
+						rechazadas = [
+							...rechazadas,
+							{
+								nombre: archivo.name,
+								motivo: 'No se subió porque el reporte no se pudo guardar antes; vuelva a cargarla.'
+							}
+						];
+						return;
+					}
 					const datos = new FormData();
 					datos.set('alcanceId', alcanceId);
 					datos.set('version', String(reporte.version));
@@ -567,6 +589,31 @@
 		if (hayCambiosPendientes()) evento.preventDefault();
 	}
 
+	/**
+	 * La pestaña se cierra o se recarga de verdad (ya se confirmó la salida): lo quitado dentro del
+	 * plazo se aplica y se guarda con un envío que sobrevive a la página.
+	 */
+	function alOcultarPagina() {
+		if (reporte.estado !== 'borrador' || estadoGuardado === 'conflicto') return;
+		if (!aplicarBajasPendientes()) return;
+		const datos = new FormData();
+		datos.set('reporte', JSON.stringify(paraGuardar(reporte)));
+		alCerrar('guardar', datos, ruta);
+	}
+
+	/** Un guardado que falló sin conexión se reintenta al volver la red. */
+	function alVolverLaRed() {
+		if (estadoGuardado === 'error') reintentar();
+	}
+
+	/** Soltar archivos fuera de una zona de fotos no debe abrir el archivo y abandonar el editor. */
+	function evitarAbrirArchivo(evento: DragEvent) {
+		// Una zona de fotos ya lo atendió (y marcó «copiar»); aquí solo se cubre el resto de la página.
+		if (evento.defaultPrevented || !evento.dataTransfer?.types.includes('Files')) return;
+		evento.preventDefault();
+		evento.dataTransfer.dropEffect = 'none';
+	}
+
 	onMount(() => {
 		// La hora relativa del guardado se actualiza sola.
 		const reloj = setInterval(() => (ahora = Date.now()), 5000);
@@ -580,7 +627,13 @@
 	});
 </script>
 
-<svelte:window on:beforeunload={antesDeSalir} />
+<svelte:window
+	on:beforeunload={antesDeSalir}
+	on:pagehide={alOcultarPagina}
+	on:online={alVolverLaRed}
+	on:dragover={evitarAbrirArchivo}
+	on:drop={evitarAbrirArchivo}
+/>
 
 <p class="migas">
 	<a class="enlace" href={resolve('/captura')}>Captura</a> / {reporte.titulo}
@@ -972,7 +1025,7 @@
 									bind:fotos={alcance.fotos}
 									posicionAlcance={numero}
 									disposicion={reporte.disposicionFotos}
-									reporteId={reporte.id}
+									reporteId={conImagenes ? reporte.id : ''}
 									soloLectura={!editable}
 									progreso={cargas[alcance.id] ?? null}
 									ocultas={bajas}

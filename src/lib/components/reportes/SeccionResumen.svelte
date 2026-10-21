@@ -10,7 +10,10 @@
 	export let editable = true;
 	export let abierta = false;
 
-	$: conCampos = editable && (abierta || pendientes > 0);
+	// Abierta por un pendiente, sigue abierta al resolverlo (no se cierra a mitad de la escritura)
+	// hasta que se elija «Listo».
+	$: if (editable && pendientes > 0) abierta = true;
+	$: conCampos = editable && abierta;
 </script>
 
 <section {id} class="card seccion-resumen" aria-labelledby={`${id}-titulo`}>
