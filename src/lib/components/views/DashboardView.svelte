@@ -1,6 +1,7 @@
 <!-- Panel de control: indicadores del mes, pendientes vencidos y reportes recientes. -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import InsigniaEstado from '$lib/components/reportes/InsigniaEstado.svelte';
 	import { partesMes } from '$lib/dominio/captura';
 	import { MESES } from '$lib/dominio/documento';
 	import type { ReporteResumen } from '$lib/dominio/esquemas';
@@ -19,13 +20,6 @@
 	export let borradores = 0;
 	export let enRevision = 0;
 	export let recientes: ReporteResumen[] = [];
-
-	const ESTADOS = {
-		borrador: 'Borrador',
-		en_revision: 'En revisión',
-		emitido: 'Emitido',
-		sustituido: 'Sustituido'
-	} as const;
 
 	const textoMes = (mes: string) => {
 		const { anio, mes: numero } = partesMes(mes);
@@ -93,7 +87,7 @@
 			{#each recientes as r (r.id)}
 				<li>
 					<a class="enlace" href={resolve('/reportes/[id]', { id: r.id })}>{r.titulo}</a>
-					<span class="status-badge estado-{r.estado}">{ESTADOS[r.estado]}</span>
+					<InsigniaEstado estado={r.estado} />
 					<span class="view-note">{r.sitioTexto}{r.tags ? ` · ${r.tags}` : ''}</span>
 				</li>
 			{/each}

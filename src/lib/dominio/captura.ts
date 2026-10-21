@@ -10,6 +10,7 @@ import {
 } from './documento.ts';
 import type {
 	Contrato,
+	ESTADOS_REPORTE,
 	FirmantesVigentes,
 	FirmasReporte,
 	Partida,
@@ -39,6 +40,15 @@ export const ETIQUETA_OCURRENCIA: Record<Ocurrencia['tipo'], string> = {
 	semana: 'Semana',
 	quincena: 'Quincena',
 	dia: 'Día'
+};
+
+export type EstadoReporte = (typeof ESTADOS_REPORTE)[number];
+
+export const ETIQUETA_ESTADO_REPORTE: Record<EstadoReporte, string> = {
+	borrador: 'Borrador',
+	en_revision: 'En revisión',
+	emitido: 'Emitido',
+	sustituido: 'Sustituido'
 };
 
 /** Las periodicidades menores a mensual piden la ocurrencia dentro del mes. */

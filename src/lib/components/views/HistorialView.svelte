@@ -1,7 +1,8 @@
 <!-- Historial global de reportes: filtros, paginación, apertura y descarga del documento. -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { partesMes } from '$lib/dominio/captura';
+	import InsigniaEstado from '$lib/components/reportes/InsigniaEstado.svelte';
+	import { ETIQUETA_ESTADO_REPORTE, partesMes } from '$lib/dominio/captura';
 	import { MESES } from '$lib/dominio/documento';
 	import type {
 		Cliente,
@@ -27,12 +28,6 @@
 	};
 	export let resultado: PaginaReportes = { total: 0, pagina: 1, tamano: 20, filas: [] };
 
-	const ESTADOS = {
-		borrador: 'Borrador',
-		en_revision: 'En revisión',
-		emitido: 'Emitido',
-		sustituido: 'Sustituido'
-	} as const;
 	const OCURRENCIA = { semana: 'S', quincena: 'Q', dia: 'D' } as const;
 
 	$: paginas = Math.max(1, Math.ceil(resultado.total / resultado.tamano));
@@ -109,7 +104,7 @@
 			<label for="estado">Estado</label>
 			<select id="estado" name="estado" on:change={enviarAlCambiar}>
 				<option value="">Todos</option>
-				{#each Object.entries(ESTADOS) as [valor, etiqueta] (valor)}
+				{#each Object.entries(ETIQUETA_ESTADO_REPORTE) as [valor, etiqueta] (valor)}
 					<option value={valor} selected={valor === seleccion.estado}>{etiqueta}</option>
 				{/each}
 			</select>
@@ -160,7 +155,7 @@
 							<td>{fila.tags ?? '—'}</td>
 							<td>{periodo(fila)}</td>
 							<td>
-								<span class="status-badge estado-{fila.estado}">{ESTADOS[fila.estado]}</span>
+								<InsigniaEstado estado={fila.estado} />
 								{#if fila.revision > 0}<span class="view-note">Rev. {fila.revision}</span>{/if}
 							</td>
 							<td class="acciones-fila">

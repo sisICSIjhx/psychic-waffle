@@ -15,6 +15,7 @@
 	import type { Equipo, Foto, Reporte, ReporteGuardado } from '$lib/dominio/esquemas';
 	import { llamarAccion, type EnviarAccion, type ResultadoAccion } from './acciones';
 	import FotosAlcance from './FotosAlcance.svelte';
+	import InsigniaEstado from './InsigniaEstado.svelte';
 
 	export let reporte: Reporte;
 	export let equiposPartida: Equipo[] = [];
@@ -32,12 +33,6 @@
 		{ clave: 'aprobo', etiqueta: 'Aprobó' },
 		{ clave: 'recibio', etiqueta: 'Recibió' }
 	] as const;
-	const ESTADOS = {
-		borrador: 'Borrador',
-		en_revision: 'En revisión',
-		emitido: 'Emitido',
-		sustituido: 'Sustituido'
-	} as const;
 	const TEXTO_GUARDADO: Record<EstadoGuardado, string> = {
 		guardado: 'Cambios guardados',
 		pendiente: 'Cambios sin guardar',
@@ -361,7 +356,7 @@
 
 <section class="card barra-reporte" aria-label="Estado del reporte">
 	<div class="estado-reporte">
-		<span class="status-badge estado-{reporte.estado}">{ESTADOS[reporte.estado]}</span>
+		<InsigniaEstado estado={reporte.estado} />
 		{#if reporte.revision > 0}<span class="view-note">Revisión {reporte.revision}</span>{/if}
 		{#if reporte.estado === 'borrador'}
 			<span class="view-note guardado-{estadoGuardado}" role="status">

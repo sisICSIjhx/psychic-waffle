@@ -35,6 +35,15 @@
 		vencido: 'Vencido',
 		extra: 'Realizado sin programar'
 	};
+	// El estado de cada celda se lee por símbolo y texto, además del color.
+	const SIMBOLO: Record<EstadoCelda, string> = {
+		sin_programa: '',
+		cumplido: '✓',
+		pendiente: '●',
+		vencido: '!',
+		extra: '+'
+	};
+	const LEYENDA: EstadoCelda[] = ['cumplido', 'pendiente', 'vencido', 'extra'];
 
 	const textoMes = (mes: string, corto = false) => {
 		const { anio, mes: numero } = partesMes(mes);
@@ -170,6 +179,14 @@
 		<p class="view-note">
 			{partidas.length} de {totalPartidas} partidas. Elija una celda pendiente para capturar su reporte.
 		</p>
+		<ul class="leyenda" aria-label="Leyenda de la matriz">
+			{#each LEYENDA as estado (estado)}
+				<li>
+					<span class="simbolo muestra {estado}" aria-hidden="true">{SIMBOLO[estado]}</span>
+					{ESTADO[estado]}
+				</li>
+			{/each}
+		</ul>
 		<div class="tabla-desplazable">
 			<table class="matriz">
 				<thead>
@@ -195,6 +212,8 @@
 								{@const estado = estadoCelda(celda, hoy)}
 								<td class="celda {estado}" title={ESTADO[estado]}>
 									{#if estado !== 'sin_programa'}
+										<span class="simbolo" aria-hidden="true">{SIMBOLO[estado]}</span>
+										<span class="sr-only">{ESTADO[estado]}:</span>
 										<span class="pr">P {celda.programado ?? '—'}</span>
 										<!-- R incluye reportes emitidos, marcas del Excel y realizados manuales;
 										     el enlace lleva solo a los reportes emitidos. -->
@@ -335,8 +354,33 @@
 		margin-right: 4px;
 	}
 	.mes-actual {
-		outline: 2px solid var(--primary, #3b82f6);
+		outline: 2px solid var(--primary);
 		outline-offset: -2px;
+	}
+	.leyenda {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px 16px;
+		list-style: none;
+		margin: 8px 0 12px;
+		padding: 0;
+		font-size: 0.85rem;
+	}
+	.leyenda li {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.muestra {
+		display: inline-grid;
+		place-items: center;
+		width: 22px;
+		height: 22px;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+	}
+	.simbolo {
+		font-weight: 700;
 	}
 	.celda {
 		min-width: 64px;
@@ -346,17 +390,21 @@
 		display: block;
 		white-space: nowrap;
 	}
-	.celda.cumplido {
-		background: color-mix(in srgb, #22c55e 18%, transparent);
+	.cumplido {
+		background: color-mix(in srgb, var(--success) 16%, transparent);
 	}
-	.celda.vencido {
-		background: color-mix(in srgb, #ef4444 20%, transparent);
+	.vencido {
+		background: color-mix(in srgb, var(--danger) 18%, transparent);
 	}
-	.celda.pendiente {
-		background: color-mix(in srgb, #f59e0b 14%, transparent);
+	.pendiente {
+		background: color-mix(in srgb, var(--warning) 16%, transparent);
 	}
-	.celda.extra {
-		background: color-mix(in srgb, #3b82f6 14%, transparent);
+	.extra {
+		background: color-mix(in srgb, var(--primary) 14%, transparent);
+	}
+	/* Sobre el fondo de color el texto atenuado no alcanza 4.5:1. */
+	.celda .view-note {
+		color: inherit;
 	}
 	.capturar {
 		font-size: 0.75rem;

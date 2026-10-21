@@ -92,6 +92,17 @@ describe('PlaneacionView', () => {
 			[...c.classList].find((clase) => clase !== 'celda' && !clase.startsWith('s-'))
 		);
 		expect(estados).toEqual(['cumplido', 'vencido', 'pendiente']);
+		// El estado no depende solo del color: cada celda lleva símbolo y texto.
+		const celdas = [...container.querySelectorAll('tbody .celda')];
+		expect(celdas.map((c) => c.querySelector('.simbolo')?.textContent)).toEqual(['✓', '!', '●']);
+		expect(celdas.map((c) => c.querySelector('.sr-only')?.textContent)).toEqual([
+			'Cumplido:',
+			'Vencido:',
+			'Pendiente:'
+		]);
+		await expect
+			.element(page.getByRole('list', { name: 'Leyenda de la matriz' }))
+			.toHaveTextContent(/Cumplido.*Pendiente.*Vencido.*Realizado sin programar/);
 
 		const capturar = page.getByRole('link', { name: 'Capturar partida 7 de JUNIO 2026' });
 		await expect
