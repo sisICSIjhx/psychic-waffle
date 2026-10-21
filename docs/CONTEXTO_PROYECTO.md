@@ -48,7 +48,7 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-a`).
 | Vistas y editor                | src/lib/components/views/, src/lib/components/reportes/             |
 | Datos y contratos              | supabase/migrations/, src/lib/dominio/esquemas.ts, src/lib/server/  |
 | Documento DOCX                 | src/lib/server/documentos/, src/lib/server/plantillas/              |
-| Cambio en curso                | openspec/changes/reportes-mantenimiento-for-icsi-rmt-01/            |
+| Cambios en curso               | openspec/changes/ (rmt-01 en cierre; ux-editor-inicio-captura)      |
 | Revisiones con Codex           | docs/revisiones/fase-N.md y ux-fase-X.md                            |
 | Propuesta técnica y pendientes | docs/PROPUESTA_TECNOLOGICA_Y_PENDIENTES.md                          |
 | Plan de diseño UI/UX           | docs/PLAN_DISENO_UX.md                                              |
@@ -62,7 +62,8 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-a`).
 - Cambio `reportes-mantenimiento-for-icsi-rmt-01`: fases 0 a 6 implementadas y revisadas con Codex;
   cierre (fase 7) en curso. Todo funciona en local con PGlite.
 - Plan de diseño UX: fase A (fundamentos y arreglos rápidos) terminada en `feat/ux-fase-a`; las
-  fases B y C (editor, «Mi trabajo» y captura) se planean en un cambio OpenSpec propio.
+  fases B y C (editor, «Mi trabajo» y captura) están planeadas en el cambio OpenSpec
+  `ux-editor-inicio-captura`, pendiente de las decisiones abiertas 1 y 2 del plan.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas

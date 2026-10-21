@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-21 — UX, fases B y C: cambio OpenSpec `ux-editor-inicio-captura`
+
+- Motivo: las fases B (editor) y C (inicio «Mi trabajo» y captura) cambian el comportamiento de los módulos (nivel 2–3), por eso se planean con OpenSpec antes de implementar; separado de `reportes-mantenimiento-for-icsi-rmt-01`, que está en cierre.
+- Alcance: `openspec/changes/ux-editor-inicio-captura/` con propuesta, deltas de `mi-trabajo` (nueva) y `captura-reportes` (solo requisitos agregados, para integrarse con el cambio anterior en cualquier orden de archivado), diseño (D1 a D13) y tareas por fase. Sin cambios de código.
+- Decisiones: componentes propios sin dependencias nuevas (`<dialog>`, combobox ARIA); completitud y destino de cada pendiente derivados de `validarParaRevision`; quitar con «Deshacer» mediante baja aplazada, sin cambios en el servidor; migración aditiva `0013` para que el listado de reportes traiga partida y sitio en lugar de relacionarlos por texto.
+- Validación: `openspec validate --strict` y `npm run spec:check` aprobados; Prettier sobre los artefactos.
+- Pendientes: respuestas a las decisiones abiertas 1 (uso en celular o tableta) y 2 (quién envía a revisión y quién emite), que condicionan las tareas 3.5, 3.8 y 6.6.
+
 ## 2026-10-21 — UX, fase A: fundamentos y arreglos rápidos
 
 - Motivo: fase A del plan de diseño (`docs/PLAN_DISENO_UX.md`), hallazgos H3 a H7 y H13 a H16; nivel 1 de la política adaptativa, sin OpenSpec. Rama `feat/ux-fase-a`, un commit por tema.

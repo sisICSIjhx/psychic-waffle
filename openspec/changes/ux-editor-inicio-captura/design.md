@@ -1,0 +1,177 @@
+# Design
+
+## Context
+
+Motivación y alcance en `proposal.md`; requisitos en `specs/captura-reportes/spec.md` y
+`specs/mi-trabajo/spec.md`. Estado de partida, comprobado en `feat/ux-fase-a`:
+
+- `src/lib/components/reportes/EditorReporte.svelte` concentra el editor: autoguardado con cola y
+  concurrencia optimista (`guardar`, `encolar`, `huella`), acciones por `acciones.ts`, validación con
+  `validarParaRevision` de `src/lib/dominio/captura.ts`, cuyas observaciones ya traen la ruta del
+  campo (`fechaEjecucion`, `objetivo`, `equipos`, `alcances.<i>.titulo`, `alcances.<i>.estado`…).
+- `FotosAlcance.svelte` numera con `ordenDeAparicion` y emite `cargar` y `mover`; la carga es una
+  foto por petición, en cola.
+- `/captura` resuelve cada paso con parámetros de la URL en `src/routes/captura/+page.server.ts`
+  (contrato y sitio se eligen solos si hay uno); la planeación ya enlaza a la captura con partida y
+  mes.
+- El panel (`src/routes/+page.server.ts`) obtiene los avances de los programas vigentes, el resumen
+  del mes (`resumenDelMes`) y los vencidos (`pendientesVencidos`) de `src/lib/dominio/planeacion.ts`.
+- `api_listar_reportes` (`supabase/migrations/0003_reportes.sql`) devuelve filas sin la partida ni el
+  sitio; el resto del sistema ya los tiene (`reportes.partida_id` es obligatorio).
+- Base visual de la fase A: tokens AA, `InsigniaEstado`, objetivos de 32/44 px, `textos.ts`.
+- Convenciones: Svelte con sintaxis heredada (`export let`, `$:`, `on:`), textos en español, sin
+  dependencias nuevas salvo decisión explícita.
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- Reutilizar la lógica existente (autoguardado, validación, cola de fotos) y cambiar su presentación;
+  las reglas nuevas que se puedan probar sin interfaz van en `src/lib/dominio/`.
+- Componentes accesibles y compartidos para lo que hoy usa diálogos nativos o listas desplegables.
+- Que las fases B y C se puedan entregar y revisar por separado.
+
+**Non-Goals:**
+
+- Cambiar las validaciones para revisión, los estados, el autoguardado o el DOCX.
+- Permisos por rol (llegan con la autenticación) y diseño fuera de línea.
+- Planeación, historial, atajos de teclado y «Copiar del último reporte» (fases D y E).
+
+## Decisions
+
+### D1. Componentes compartidos propios en `src/lib/components/ui/`
+
+`Dialogo.svelte` sobre `<dialog>` con `showModal()` (foco atrapado, `Esc` y fondo inerte los da el
+navegador) y foco inicial en la opción segura; `Notificaciones.svelte` con una región `role="status"`
+montada en `+layout.svelte` y una tienda (`notificaciones.ts`) que acepta una acción «Deshacer» y un
+plazo; `SelectorBusqueda.svelte` con el patrón combobox de ARIA 1.2 (`input` + `listbox`,
+`aria-activedescendant`, grupos con `role="group"`); `BotonesSegmentados.svelte` como `radiogroup` con
+tabulación itinerante y flechas; `IndiceSecciones.svelte`.
+Alternativa descartada: una biblioteca de componentes (bits-ui, melt-ui): añade dependencia, usa runes
+y no cubre la sintaxis heredada del proyecto.
+
+### D2. Completitud y destino de cada pendiente en el dominio
+
+Nueva función pura `seccionDeCampo(campo)` en `src/lib/dominio/captura.ts` que traduce la ruta de una
+observación a su sección (`encabezado`, `firmas`, `objetivo`, `alcance:<id>`, `herramientas`,
+`conclusiones`) y al `id` del campo en el editor, y `completitudPorSeccion(observaciones)` que cuenta
+pendientes por sección. El índice, la barra («Faltan N») y el resumen de envío usan la misma lista
+(`validarParaRevision`), así nunca discrepan.
+Alternativa descartada: calcular la completitud en cada componente: duplicaría las reglas.
+
+### D3. «Enviar a revisión» abre el resumen en el cliente
+
+Con observaciones locales, el botón no llama al servidor: muestra el resumen (región con encabezado y
+enlaces) y mueve el foco a él. Cada enlace abre la sección si está como resumen (D6) y enfoca el campo
+tras `tick()`. Sin observaciones, sigue el flujo actual (`accionConGuardado('estado', …)`); las
+observaciones del servidor (422) se muestran en el mismo resumen.
+
+### D4. Quitar con «Deshacer» sin cambios en el servidor
+
+El elemento quitado se oculta y se marca como pendiente de quitar, pero sigue en el reporte que se
+autoguarda hasta que vence el plazo (10 s) o el usuario confirma otra acción que depende del contenido
+guardado (descargar, enviar, emitir, navegar o cerrar la pestaña): en ese momento se aplica la baja.
+«Deshacer» solo retira la marca, por eso restaura fotos, pies, orden y espacio aunque haya habido
+autoguardados. La numeración de ilustraciones ignora lo marcado.
+Alternativa descartada: borrado lógico con restauración en el servidor: exige migración y cambia el
+contrato de guardado; volver a subir la foto tampoco sirve porque el original ya no estaría.
+
+### D5. Barra compacta y guardado con hora relativa
+
+La barra actual se reorganiza en una línea en escritorio (contexto e insignia a la izquierda; guardado,
+«Faltan N», «Descargar» y la acción principal a la derecha) y dos en móvil. La hora relativa sale de
+`guardadoEn` (marca al terminar `guardar`) y de un reloj que se actualiza cada 10 s; el texto usa
+`textos.ts`. «Reintentar» llama a `guardarAhora()`. El contexto (cliente, partida y periodo) viene de
+los campos del reporte, no de la URL.
+
+### D6. Secciones como resumen editable
+
+Componente `SeccionResumen.svelte` con dos estados: resumen de lectura con «Editar» y campos abiertos con
+«Listo». Se abre solo si la sección tiene pendientes (D2) o si el usuario lo pide; abrir no cambia el
+dato. Los campos de una sección cerrada no se montan; por eso los enlaces de D3 abren antes de enfocar.
+El orden de las secciones sigue el del documento.
+
+### D7. Índice de secciones
+
+En escritorio (≥ 1100 px) el editor pasa a dos columnas: índice fijo de 220 px y contenido. En pantallas
+angostas, el índice es un `<details>` bajo la barra. Cada sección y alcance tiene un `id` estable
+(`seccion-<clave>`, `alcance-<id>`); el destino recibe el foco (`tabindex="-1"`) y el
+`scroll-padding-top` de la fase A evita que la barra lo tape.
+
+### D8. Verificación segmentada
+
+`BotonesSegmentados` con OK, No aplica y Con observación; «pendiente» se representa sin selección. El
+campo de observaciones se muestra si el estado es «Con observación» o si ya tiene texto (no se oculta
+información capturada antes).
+
+### D9. Fotos: arrastre, cámara y progreso
+
+Cada grupo de `FotosAlcance` es zona de soltar (`dragover`/`drop`) y conserva el botón «Agregar fotos».
+«Tomar foto» es un `input type="file" accept="image/*" capture="environment"` que solo se muestra con
+puntero táctil (`(pointer: coarse)`). El editor lleva por alcance `{ total, hechas }` en lugar del
+contador actual para mostrar «Cargando 3 de 12»; los rechazos ya llegan por archivo con su causa.
+
+### D10. Emisión y descarga
+
+La emisión usa `Dialogo` con el título, la revisión y el número de fotos; `Esc` o «Cancelar» devuelven
+el foco a «Emitir». «Descargar DOCX» es un enlace cuando se puede generar y un botón deshabilitado con
+el motivo enlazado por `aria-describedby` cuando no (un enlace no admite `disabled`).
+
+### D11. «Mi trabajo» con una regla pura de siguiente trabajo
+
+`siguienteTrabajo(avances, borradores, hoy)` en `src/lib/dominio/planeacion.ts` devuelve los
+pendientes (vencidos y del mes en curso) ordenados por urgencia, con partida, sitio, contrato, mes,
+lo que falta y los borradores que coinciden por partida y mes (con su ocurrencia). La carga de `/`
+agrega los borradores (`listar({ estado: 'borrador', tamano: 100 })`). La tarjeta de vencidos filtra la
+lista con `?ver=vencidos`; «Ver todos» usa `?ver=todos`; borradores y en revisión llevan al historial
+filtrado. La lista muestra 10 elementos por omisión.
+
+### D12. Migración aditiva `0013` para relacionar reportes con partidas
+
+`supabase/migrations/0013_resumen_reportes_partida.sql` redefine `api_listar_reportes` (misma firma)
+para incluir `partidaId` y `sitioId` en cada fila; `esquemaReporteResumen` los agrega. Es compatible con
+los consumidores actuales. PGlite la aplica al abrir la base, es decir, al reiniciar el servidor de
+desarrollo.
+Alternativa descartada: relacionar por número de partida y texto del sitio: frágil ante partidas
+renumeradas o sitios escritos de otra forma, que es justo el error que el sistema evita.
+
+### D13. Captura con selector, grupos y aviso
+
+La carga de `/captura` agrega, cuando hay contrato y sitio, el estado de cada partida en el mes de
+referencia (avance del programa vigente del sitio con `estadoCelda`) y los borradores del sitio en ese
+mes. El selector reemplaza la lista desplegable de partida y conserva el parámetro `partida` en la URL
+(los enlaces desde la planeación y «Mi trabajo» siguen funcionando). Con partida y mes elegidos, la
+carga consulta los reportes de esa partida y mes (sin sustituidos); el aviso se filtra en el cliente por
+la ocurrencia elegida y muestra los TAG. La búsqueda normaliza acentos y mayúsculas con una función pura
+del dominio y ordena primero la coincidencia exacta por número.
+
+## Risks / Trade-offs
+
+- [El editor crece y es difícil de probar] → se extraen componentes (índice, resumen de sección, barra,
+  verificación) con pruebas propias en Chromium; las reglas van al dominio con pruebas de servidor.
+- [Una baja aplazada (D4) se pierde si el navegador se cierra de golpe] → el aviso de salida ya existe;
+  si no se confirma, el elemento simplemente sigue en el reporte (no hay pérdida de datos).
+- [Más de 100 borradores en el sitio o en el inicio] → la consulta toma los 100 más recientes y la
+  interfaz no ofrece «Continuar» para los demás; se revisa si la cifra real lo hace necesario.
+- [La migración 0013 no se aplica sin reiniciar el servidor] → la tarea lo indica y el esquema acepta
+  la ausencia de los campos durante la transición solo en pruebas, no en producción.
+- [`<dialog>` y `:has` en navegadores antiguos] → los navegadores de destino (Chromium, Edge, Safari y
+  Firefox actuales) los soportan; no se agregan polyfills.
+
+## Migration Plan
+
+1. Agregar `0013` y el campo en el esquema; reiniciar el servidor de desarrollo (PGlite) para
+   aplicarla. En Supabase se aplicará con el resto de las migraciones (tarea 3.8 del cambio anterior).
+2. Implementar la fase B (editor) y revisarla con Codex; después la fase C (inicio y captura).
+3. Reversión: los cambios de interfaz se revierten por commit; `0013` solo agrega campos a la salida de
+   la función, y volver a la definición de `0003` no afecta datos.
+
+## Decisiones pendientes del usuario
+
+Respuestas que condicionan tareas marcadas en `tasks.md`; mientras tanto se implementa lo que no
+depende de ellas.
+
+1. **Uso en celular o tableta en campo** (plan, sección 8.1): define si se implementa «Tomar foto» con
+   la cámara y el índice desplegable como prioridad o se deja el editor optimizado para escritorio.
+2. **Quién envía a revisión y quién emite** (8.2): sin autenticación todos ven lo mismo; la respuesta
+   define si «En revisión» se destaca en «Mi trabajo» y si «Emitir» se muestra a quien captura.
