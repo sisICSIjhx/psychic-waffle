@@ -5,6 +5,7 @@
 
 	import Sidebar from '$lib/layout/Sidebar.svelte';
 	import HeaderBar from '$lib/layout/HeaderBar.svelte';
+	import Notificaciones from '$lib/components/ui/Notificaciones.svelte';
 	import { tituloDePagina, vistaDesdeRuta } from '$lib/layout/navegacion';
 	import {
 		CLAVE_MENU_CONTRAIDO,
@@ -119,3 +120,5 @@
 		</div>
 	</main>
 </div>
+
+<Notificaciones />
