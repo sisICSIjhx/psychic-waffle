@@ -27,6 +27,14 @@ describe('navegación entre vistas', () => {
 		expect(tituloDePagina('/no-existe')).toBe('ICSI Reportes');
 	});
 
+	it('titula el editor con el reporte abierto', () => {
+		expect(tituloDePagina('/reportes/123', null, '07.- TOMA DE POTENCIALES. MAYO 2026')).toBe(
+			'07.- TOMA DE POTENCIALES. MAYO 2026'
+		);
+		expect(tituloDePagina('/reportes/123')).toBe('Reporte');
+		expect(tituloDePagina('/captura', null, 'Otro')).toBe('Captura de Reportes');
+	});
+
 	it('solo reconoce los clientes de captura vigentes', () => {
 		expect(clienteCaptura('cerritos')?.etiqueta).toBe('Cerritos');
 		expect(clienteCaptura('prosasa')).toBeNull();

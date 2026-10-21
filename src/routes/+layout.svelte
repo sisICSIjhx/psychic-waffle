@@ -26,7 +26,8 @@
 	$: pathname = $page.url.pathname;
 	$: cliente = $page.url.searchParams.get('cliente');
 	$: currentView = vistaDesdeRuta(pathname);
-	$: pageTitle = tituloDePagina(pathname, cliente);
+	$: tituloReporte = ($page.data as { reporte?: { titulo?: string } }).reporte?.titulo ?? null;
+	$: pageTitle = tituloDePagina(pathname, cliente, tituloReporte);
 
 	onMount(() => {
 		const sistema = window.matchMedia('(prefers-color-scheme: dark)');

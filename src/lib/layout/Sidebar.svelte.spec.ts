@@ -20,9 +20,7 @@ describe('Sidebar', () => {
 			['Proagro', '/captura?cliente=proagro'],
 			['Virtual', '/captura?cliente=virtual'],
 			['Historial Global', '/historial'],
-			['Catálogo', '/catalogo'],
-			['Personal', '/personal'],
-			['Mi Perfil', '/perfil']
+			['Catálogo', '/catalogo']
 		];
 		for (const [nombre, ruta] of esperados) {
 			await expect
@@ -30,6 +28,10 @@ describe('Sidebar', () => {
 				.toHaveAttribute('href', ruta);
 		}
 		expect(page.getByRole('link', { name: 'Prosasa' }).elements()).toHaveLength(0);
+		// Sin pantallas vacías: Personal y Mi Perfil vuelven con la autenticación.
+		expect(page.getByRole('link', { name: 'Personal' }).elements()).toHaveLength(0);
+		expect(page.getByRole('link', { name: 'Mi Perfil' }).elements()).toHaveLength(0);
+		await expect.element(page.getByText('ICSI Reportes')).toBeInTheDocument();
 	});
 
 	it('marca como activo solo el acceso del cliente elegido', async () => {

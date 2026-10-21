@@ -129,7 +129,7 @@ textarea {
 /* Layout */
 .layout {
 	display: grid;
-	grid-template-columns: var(--sidebar-w) 1fr;
+	grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
 	grid-template-rows: 64px 1fr;
 	grid-template-areas:
 		'sidebar header'
@@ -138,7 +138,7 @@ textarea {
 	transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .layout.is-collapsed {
-	grid-template-columns: var(--sidebar-collapsed-w) 1fr;
+	grid-template-columns: var(--sidebar-collapsed-w) minmax(0, 1fr);
 }
 
 /* Sidebar */
@@ -947,7 +947,7 @@ tr:last-child td {
 }
 @media (max-width: 768px) {
 	.layout {
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 1fr);
 		grid-template-areas:
 			'header'
 			'main';

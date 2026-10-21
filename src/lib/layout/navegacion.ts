@@ -52,9 +52,15 @@ export function clienteCaptura(clave: string | null): (typeof clientesCaptura)[n
 	return clientesCaptura.find((cliente) => cliente.clave === clave) ?? null;
 }
 
-export function tituloDePagina(pathname: string, cliente: string | null = null): string {
+/** En el editor (`/reportes/[id]`) el título es el del reporte abierto, si se conoce. */
+export function tituloDePagina(
+	pathname: string,
+	cliente: string | null = null,
+	tituloReporte: string | null = null
+): string {
 	const vista = vistaDesdeRuta(pathname);
 	if (vista === null) return 'ICSI Reportes';
+	if (pathname.split('/')[1] === 'reportes') return tituloReporte?.trim() || 'Reporte';
 	const accesoCliente = vista === 'captura' ? clienteCaptura(cliente) : null;
 	return accesoCliente ? `Captura: ${accesoCliente.etiqueta}` : titulosPorVista[vista];
 }

@@ -51,7 +51,7 @@
 				</svg>
 			</div>
 		</button>
-		<h1 class="header-title">{pageTitle}</h1>
+		<h1 class="header-title"><span class="texto-titulo">{pageTitle}</span></h1>
 	</div>
 
 	<div class="estado-conexion" role="status">
@@ -78,6 +78,16 @@
 </header>
 
 <style>
+	/* Títulos largos (p. ej. el del reporte abierto) se recortan con puntos suspensivos. */
+	.header-left,
+	.header-title {
+		min-width: 0;
+	}
+	.texto-titulo {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 	.estado-conexion {
 		flex-shrink: 0;
 	}

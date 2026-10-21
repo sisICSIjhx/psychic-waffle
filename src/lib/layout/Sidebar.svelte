@@ -49,7 +49,7 @@
 					><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg
 				>
 			</div>
-			{#if !isCollapsed}<span class="brand-title">ICSI V2</span>{/if}
+			{#if !isCollapsed}<span class="brand-title">ICSI Reportes</span>{/if}
 		</div>
 	</div>
 
@@ -182,49 +182,7 @@
 				{#if !isCollapsed}<span>Catálogo</span>{/if}
 			</a>
 
-			{#if !isCollapsed}<div class="nav-header">ADMINISTRACIÓN</div>{/if}
-			<a
-				href={resolve('/personal')}
-				class="nav-item {activeView === 'personal' ? 'active' : ''}"
-				aria-current={activeView === 'personal' ? 'page' : undefined}
-				title="Administración de Personal"
-				on:click={() => navigate('personal')}
-			>
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path
-						d="M23 21v-2a4 4 0 0 0-3-3.87"
-					/><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg
-				>
-				{#if !isCollapsed}<span>Personal</span>{/if}
-			</a>
-			<a
-				href={resolve('/perfil')}
-				class="nav-item {activeView === 'perfil' ? 'active' : ''}"
-				aria-current={activeView === 'perfil' ? 'page' : undefined}
-				title="Mi Perfil"
-				on:click={() => navigate('perfil')}
-			>
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle
-						cx="12"
-						cy="7"
-						r="4"
-					/></svg
-				>
-				{#if !isCollapsed}<span>Mi Perfil</span>{/if}
-			</a>
+			<!-- «Personal» y «Mi Perfil» vuelven al menú con la autenticación; hoy no tienen contenido. -->
 		</nav>
 
 		<div class="sidebar-footer">
