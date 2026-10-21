@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	aplicarCatalogo,
+	completitudPorSeccion,
+	destinoDeObservacion,
 	mesesDeVigencia,
 	ocurrenciasDelMes,
 	prellenarReporte,
@@ -309,6 +311,108 @@ describe('validaciones para enviar a revisión', () => {
 			{ requiereTag: true }
 		).map((o) => o.campo);
 		expect(campos).toEqual(['equipos', 'firmantes.aprobo', 'firmantes.recibio', 'conclusiones']);
+	});
+});
+
+describe('destino de cada pendiente en el editor', () => {
+	const conIds = (cambios: Partial<ReporteValidable> = {}) => {
+		const base = validable(cambios);
+		return { ...base, alcances: base.alcances.map((a, i) => ({ ...a, id: ID(70 + i) })) };
+	};
+
+	it('lleva cada observación de un reporte vacío a su sección y campo', () => {
+		const reporte = conIds({
+			fechaEjecucion: null,
+			titulo: '(Cambiar)',
+			usuario: '',
+			contratoTexto: 'Cambiar',
+			sitioTexto: '',
+			periodicidad: '',
+			tipoMantenimiento: '',
+			objetivo: '',
+			conclusiones: '',
+			firmantes: {},
+			alcances: [
+				{ titulo: '', estadoVerificacion: 'pendiente', observaciones: '' },
+				{ titulo: 'Dos', estadoVerificacion: 'con_observacion', observaciones: '' }
+			]
+		});
+		const observaciones = validarParaRevision(reporte, { requiereTag: true });
+		const destinos = observaciones.map((o) => ({
+			campo: o.campo,
+			destino: destinoDeObservacion(o, reporte)
+		}));
+		expect(destinos.every(({ destino }) => destino !== null)).toBe(true);
+		expect(
+			Object.fromEntries(
+				destinos.map(({ campo, destino }) => [campo, `${destino?.seccion} ${destino?.campoId}`])
+			)
+		).toEqual({
+			fechaEjecucion: 'encabezado fecha',
+			titulo: 'encabezado titulo',
+			usuario: 'encabezado dato-usuario',
+			contratoTexto: 'encabezado dato-contrato',
+			sitioTexto: 'encabezado dato-sitio',
+			periodicidad: 'encabezado dato-periodicidad',
+			tipoMantenimiento: 'encabezado tipo',
+			equipos: 'encabezado tags',
+			'firmantes.elaboro': 'firmas firma-elaboro-nombre',
+			'firmantes.aprobo': 'firmas firma-aprobo-nombre',
+			'firmantes.recibio': 'firmas firma-recibio-nombre',
+			objetivo: 'objetivo objetivo',
+			'alcances.0.titulo': `alcance titulo-alcance-${ID(70)}`,
+			'alcances.0.estado': `alcance estado-${ID(70)}`,
+			'alcances.1.observaciones': `alcance observaciones-${ID(71)}`,
+			conclusiones: 'conclusiones conclusiones'
+		});
+		expect(destinoDeObservacion({ campo: 'alcances', mensaje: '' }, reporte)?.campoId).toBe(
+			'agregar-alcance'
+		);
+		expect(destinoDeObservacion({ campo: 'desconocido', mensaje: '' }, reporte)).toBeNull();
+		expect(destinoDeObservacion({ campo: 'constructor', mensaje: '' }, reporte)).toBeNull();
+	});
+
+	it('el destino de un alcance es su id aunque se reordenen o quiten alcances', () => {
+		const reporte = conIds({
+			alcances: [
+				{ titulo: 'Uno', estadoVerificacion: 'ok', observaciones: '' },
+				{ titulo: '', estadoVerificacion: 'ok', observaciones: '' },
+				{ titulo: 'Tres', estadoVerificacion: 'ok', observaciones: '' }
+			]
+		});
+		const sinTitulo = reporte.alcances[1].id;
+		const reordenado = {
+			...reporte,
+			alcances: [reporte.alcances[1], reporte.alcances[0], reporte.alcances[2]]
+		};
+		const [observacion] = validarParaRevision(reordenado);
+		expect(observacion.campo).toBe('alcances.0.titulo');
+		expect(destinoDeObservacion(observacion, reordenado)?.alcanceId).toBe(sinTitulo);
+
+		const sinElPrimero = { ...reporte, alcances: reporte.alcances.slice(1) };
+		const [otra] = validarParaRevision(sinElPrimero);
+		expect(destinoDeObservacion(otra, sinElPrimero)?.alcanceId).toBe(sinTitulo);
+	});
+
+	it('cuenta los pendientes por sección y por alcance', () => {
+		const reporte = conIds({
+			objetivo: '',
+			alcances: [
+				{ titulo: '', estadoVerificacion: 'pendiente', observaciones: '' },
+				{ titulo: 'Dos', estadoVerificacion: 'ok', observaciones: '' }
+			]
+		});
+		const completitud = completitudPorSeccion(validarParaRevision(reporte), reporte);
+		expect(completitud.total).toBe(3);
+		expect(completitud.porSeccion).toEqual({
+			encabezado: 0,
+			firmas: 0,
+			objetivo: 1,
+			alcance: 2,
+			herramientas: 0,
+			conclusiones: 0
+		});
+		expect(completitud.porAlcance).toEqual({ [ID(70)]: 2 });
 	});
 });
 

@@ -371,6 +371,95 @@ export function validarParaRevision(
 	return observaciones;
 }
 
+/** Secciones del editor del reporte, en el orden del documento. */
+export const SECCIONES_EDITOR = [
+	'encabezado',
+	'firmas',
+	'objetivo',
+	'alcance',
+	'herramientas',
+	'conclusiones'
+] as const;
+export type SeccionEditor = (typeof SECCIONES_EDITOR)[number];
+
+export interface DestinoObservacion {
+	seccion: SeccionEditor;
+	/** Alcance al que pertenece la observación, si aplica. */
+	alcanceId: string | null;
+	/** `id` del elemento del editor que recibe el foco. */
+	campoId: string;
+}
+
+const CAMPOS_ENCABEZADO: Record<string, string> = {
+	ocurrencia: 'fecha',
+	fechaEjecucion: 'fecha',
+	titulo: 'titulo',
+	tipoMantenimiento: 'tipo',
+	usuario: 'dato-usuario',
+	contratoTexto: 'dato-contrato',
+	sitioTexto: 'dato-sitio',
+	periodicidad: 'dato-periodicidad',
+	equipos: 'tags'
+};
+const CAMPOS_ALCANCE = {
+	titulo: 'titulo-alcance',
+	estado: 'estado',
+	observaciones: 'observaciones'
+} as const;
+
+/**
+ * Sección y campo del editor al que lleva una observación de `validarParaRevision`. Las rutas de
+ * alcance traen el índice (`alcances.<i>.titulo`), así que el `id` se toma del mismo reporte que se
+ * validó. Devuelve null si la ruta no corresponde a ningún campo.
+ */
+export function destinoDeObservacion(
+	observacion: Observacion,
+	reporte: { alcances: readonly { id?: string }[] }
+): DestinoObservacion | null {
+	const { campo } = observacion;
+	if (Object.hasOwn(CAMPOS_ENCABEZADO, campo)) {
+		return { seccion: 'encabezado', alcanceId: null, campoId: CAMPOS_ENCABEZADO[campo] };
+	}
+	const firma = /^firmantes\.(elaboro|aprobo|recibio)$/.exec(campo);
+	if (firma) return { seccion: 'firmas', alcanceId: null, campoId: `firma-${firma[1]}-nombre` };
+	if (campo === 'objetivo' || campo === 'conclusiones') {
+		return { seccion: campo, alcanceId: null, campoId: campo };
+	}
+	if (campo === 'alcances')
+		return { seccion: 'alcance', alcanceId: null, campoId: 'agregar-alcance' };
+	const alcance = /^alcances\.(\d+)\.(titulo|estado|observaciones)$/.exec(campo);
+	const id = alcance ? reporte.alcances[Number(alcance[1])]?.id : undefined;
+	if (!alcance || !id) return null;
+	const prefijo = CAMPOS_ALCANCE[alcance[2] as keyof typeof CAMPOS_ALCANCE];
+	return { seccion: 'alcance', alcanceId: id, campoId: `${prefijo}-${id}` };
+}
+
+export interface Completitud {
+	total: number;
+	porSeccion: Record<SeccionEditor, number>;
+	/** Pendientes de cada alcance, por su `id`. */
+	porAlcance: Record<string, number>;
+}
+
+/** Cuenta las observaciones por sección y por alcance para el índice y la barra del editor. */
+export function completitudPorSeccion(
+	observaciones: readonly Observacion[],
+	reporte: { alcances: readonly { id?: string }[] }
+): Completitud {
+	const porSeccion = Object.fromEntries(SECCIONES_EDITOR.map((s) => [s, 0])) as Record<
+		SeccionEditor,
+		number
+	>;
+	const porAlcance: Record<string, number> = {};
+	for (const observacion of observaciones) {
+		const destino = destinoDeObservacion(observacion, reporte);
+		if (!destino) continue;
+		porSeccion[destino.seccion]++;
+		if (destino.alcanceId) porAlcance[destino.alcanceId] = (porAlcance[destino.alcanceId] ?? 0) + 1;
+	}
+	return { total: observaciones.length, porSeccion, porAlcance };
+}
+
 /** Estado editable de un reporte, en la forma que recibe el guardado. */
 export function aGuardado(reporte: Reporte): ReporteGuardado {
 	return {
