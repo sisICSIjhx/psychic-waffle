@@ -26,8 +26,10 @@ Las tareas marcadas «(decisión 1)» o «(decisión 2)» esperan la respuesta d
       «Deshacer» funciona dentro del plazo y que al vencer se ejecuta la acción final.
 - [ ] 1.4 Crear `src/lib/components/ui/BotonesSegmentados.svelte` (`radiogroup`, una pulsación,
       flechas y tabulación itinerante) y verificarlo con una prueba de teclado.
-- [ ] 1.5 Agregar `seccionDeCampo` y `completitudPorSeccion` a `src/lib/dominio/captura.ts` y verificar
-      con pruebas que cada observación de `validarParaRevision` tiene sección y campo de destino.
+- [ ] 1.5 Agregar `destinoDeObservacion(observacion, reporte)` y `completitudPorSeccion` a
+      `src/lib/dominio/captura.ts` y verificar con pruebas que cada observación de
+      `validarParaRevision` tiene sección y campo de destino, y que el destino de un alcance es su
+      `id` también después de reordenar o quitar alcances.
 
 ## 2. Editor: estructura y navegación (fase B)
 
@@ -78,15 +80,20 @@ Las tareas marcadas «(decisión 1)» o «(decisión 2)» esperan la respuesta d
       (`partidaId` y `sitioId` en `api_listar_reportes`) y el campo en `esquemaReporteResumen`;
       verificar con una prueba sobre PGlite que las filas los traen y pedir al usuario reiniciar el
       servidor de desarrollo para aplicarla.
-- [ ] 5.2 Agregar `siguienteTrabajo` a `src/lib/dominio/planeacion.ts` y verificar con pruebas el orden
+- [ ] 5.2 Agregar `listarTodos(filtro)` al repositorio de reportes (recorre las páginas de 100 hasta el
+      total) y verificar con una prueba sobre PGlite con más de 100 borradores que no omite ninguno.
+- [ ] 5.3 Agregar `siguienteTrabajo` a `src/lib/dominio/planeacion.ts` y verificar con pruebas el orden
       por urgencia, lo que falta por mes y los borradores por partida, mes y ocurrencia.
-- [ ] 5.3 Agregar la búsqueda normalizada y la agrupación de partidas del mes al dominio y verificar con
-      pruebas acentos, mayúsculas, coincidencia exacta por número y los tres grupos.
+- [ ] 5.4 Agregar al dominio la búsqueda normalizada, la agrupación de partidas (vencidos anteriores con
+      su mes y estado del mes de referencia) y el mes sugerido, y verificar con pruebas acentos,
+      mayúsculas, coincidencia exacta por número, los tres grupos y la sugerencia del vencido más
+      antiguo.
 
 ## 6. Inicio «Mi trabajo» (fase C)
 
-- [ ] 6.1 Ampliar la carga de `src/routes/+page.server.ts` (borradores, siguiente trabajo y `?ver=`) y
-      verificarla con una prueba del componente con datos de ejemplo.
+- [ ] 6.1 Ampliar la carga de `src/routes/+page.server.ts` (todos los borradores del rango de meses con
+      `listarTodos`, siguiente trabajo y `?ver=`) y verificarla con una prueba del componente con datos
+      de ejemplo.
 - [ ] 6.2 Mostrar el avance del mes con barra de progreso y el estado sin programas vigentes, y
       verificar ambos escenarios con pruebas.
 - [ ] 6.3 Mostrar las tarjetas accionables con sus destinos y el color de peligro solo con vencidos, y
@@ -104,9 +111,9 @@ Las tareas marcadas «(decisión 1)» o «(decisión 2)» esperan la respuesta d
 - [ ] 7.1 Crear `src/lib/components/ui/SelectorBusqueda.svelte` (combobox con grupos y estado sin
       resultados) y verificarlo con pruebas de teclado y de lector de pantalla (roles y
       `aria-activedescendant`).
-- [ ] 7.2 Ampliar la carga de `src/routes/captura/+page.server.ts` con el estado de cada partida en el
-      mes de referencia, los borradores del sitio y los reportes de la partida y mes elegidos, y
-      verificarlo con una prueba sobre PGlite.
+- [ ] 7.2 Ampliar la carga de `src/routes/captura/+page.server.ts` con los vencidos y el estado del mes
+      de referencia de cada partida, el mes sugerido, todos los borradores del sitio en el rango de
+      meses y los reportes de la partida y mes elegidos, y verificarlo con una prueba sobre PGlite.
 - [ ] 7.3 Usar el selector en `CapturaView.svelte`, mostrar el contexto resuelto como resumen con
       «Cambiar» y los pasos numerados, conservando `?partida=` y `?mes=`; verificarlo con pruebas y con el
       enlace desde la planeación.

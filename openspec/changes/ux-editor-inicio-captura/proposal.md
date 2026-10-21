@@ -39,8 +39,9 @@ comportamiento de los módulos, por eso se planean con OpenSpec.
   (vencidos, pendientes del mes, borradores, en revisión) y la lista «Siguiente trabajo» ordenada por
   urgencia, con «Capturar» o «Continuar borrador» según exista un borrador de esa partida y periodo.
 - **Captura (fase C):** selector de partida con búsqueda por número o texto, agrupado en
-  «Programadas este mes», «Con borrador» y «Otras partidas»; contexto ya resuelto como resumen con
-  «Cambiar»; aviso de reporte existente de la misma partida y periodo con enlace para abrirlo.
+  «Pendientes» (vencidas con su mes y pendientes del mes), «Con borrador» y «Otras partidas»; mes
+  sugerido según el vencido más antiguo; contexto ya resuelto como resumen con «Cambiar»; aviso de
+  reporte existente de la misma partida y periodo con enlace para abrirlo.
 - **Datos:** el listado de reportes devuelve también la partida y el sitio de cada fila (migración
   aditiva), para relacionar borradores con pendientes sin comparar textos.
 

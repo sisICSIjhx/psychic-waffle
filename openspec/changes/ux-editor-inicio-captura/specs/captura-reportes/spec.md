@@ -29,21 +29,31 @@ actividad completa y la periodicidad. El selector SHALL poder usarse solo con el
 - **WHEN** la búsqueda no coincide con ninguna partida
 - **THEN** el selector lo indica en texto y conserva lo escrito
 
-### Requirement: Partidas agrupadas por el trabajo del mes
+### Requirement: Partidas agrupadas por el trabajo pendiente
 
-El selector SHALL agrupar las partidas en «Programadas este mes» (pendientes y vencidas, con su estado
-en icono y texto), «Con borrador» y «Otras partidas». El mes de referencia SHALL ser el mes pedido en la
-dirección o, si no hay, el mes en curso.
+El selector SHALL agrupar las partidas en «Pendientes» (con meses vencidos anteriores al mes de
+referencia o pendientes en él, con su estado y mes en icono y texto), «Con borrador» y «Otras
+partidas». El mes de referencia SHALL ser el pedido en la dirección o, si no hay, el mes en curso.
 
 #### Scenario: Partida vencida primero
 
-- **WHEN** la partida 3 tiene un pendiente vencido y la partida 7 está pendiente en el mes de referencia
-- **THEN** ambas aparecen en «Programadas este mes», la 3 con el estado «Vencida» y la 7 con «Pendiente»
+- **WHEN** en octubre de 2026 la partida 3 tiene junio de 2026 vencido y la partida 7 está pendiente en octubre
+- **THEN** ambas aparecen en «Pendientes», la 3 primero con «Vencida · junio 2026» y la 7 con «Pendiente · octubre 2026»
 
 #### Scenario: Partida con borrador
 
-- **WHEN** la partida 12 tiene un borrador del mes de referencia
+- **WHEN** la partida 12 tiene un borrador de un mes pendiente
 - **THEN** aparece en «Con borrador» con la indicación del borrador existente
+
+### Requirement: Mes sugerido según el pendiente
+
+Al elegir una partida sin mes indicado en la dirección, la captura SHALL sugerir su mes vencido más
+antiguo o, si no tiene vencidos, el mes en curso. La sugerencia SHALL poder cambiarse.
+
+#### Scenario: Partida con un mes vencido
+
+- **WHEN** el usuario elige la partida 3, vencida en junio de 2026, sin mes en la dirección
+- **THEN** la captura propone junio de 2026 como periodo
 
 ### Requirement: Contexto resuelto como resumen
 

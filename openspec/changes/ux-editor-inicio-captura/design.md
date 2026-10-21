@@ -52,11 +52,14 @@ y no cubre la sintaxis heredada del proyecto.
 
 ### D2. Completitud y destino de cada pendiente en el dominio
 
-Nueva función pura `seccionDeCampo(campo)` en `src/lib/dominio/captura.ts` que traduce la ruta de una
-observación a su sección (`encabezado`, `firmas`, `objetivo`, `alcance:<id>`, `herramientas`,
-`conclusiones`) y al `id` del campo en el editor, y `completitudPorSeccion(observaciones)` que cuenta
-pendientes por sección. El índice, la barra («Faltan N») y el resumen de envío usan la misma lista
-(`validarParaRevision`), así nunca discrepan.
+Nueva función pura `destinoDeObservacion(observacion, reporte)` en `src/lib/dominio/captura.ts` que
+traduce la ruta de una observación a su sección (`encabezado`, `firmas`, `objetivo`, `alcance:<id>`,
+`herramientas`, `conclusiones`) y al `id` del campo en el editor, y `completitudPorSeccion` que cuenta
+pendientes por sección. Las rutas de alcance traen el índice (`alcances.<i>.titulo`), no el UUID; por
+eso la función recibe el mismo reporte con el que se validó y toma `reporte.alcances[i].id`. Como el
+editor recalcula las observaciones con cada cambio del reporte, índice e `id` siempre corresponden,
+aunque se agreguen, quiten o reordenen alcances. El índice, la barra («Faltan N») y el resumen de envío
+usan la misma lista (`validarParaRevision`), así nunca discrepan.
 Alternativa descartada: calcular la completitud en cada componente: duplicaría las reglas.
 
 ### D3. «Enviar a revisión» abre el resumen en el cliente
@@ -122,9 +125,11 @@ el motivo enlazado por `aria-describedby` cuando no (un enlace no admite `disabl
 `siguienteTrabajo(avances, borradores, hoy)` en `src/lib/dominio/planeacion.ts` devuelve los
 pendientes (vencidos y del mes en curso) ordenados por urgencia, con partida, sitio, contrato, mes,
 lo que falta y los borradores que coinciden por partida y mes (con su ocurrencia). La carga de `/`
-agrega los borradores (`listar({ estado: 'borrador', tamano: 100 })`). La tarjeta de vencidos filtra la
-lista con `?ver=vencidos`; «Ver todos» usa `?ver=todos`; borradores y en revisión llevan al historial
-filtrado. La lista muestra 10 elementos por omisión.
+obtiene **todos** los borradores del rango de meses con pendientes (del vencido más antiguo al mes en
+curso) con `listarTodos(filtro)`, una función nueva del repositorio de reportes que recorre las páginas
+de 100 hasta completar el total; ningún borrador coincidente queda fuera por un límite. La tarjeta de
+vencidos filtra la lista con `?ver=vencidos`; «Ver todos» usa `?ver=todos`; borradores y en revisión
+llevan al historial filtrado. La lista muestra 10 elementos por omisión.
 
 ### D12. Migración aditiva `0013` para relacionar reportes con partidas
 
@@ -137,10 +142,14 @@ renumeradas o sitios escritos de otra forma, que es justo el error que el sistem
 
 ### D13. Captura con selector, grupos y aviso
 
-La carga de `/captura` agrega, cuando hay contrato y sitio, el estado de cada partida en el mes de
-referencia (avance del programa vigente del sitio con `estadoCelda`) y los borradores del sitio en ese
-mes. El selector reemplaza la lista desplegable de partida y conserva el parámetro `partida` en la URL
-(los enlaces desde la planeación y «Mi trabajo» siguen funcionando). Con partida y mes elegidos, la
+La carga de `/captura` agrega, cuando hay contrato y sitio, el trabajo pendiente de cada partida según el
+avance del programa vigente del sitio: sus meses vencidos (todas las celdas anteriores al mes de
+referencia, con `pendientesVencidos`, conservando el mes de cada uno) y el estado de la celda del mes de
+referencia (`estadoCelda`). El grupo «Pendientes» reúne las partidas con algún vencido o pendiente en el
+mes de referencia; al elegir una partida vencida sin `?mes=`, el mes sugerido es su vencido más antiguo.
+Los borradores del sitio en ese rango de meses se obtienen completos con `listarTodos` (D11). El selector
+reemplaza la lista desplegable de partida y conserva el parámetro `partida` en la URL (los enlaces desde
+la planeación y «Mi trabajo» siguen funcionando). Con partida y mes elegidos, la
 carga consulta los reportes de esa partida y mes (sin sustituidos); el aviso se filtra en el cliente por
 la ocurrencia elegida y muestra los TAG. La búsqueda normaliza acentos y mayúsculas con una función pura
 del dominio y ordena primero la coincidencia exacta por número.
@@ -151,8 +160,8 @@ del dominio y ordena primero la coincidencia exacta por número.
   verificación) con pruebas propias en Chromium; las reglas van al dominio con pruebas de servidor.
 - [Una baja aplazada (D4) se pierde si el navegador se cierra de golpe] → el aviso de salida ya existe;
   si no se confirma, el elemento simplemente sigue en el reporte (no hay pérdida de datos).
-- [Más de 100 borradores en el sitio o en el inicio] → la consulta toma los 100 más recientes y la
-  interfaz no ofrece «Continuar» para los demás; se revisa si la cifra real lo hace necesario.
+- [Muchos borradores en el rango de meses] → `listarTodos` hace una petición por cada 100; con el
+  volumen actual (decenas) es una sola. Si creciera, se agrega un filtro por partidas al SQL.
 - [La migración 0013 no se aplica sin reiniciar el servidor] → la tarea lo indica y el esquema acepta
   la ausencia de los campos durante la transición solo en pruebas, no en producción.
 - [`<dialog>` y `:has` en navegadores antiguos] → los navegadores de destino (Chromium, Edge, Safari y
