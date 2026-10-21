@@ -788,7 +788,7 @@
 	}
 	.guardado-conflicto,
 	.guardado-error {
-		color: var(--danger, #c0392b);
+		color: var(--danger);
 		font-weight: 600;
 	}
 </style>

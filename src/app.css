@@ -1,40 +1,65 @@
 /* =========================================
        1. VARIABLES Y TEMA
        ========================================= */
+/* Contraste medido (WCAG 2.2 AA): texto 4.5:1 sobre --bg y --surface; bordes de campo e iconos
+   3:1. Los fondos «-bg» de los semánticos mantienen su texto por encima de 4.5:1. */
 :root {
+	color-scheme: light;
 	--bg: #f8fafc;
 	--bg-soft: #ffffff;
 	--surface: #ffffff;
+	--surface-2: #f1f5f9;
+	--card-bg: var(--bg-soft);
 	--text: #334155;
 	--muted: #64748b;
-	--primary: #0ea5e9;
-	--primary-soft: rgba(14, 165, 233, 0.1);
-	--ring: rgba(14, 165, 233, 0.25);
+	--primary: #0369a1;
+	--primary-hover: #075985;
+	--on-primary: #ffffff;
+	--primary-soft: rgba(3, 105, 161, 0.1);
+	--ring: rgba(3, 105, 161, 0.25);
 	--sidebar-w: 260px;
 	--sidebar-collapsed-w: 80px;
 	--radius: 12px;
 	--shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 	--border: #e2e8f0;
+	--borde-campo: #64748b;
 	--hover: #f1f5f9;
-	--accent-grad: linear-gradient(135deg, #38bdf8, #0ea5e9);
-	--success: #22c55e;
-	--warning: #eab308;
-	--danger: #ef4444;
+	--accent-grad: linear-gradient(135deg, #0284c7, #0369a1);
+	--success: #15803d;
+	--warning: #a16207;
+	--danger: #b91c1c;
+	--success-bg: #f0fdf4;
+	--warning-bg: #fefce8;
+	--danger-bg: #fef2f2;
+	--info-bg: #f0f9ff;
+	--neutral-bg: #f1f5f9;
 }
 
 html[data-theme='dark'] {
+	color-scheme: dark;
 	--bg: #0f172a;
 	--bg-soft: #1e293b;
 	--surface: #1e293b;
+	--surface-2: #334155;
 	--text: #f1f5f9;
 	--muted: #94a3b8;
 	--primary: #38bdf8;
+	--primary-hover: #7dd3fc;
+	--on-primary: #0f172a;
 	--primary-soft: rgba(56, 189, 248, 0.15);
 	--ring: rgba(56, 189, 248, 0.25);
 	--shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 	--border: #334155;
+	--borde-campo: #7c8ba1;
 	--hover: #334155;
-	--accent-grad: linear-gradient(135deg, #0ea5e9, #0284c7);
+	--success: #4ade80;
+	--warning: #facc15;
+	--danger: #f87171;
+	--success-bg: #052e16;
+	--warning-bg: #422006;
+	--danger-bg: #450a0a;
+	--info-bg: #082f49;
+	--neutral-bg: #334155;
 }
 
 /* Scrollbars */
@@ -352,13 +377,13 @@ textarea {
 }
 .toolbar button.primary {
 	background: var(--primary);
-	color: #fff;
+	color: var(--on-primary);
 	border: none;
 	font-weight: 600;
 	cursor: pointer;
 }
 .toolbar button.primary:hover {
-	opacity: 0.9;
+	background: var(--primary-hover);
 }
 
 /* Cards & KPI */
@@ -423,10 +448,9 @@ textarea {
 .form-group textarea {
 	padding: 10px;
 	border-radius: 8px;
-	border: 1px solid var(--border);
+	border: 1px solid var(--borde-campo);
 	background: var(--bg);
 	color: var(--text);
-	outline: none;
 	width: 100%;
 }
 .form-group input:focus,
@@ -463,6 +487,7 @@ tr:last-child td {
 .action-btn {
 	background: none;
 	border: none;
+	color: var(--text);
 	cursor: pointer;
 	padding: 4px;
 	border-radius: 4px;
@@ -485,15 +510,15 @@ tr:last-child td {
 	display: inline-block;
 }
 .status-badge.ok {
-	background: rgba(34, 197, 94, 0.15);
+	background: var(--success-bg);
 	color: var(--success);
 }
 .status-badge.warn {
-	background: rgba(234, 179, 8, 0.15);
+	background: var(--warning-bg);
 	color: var(--warning);
 }
 .status-badge.err {
-	background: rgba(239, 68, 68, 0.15);
+	background: var(--danger-bg);
 	color: var(--danger);
 }
 
@@ -918,9 +943,13 @@ tr:last-child td {
 }
 .boton.primario {
 	background: var(--primary);
-	color: #fff;
-	border: none;
+	color: var(--on-primary);
+	border-color: var(--primary);
 	font-weight: 600;
+}
+.boton.primario:hover:not(:disabled) {
+	background: var(--primary-hover);
+	border-color: var(--primary-hover);
 }
 .boton:disabled {
 	opacity: 0.5;
@@ -928,35 +957,39 @@ tr:last-child td {
 }
 .status-badge.vigente,
 .status-badge.accion-sin_cambios {
-	background: rgba(34, 197, 94, 0.15);
+	background: var(--success-bg);
 	color: var(--success);
 }
 .status-badge.por-confirmar,
 .status-badge.accion-actualizar {
-	background: rgba(234, 179, 8, 0.18);
+	background: var(--warning-bg);
 	color: var(--warning);
 	margin-left: 6px;
 }
 .status-badge.accion-crear {
-	background: var(--primary-soft);
+	background: var(--info-bg);
 	color: var(--primary);
 }
 .aviso {
 	padding: 10px 14px;
 	border-radius: 8px;
+	border: 1px solid transparent;
 	margin: 0 0 16px 0;
 	font-size: 0.9rem;
 }
 .aviso-error {
-	background: rgba(239, 68, 68, 0.12);
+	background: var(--danger-bg);
+	border-color: var(--danger);
 	color: var(--danger);
 }
 .aviso-exito {
-	background: rgba(34, 197, 94, 0.12);
+	background: var(--success-bg);
+	border-color: var(--success);
 	color: var(--success);
 }
 .aviso-alerta {
-	background: rgba(234, 179, 8, 0.15);
+	background: var(--warning-bg);
+	border-color: var(--warning);
 	color: var(--text);
 }
 .acciones-fila {
