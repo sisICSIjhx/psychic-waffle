@@ -32,20 +32,20 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 
 ## 2. Editor: estructura y navegación (fase B)
 
-- [ ] 2.1 Reorganizar la barra del editor (contexto, insignia, guardado con hora relativa y
+- [x] 2.1 Reorganizar la barra del editor (contexto, insignia, guardado con hora relativa y
       «Reintentar», «Faltan N», «Descargar» y la acción principal) y verificar con pruebas el texto del
       guardado, el reintento tras un fallo y, en el navegador, 64 px o menos en escritorio y dos líneas
       en móvil.
-- [ ] 2.2 Dar `id` estable a secciones y alcances, crear `IndiceSecciones.svelte` (columna fija desde
+- [x] 2.2 Dar `id` estable a secciones y alcances, crear `IndiceSecciones.svelte` (columna fija desde
       1100 px y desplegable en angosto) y verificar que marca completitud y lleva el foco al destino.
-- [ ] 2.3 Mostrar el resumen de pendientes al elegir «Enviar a revisión» con datos faltantes y
+- [x] 2.3 Mostrar el resumen de pendientes al elegir «Enviar a revisión» con datos faltantes y
       verificar que el estado sigue en Borrador, que el foco va al resumen y que cada enlace enfoca su
       campo.
-- [ ] 2.4 Mostrar el error junto al campo al salir de él (con `aria-describedby`; la fecha indica el
+- [x] 2.4 Mostrar el error junto al campo al salir de él (con `aria-describedby`; la fecha indica el
       rango permitido) y verificarlo con una prueba de la fecha fuera del periodo.
-- [ ] 2.5 Crear `SeccionResumen.svelte` y usarlo en encabezado fijo, firmas y objetivo; verificar que
+- [x] 2.5 Crear `SeccionResumen.svelte` y usarlo en encabezado fijo, firmas y objetivo; verificar que
       «Editar» muestra los campos, que se autoguarda y que una sección con pendientes se abre sola.
-- [ ] 2.6 Agregar «Hoy» a la fecha de ejecución y verificar con fecha fija que aparece dentro del
+- [x] 2.6 Agregar «Hoy» a la fecha de ejecución y verificar con fecha fija que aparece dentro del
       periodo y que fuera de él se muestra el rango.
 
 ## 3. Editor: verificación, fotos y acciones (fase B)

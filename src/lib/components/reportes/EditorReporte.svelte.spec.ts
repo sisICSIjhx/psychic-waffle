@@ -85,9 +85,11 @@ describe('EditorReporte', () => {
 		await expect.element(page.getByLabelText('Verificación', { exact: true })).toHaveValue('ok');
 	});
 
-	it('señala la observación obligatoria de un alcance «Con observación»', async () => {
+	it('al enviar con datos faltantes muestra el resumen enlazado y no cambia el estado', async () => {
+		const enviar = vi.fn<EnviarAccion>(sinRespuesta);
 		render(EditorReporte, {
 			reporte: reporte({
+				fechaEjecucion: null,
 				alcances: [
 					{
 						...reporte().alcances[0],
@@ -97,14 +99,149 @@ describe('EditorReporte', () => {
 				]
 			}),
 			espera: 60_000,
-			enviar: sinRespuesta
+			enviar
 		});
 		await expect
-			.element(page.getByText('El alcance 2.1 está «Con observación»: capture la observación.'))
+			.element(page.getByRole('button', { name: 'Faltan 2', exact: true }))
 			.toBeInTheDocument();
+
+		await page.getByRole('button', { name: 'Enviar a revisión' }).click();
+		const titulo = page.getByRole('heading', { name: 'Faltan 2 datos para enviar a revisión' });
+		await expect.element(titulo).toHaveFocus();
+		expect(enviar).not.toHaveBeenCalled();
+		await expect.element(page.getByText('Borrador', { exact: true })).toBeInTheDocument();
+		// Tras intentar enviar, cada campo muestra su error junto a él.
 		await expect
 			.element(page.getByLabelText('Observaciones'))
 			.toHaveAttribute('aria-invalid', 'true');
+
+		await page
+			.getByRole('link', { name: 'El alcance 2.1 está «Con observación»: capture la observación.' })
+			.click();
+		await expect.element(page.getByLabelText('Observaciones')).toHaveFocus();
+		await page.getByRole('link', { name: /Capture la fecha completa/ }).click();
+		await expect.element(page.getByLabelText(/Fecha de ejecución/)).toHaveFocus();
+	});
+
+	it('muestra el error de la fecha al salir del campo, con el rango permitido', async () => {
+		render(EditorReporte, { reporte: reporte(), espera: 60_000, enviar: sinRespuesta });
+		const fecha = page.getByLabelText('Fecha de ejecución (mayo 2026)');
+		await expect.element(fecha).toHaveAttribute('aria-invalid', 'false');
+
+		await fecha.fill('2026-06-02');
+		await page.getByLabelText('Tipo de mantenimiento').click();
+		const error = page.getByText(/debe estar dentro del periodo del reporte \(del 1 de mayo al 31/);
+		await expect.element(error).toBeInTheDocument();
+		await expect.element(fecha).toHaveAttribute('aria-invalid', 'true');
+		await expect
+			.element(fecha)
+			.toHaveAttribute('aria-describedby', expect.stringContaining('error-fecha'));
+	});
+
+	it('ofrece «Hoy» solo dentro del periodo y muestra el rango permitido', async () => {
+		const { unmount } = render(EditorReporte, {
+			reporte: reporte({ fechaEjecucion: null }),
+			hoy: '2026-05-20',
+			espera: 60_000,
+			enviar: sinRespuesta
+		});
+		await page.getByRole('button', { name: 'Hoy' }).click();
+		await expect.element(page.getByLabelText(/Fecha de ejecución/)).toHaveValue('2026-05-20');
+		unmount();
+
+		render(EditorReporte, {
+			reporte: reporte({ fechaEjecucion: null }),
+			hoy: '2026-10-21',
+			espera: 60_000,
+			enviar: sinRespuesta
+		});
+		expect(page.getByRole('button', { name: 'Hoy' }).elements()).toHaveLength(0);
+		await expect
+			.element(page.getByText('Periodo: del 1 al 31 de mayo de 2026'))
+			.toBeInTheDocument();
+	});
+
+	it('muestra la hora del último guardado y, si falla, permite reintentar sin perder lo escrito', async () => {
+		const enviar = vi
+			.fn<EnviarAccion>()
+			.mockResolvedValueOnce({
+				ok: false,
+				estado: 0,
+				datos: { error: 'Sin conexión con el servidor; se reintentará al seguir editando.' }
+			})
+			.mockResolvedValue({ ok: true, datos: { reporte: { ...reporte(), version: 4 } } });
+		render(EditorReporte, { reporte: reporte(), espera: 10, enviar });
+
+		await page.getByLabelText('Conclusiones', { exact: true }).fill('Texto nuevo');
+		await expect.element(page.getByText('No se guardó', { exact: true })).toBeInTheDocument();
+		await expect.element(page.getByText(/Sin conexión con el servidor/)).toBeInTheDocument();
+		// Tras un fallo no se reintenta solo en bucle.
+		await new Promise((r) => setTimeout(r, 100));
+		expect(enviar).toHaveBeenCalledTimes(1);
+
+		await page.getByRole('button', { name: 'Reintentar' }).click();
+		await expect.element(page.getByText('hace un momento')).toBeInTheDocument();
+		expect(enviar).toHaveBeenCalledTimes(2);
+		expect(JSON.parse(String(enviar.mock.calls[1][1].get('reporte')))).toMatchObject({
+			conclusiones: 'Texto nuevo'
+		});
+		await expect
+			.element(page.getByLabelText('Conclusiones', { exact: true }))
+			.toHaveValue('Texto nuevo');
+	});
+
+	it('el índice marca la completitud y lleva al alcance elegido', async () => {
+		render(EditorReporte, {
+			reporte: reporte({
+				objetivo: '',
+				alcances: [
+					reporte().alcances[0],
+					{ ...reporte().alcances[0], id: ID(11), titulo: '', orden: 2 }
+				]
+			}),
+			espera: 60_000,
+			enviar: sinRespuesta
+		});
+		const indice = page.getByRole('navigation', { name: 'Secciones del reporte' });
+		await expect.element(indice).toHaveTextContent(/1\. Objetivo.*1 pendiente/);
+		await expect.element(indice).toHaveTextContent(/Encabezado, completo/);
+		await expect.element(indice).toHaveTextContent(/2\.2 Sin título.*1 pendiente/);
+
+		// En pantallas angostas el índice se despliega con su botón.
+		const alternar = page.getByRole('button', { name: /^Secciones/ });
+		if ((alternar.element() as HTMLElement).offsetParent) await alternar.click();
+		await indice.getByRole('link', { name: /2\.2 Sin título/ }).click();
+		expect(document.activeElement?.id).toBe(`alcance-${ID(11)}`);
+	});
+
+	it('las firmas se muestran como resumen con «Editar» y se abren solas si falta un dato', async () => {
+		const enviar = vi.fn<EnviarAccion>(async () => ({
+			ok: true as const,
+			datos: { reporte: { ...reporte(), version: 4 } }
+		}));
+		const { unmount } = render(EditorReporte, { reporte: reporte(), espera: 10, enviar });
+		const firmas = page.getByRole('region', { name: 'Firmas' });
+		await expect.element(firmas).toHaveTextContent(/Elaboró\s*Uno/);
+		expect(firmas.getByRole('textbox').elements()).toHaveLength(0);
+
+		await firmas.getByRole('button', { name: 'Editar' }).click();
+		await firmas.getByLabelText('Cargo').first().fill('Supervisor');
+		await vi.waitFor(() => expect(enviar).toHaveBeenCalled());
+		expect(
+			JSON.parse(String(enviar.mock.calls.at(-1)?.[1].get('reporte'))).firmantes.elaboro
+		).toMatchObject({ cargo: 'Supervisor' });
+		unmount();
+
+		render(EditorReporte, {
+			reporte: reporte({
+				firmantes: { ...reporte().firmantes, aprobo: { nombre: '', cargo: '', empresa: '' } }
+			}),
+			espera: 60_000,
+			enviar: sinRespuesta
+		});
+		const abiertas = page.getByRole('region', { name: 'Firmas' });
+		await expect.element(abiertas).toHaveTextContent('1 pendiente');
+		await expect.element(abiertas.getByLabelText('Nombre').nth(1)).toBeInTheDocument();
 	});
 
 	it('autoguarda con la versión vigente y deja de editar ante un conflicto', async () => {

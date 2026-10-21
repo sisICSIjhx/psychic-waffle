@@ -1,21 +1,29 @@
 <!-- Editor del reporte FOR-ICSI-RMT-01: encabezado, TAG, firmantes, alcances con fotos y
      verificación, herramientas y conclusiones. Autoguarda tras una pausa con concurrencia optimista
-     (un conflicto de versión detiene el guardado sin sobrescribir) y controla los estados. -->
+     (un conflicto de versión detiene el guardado sin sobrescribir) y controla los estados. Una barra
+     fija resume contexto, guardado y pendientes; el índice lleva a cada sección. -->
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
 	import {
 		aGuardado,
+		completitudPorSeccion,
+		destinoDeObservacion,
+		ETIQUETA_OCURRENCIA,
 		rangoDelPeriodo,
 		validarParaRevision,
 		type Observacion
 	} from '$lib/dominio/captura';
 	import { TEXTO_ESTADO_VERIFICACION, textoTags } from '$lib/dominio/documento';
-	import { plural, textoMes } from '$lib/dominio/textos';
 	import type { Equipo, Foto, Reporte, ReporteGuardado } from '$lib/dominio/esquemas';
+	import { fechaEnZona } from '$lib/dominio/fechas';
+	import { plural, textoHaceTiempo, textoMes, textoRango } from '$lib/dominio/textos';
 	import { llamarAccion, type EnviarAccion, type ResultadoAccion } from './acciones';
+	import ErrorCampo from './ErrorCampo.svelte';
 	import FotosAlcance from './FotosAlcance.svelte';
+	import IndiceSecciones from './IndiceSecciones.svelte';
 	import InsigniaEstado from './InsigniaEstado.svelte';
+	import SeccionResumen from './SeccionResumen.svelte';
 
 	export let reporte: Reporte;
 	export let equiposPartida: Equipo[] = [];
@@ -24,22 +32,41 @@
 	/** Pausa del autoguardado tras el último cambio, en milisegundos. */
 	export let espera = 1500;
 	export let enviar: EnviarAccion = llamarAccion;
+	/** Fecha de hoy («AAAA-MM-DD») en la zona del negocio, para el atajo «Hoy». */
+	export let hoy = fechaEnZona();
 
 	type EstadoGuardado = 'guardado' | 'pendiente' | 'guardando' | 'conflicto' | 'error';
 	type Momento = 'antes' | 'durante' | 'despues';
+	type EntradaIndice = { id: string; texto: string; pendientes: number; nivel: 0 | 1 };
+
+	const seccion = (id: string, texto: string, pendientes: number): EntradaIndice => ({
+		id,
+		texto,
+		pendientes,
+		nivel: 0
+	});
 
 	const FUNCIONES = [
 		{ clave: 'elaboro', etiqueta: 'Elaboró' },
 		{ clave: 'aprobo', etiqueta: 'Aprobó' },
 		{ clave: 'recibio', etiqueta: 'Recibió' }
 	] as const;
+	/** Datos que vienen del contrato y la partida; no se editan en el reporte. */
+	const DATOS_CONTRATO = [
+		{ campo: 'usuario', clave: 'usuario', etiqueta: 'Usuario' },
+		{ campo: 'contratoTexto', clave: 'contrato', etiqueta: 'No. contrato / OC' },
+		{ campo: 'sitioTexto', clave: 'sitio', etiqueta: 'Sitio' },
+		{ campo: 'periodicidad', clave: 'periodicidad', etiqueta: 'Periodicidad' }
+	] as const;
 	const TEXTO_GUARDADO: Record<EstadoGuardado, string> = {
-		guardado: 'Cambios guardados',
+		guardado: 'Guardado',
 		pendiente: 'Cambios sin guardar',
 		guardando: 'Guardando…',
 		conflicto: 'Versión desactualizada',
 		error: 'No se guardó'
 	};
+	const ENFOCABLE =
+		'input:not([type=hidden]):not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]';
 
 	/** Completa los firmantes que falten para poder editarlos. */
 	function normalizar(r: Reporte): Reporte {
@@ -68,15 +95,46 @@
 
 	const huella = (r: Reporte) => JSON.stringify({ ...paraGuardar(r), version: 0 });
 
+	/** Errores a la vista: los de campos que ya se dejaron o, tras intentar enviar, todos. */
+	function erroresVisibles(
+		lista: Observacion[],
+		r: Reporte,
+		vistos: Record<string, boolean>,
+		todos: boolean
+	): Record<string, string> {
+		const errores: Record<string, string> = {};
+		for (const observacion of lista) {
+			const destino = destinoDeObservacion(observacion, r);
+			if (!destino || errores[destino.campoId]) continue;
+			if (todos || vistos[destino.campoId]) errores[destino.campoId] = observacion.mensaje;
+		}
+		return errores;
+	}
+
+	/** `aria-describedby` de un campo: su error (si está a la vista) y sus textos de ayuda. */
+	function describir(errores: Record<string, string>, campoId: string, ...ayudas: string[]) {
+		const ids = [...(errores[campoId] ? [`error-${campoId}`] : []), ...ayudas];
+		return ids.length ? ids.join(' ') : undefined;
+	}
+
 	reporte = normalizar(reporte);
 	let ultimaHuella = huella(reporte);
+	/** Contenido que falló al guardarse: no se reintenta solo hasta que cambie o se pida. */
+	let huellaFallida: string | null = null;
 	let estadoGuardado: EstadoGuardado = 'guardado';
+	let guardadoEn: number | null = null;
+	let ahora = Date.now();
 	let mensaje = '';
 	let observacionesServidor: Observacion[] = [];
 	let rechazadas: { nombre: string; motivo: string }[] = [];
 	let cargandoPorAlcance: Record<string, number> = {};
 	let ocupado = false;
 	let confirmarOmitirTabla = false;
+	let mostrarResumen = false;
+	let intentoEnvio = false;
+	let tocados: Record<string, boolean> = {};
+	let abiertas = { firmas: false, objetivo: false };
+	let tituloResumen: HTMLElement | undefined;
 	let temporizador: ReturnType<typeof setTimeout> | null = null;
 	let cola: Promise<unknown> = Promise.resolve();
 
@@ -84,11 +142,45 @@
 	$: editable = reporte.estado === 'borrador' && estadoGuardado !== 'conflicto' && !ocupado;
 	$: ruta = resolve('/reportes/[id]', { id: reporte.id });
 	$: huellaActual = huella(reporte);
-	$: if (editable && huellaActual !== ultimaHuella && estadoGuardado !== 'guardando') programar();
+	$: if (
+		editable &&
+		huellaActual !== ultimaHuella &&
+		huellaActual !== huellaFallida &&
+		estadoGuardado !== 'guardando'
+	)
+		programar();
 	$: pendientes = validarParaRevision(reporte, { requiereTag: equiposPartida.length > 0 });
+	$: completitud = completitudPorSeccion(pendientes, reporte);
+	$: errores = erroresVisibles(pendientes, reporte, tocados, intentoEnvio);
+	// Las observaciones del servidor (422) se suman a las locales sin repetir campos.
+	$: listaResumen = [
+		...pendientes,
+		...observacionesServidor.filter((o) => !pendientes.some((p) => p.campo === o.campo))
+	];
 	// Días válidos: el mes o, si aplica, la semana, quincena o día elegidos.
 	$: rango = rangoDelPeriodo(reporte.periodoMes, reporte.ocurrencia);
+	$: hoyEnPeriodo = !!rango && rango.desde <= hoy && hoy <= rango.hasta;
 	$: idsEquipos = new Set(reporte.equipos.map((e) => e.id));
+	$: contexto = `${reporte.usuario} › Partida ${reporte.numeroPartida} › ${textoMes(
+		reporte.periodoMes,
+		{ inicial: true }
+	)}${reporte.ocurrencia ? ` · ${ETIQUETA_OCURRENCIA[reporte.ocurrencia.tipo]} ${reporte.ocurrencia.numero}` : ''}`;
+	$: entradasIndice = [
+		seccion('seccion-encabezado', 'Encabezado', completitud.porSeccion.encabezado),
+		seccion('seccion-firmas', 'Firmas', completitud.porSeccion.firmas),
+		seccion('seccion-objetivo', '1. Objetivo', completitud.porSeccion.objetivo),
+		seccion('seccion-alcance', '2. Alcance', completitud.porSeccion.alcance),
+		...reporte.alcances.map(
+			(a, i): EntradaIndice => ({
+				id: `alcance-${a.id}`,
+				texto: `2.${i + 1} ${a.titulo.trim() || 'Sin título'}`,
+				pendientes: completitud.porAlcance[a.id] ?? 0,
+				nivel: 1
+			})
+		),
+		seccion('seccion-herramientas', 'Herramientas y equipo', completitud.porSeccion.herramientas),
+		seccion('seccion-conclusiones', 'Conclusiones', completitud.porSeccion.conclusiones)
+	];
 
 	function programar() {
 		estadoGuardado = 'pendiente';
@@ -119,6 +211,7 @@
 				'Otra persona modificó este reporte. Sus últimos cambios no se guardaron para no sobrescribir los de ella: recargue el reporte.';
 		} else if (resultado.estado === 422) {
 			observacionesServidor = datos.observaciones ?? [];
+			if (observacionesServidor.length) verPendientes();
 		}
 	}
 
@@ -137,6 +230,7 @@
 		}
 		if (!reporte.titulo.trim()) {
 			estadoGuardado = 'error';
+			huellaFallida = enviado;
 			mensaje = 'El título no puede quedar vacío.';
 			return false;
 		}
@@ -146,6 +240,7 @@
 		const resultado = await enviar('guardar', datos, ruta);
 		if (!resultado.ok) {
 			if (estadoGuardado === 'guardando') estadoGuardado = 'error';
+			huellaFallida = enviado;
 			manejarFallo(resultado);
 			return false;
 		}
@@ -153,11 +248,18 @@
 		reporte.version = guardado.version;
 		reporte.documentos = guardado.documentos;
 		ultimaHuella = enviado;
+		huellaFallida = null;
+		guardadoEn = Date.now();
 		mensaje = '';
 		// Lo que se escribió mientras se guardaba queda pendiente para la siguiente pausa.
 		estadoGuardado = 'guardado';
 		if (huella(reporte) !== enviado) programar();
 		return true;
+	}
+
+	function reintentar() {
+		huellaFallida = null;
+		guardarAhora();
 	}
 
 	function reemplazar(nuevo: Reporte) {
@@ -244,6 +346,23 @@
 		}
 	}
 
+	/** Con datos pendientes no se llama al servidor: se muestra qué falta y dónde. */
+	async function enviarARevision() {
+		if (pendientes.length) {
+			await verPendientes();
+			return;
+		}
+		mostrarResumen = false;
+		accionConGuardado('estado', { estado: 'en_revision' });
+	}
+
+	async function verPendientes() {
+		intentoEnvio = true;
+		mostrarResumen = true;
+		await tick();
+		tituloResumen?.focus();
+	}
+
 	/** La acción redirige a la revisión nueva (llamarAccion sigue la redirección). */
 	async function crearRevision() {
 		ocupado = true;
@@ -269,6 +388,35 @@
 		evento.preventDefault();
 		const destino = (evento.currentTarget as HTMLAnchorElement).href;
 		if (await encolar(guardar)) window.location.assign(destino);
+	}
+
+	/** Enfoca el elemento o, si no admite foco, su primer control; la sección se abre antes. */
+	async function enfocar(id: string) {
+		await tick();
+		const elemento = document.getElementById(id);
+		if (!elemento) return;
+		const destino = elemento.matches(ENFOCABLE)
+			? elemento
+			: (elemento.querySelector<HTMLElement>(ENFOCABLE) ?? elemento);
+		destino.focus();
+	}
+
+	function irAPendiente(observacion: Observacion) {
+		const destino = destinoDeObservacion(observacion, reporte);
+		if (!destino) return;
+		if (destino.seccion === 'firmas') abiertas.firmas = true;
+		if (destino.seccion === 'objetivo') abiertas.objetivo = true;
+		enfocar(destino.campoId);
+	}
+
+	/** Desde el índice: al título de la sección o, en un alcance, al alcance. */
+	function irASeccion(id: string) {
+		enfocar(document.getElementById(`${id}-titulo`) ? `${id}-titulo` : id);
+	}
+
+	function marcarTocado(evento: FocusEvent) {
+		const id = (evento.target as HTMLElement | null)?.closest('[id]')?.id;
+		if (id && !tocados[id]) tocados = { ...tocados, [id]: true };
 	}
 
 	function agregarAlcance() {
@@ -342,6 +490,12 @@
 		if (hayCambiosPendientes()) evento.preventDefault();
 	}
 
+	onMount(() => {
+		// La hora relativa del guardado se actualiza sola.
+		const reloj = setInterval(() => (ahora = Date.now()), 5000);
+		return () => clearInterval(reloj);
+	});
+
 	onDestroy(() => {
 		if (temporizador) clearTimeout(temporizador);
 	});
@@ -354,21 +508,39 @@
 </p>
 
 <section class="card barra-reporte" aria-label="Estado del reporte">
-	<div class="estado-reporte">
+	<div class="linea-estado">
+		<span class="contexto" title={contexto}>{contexto}</span>
 		<InsigniaEstado estado={reporte.estado} />
-		{#if reporte.revision > 0}<span class="view-note">Revisión {reporte.revision}</span>{/if}
+		{#if reporte.revision > 0}<span class="view-note">Rev. {reporte.revision}</span>{/if}
 		{#if reporte.estado === 'borrador'}
-			<span class="view-note guardado-{estadoGuardado}" role="status">
-				{TEXTO_GUARDADO[estadoGuardado]}
+			<span class="guardado guardado-{estadoGuardado}">
+				<span role="status">{TEXTO_GUARDADO[estadoGuardado]}</span>
+				{#if estadoGuardado === 'guardado' && guardadoEn}
+					<span>{textoHaceTiempo(guardadoEn, ahora)}</span>
+				{/if}
 			</span>
+			{#if estadoGuardado === 'error'}
+				<button class="boton" type="button" on:click={reintentar}>Reintentar</button>
+			{/if}
 		{/if}
 	</div>
 	<div class="acciones-reporte">
+		{#if reporte.estado === 'borrador'}
+			{#if pendientes.length}
+				<button class="boton faltan" type="button" on:click={verPendientes}
+					><span class="marca-faltan" aria-hidden="true">!</span><span class="texto-largo"
+						>Faltan
+					</span>{pendientes.length}</button
+				>
+			{:else}
+				<span class="completo"><span aria-hidden="true">✓</span> Completo</span>
+			{/if}
+		{/if}
 		{#if reporte.fechaEjecucion}
 			<a
 				class="boton"
 				href={resolve('/reportes/[id]/documento', { id: reporte.id })}
-				on:click={descargar}>Descargar DOCX</a
+				on:click={descargar}><span class="texto-largo">Descargar </span>DOCX</a
 			>
 		{/if}
 		{#if reporte.estado === 'borrador'}
@@ -376,8 +548,7 @@
 				class="boton primario"
 				type="button"
 				disabled={ocupado || estadoGuardado === 'conflicto'}
-				on:click={() => accionConGuardado('estado', { estado: 'en_revision' })}
-				>Enviar a revisión</button
+				on:click={enviarARevision}>Enviar a revisión</button
 			>
 		{:else if reporte.estado === 'en_revision'}
 			<button
@@ -398,302 +569,423 @@
 	</div>
 </section>
 
-{#if mensaje || observacionesServidor.length}
-	<div class="aviso aviso-error" role="alert">
-		{#if mensaje}<p>{mensaje}</p>{/if}
-		{#if observacionesServidor.length}
-			<ul>
-				{#each observacionesServidor as o (o.campo)}<li>{o.mensaje}</li>{/each}
-			</ul>
-		{/if}
-		{#if estadoGuardado === 'conflicto'}
-			<button class="boton" type="button" on:click={() => window.location.reload()}
-				>Recargar el reporte</button
-			>
-		{/if}
-	</div>
-{/if}
+<div class="cuerpo-editor">
+	<IndiceSecciones
+		entradas={entradasIndice}
+		total={pendientes.length}
+		conCompletitud={reporte.estado === 'borrador'}
+		on:ir={(e) => irASeccion(e.detail)}
+	/>
 
-{#if catalogoCambiado && reporte.estado === 'borrador'}
-	<div class="aviso aviso-alerta" role="status">
-		<p>
-			La partida cambió en el catálogo después de crear este borrador. El borrador conserva su
-			contenido; puede aplicar los cambios (objetivo, alcances, herramientas y conclusiones). Las
-			fotos de los alcances que siguen en el catálogo se conservan.
-		</p>
-		<button
-			class="boton"
-			type="button"
-			disabled={ocupado}
-			on:click={() => accionConGuardado('aplicarCatalogo', {})}>Aplicar cambios del catálogo</button
-		>
-	</div>
-{/if}
-{#if partidaPorConfirmar}
-	<p class="aviso aviso-alerta">La partida de este reporte está por confirmar en el catálogo.</p>
-{/if}
-{#if rechazadas.length}
-	<div class="aviso aviso-error" role="alert">
-		<p>Algunas fotos no se cargaron; las demás se conservaron.</p>
-		<ul>
-			{#each rechazadas as r, i (i)}<li>{r.nombre}: {r.motivo}</li>{/each}
-		</ul>
-	</div>
-{/if}
-
-<fieldset class="editor-reporte" disabled={!editable}>
-	<legend class="sr-only">Contenido del reporte</legend>
-
-	<section class="card" aria-labelledby="titulo-encabezado">
-		<h2 id="titulo-encabezado" class="view-heading">Encabezado</h2>
-		<div class="form-grid">
-			<div class="form-group ancho-completo">
-				<label for="titulo">Título</label>
-				<input id="titulo" bind:value={reporte.titulo} required />
-			</div>
-			<div class="form-group">
-				<span class="etiqueta">Usuario</span>
-				<span>{reporte.usuario}</span>
-			</div>
-			<div class="form-group">
-				<span class="etiqueta">No. contrato / OC</span>
-				<span>{reporte.contratoTexto}</span>
-			</div>
-			<div class="form-group">
-				<span class="etiqueta">Sitio</span>
-				<span>{reporte.sitioTexto}</span>
-			</div>
-			<div class="form-group">
-				<span class="etiqueta">Periodicidad</span>
-				<span>{reporte.periodicidad}</span>
-			</div>
-			<div class="form-group">
-				<label for="fecha">Fecha de ejecución ({textoMes(reporte.periodoMes)})</label>
-				<input
-					id="fecha"
-					type="date"
-					min={rango?.desde}
-					max={rango?.hasta}
-					bind:value={reporte.fechaEjecucion}
-					aria-invalid={pendientes.some((o) => o.campo === 'fechaEjecucion')}
-				/>
-			</div>
-			<div class="form-group">
-				<label for="tipo">Tipo de mantenimiento</label>
-				<input id="tipo" bind:value={reporte.tipoMantenimiento} />
-			</div>
-		</div>
-		{#if equiposPartida.length}
-			<fieldset class="casillas">
-				<legend>TAG ({textoTags(reporte.equipos.map((e) => e.tag))})</legend>
-				{#each equiposPartida as equipo (equipo.id)}
-					<label>
-						<input
-							type="checkbox"
-							checked={idsEquipos.has(equipo.id)}
-							on:change={(e) =>
-								alternarEquipo(equipo, (e.currentTarget as HTMLInputElement).checked)}
-						/>
-						{equipo.tag}
-					</label>
-				{/each}
-			</fieldset>
-		{:else}
-			<p class="view-note">TAG: {textoTags(reporte.equipos.map((e) => e.tag))}</p>
-		{/if}
-	</section>
-
-	<section class="card" aria-labelledby="titulo-firmas">
-		<h2 id="titulo-firmas" class="view-heading">Firmas</h2>
-		<div class="firmas">
-			{#each FUNCIONES as funcion (funcion.clave)}
-				{@const firma = reporte.firmantes[funcion.clave]}
-				{#if firma}
-					<fieldset class="firma">
-						<legend>{funcion.etiqueta}</legend>
-						<label class="etiqueta" for={`firma-${funcion.clave}-nombre`}>Nombre</label>
-						<input id={`firma-${funcion.clave}-nombre`} bind:value={firma.nombre} />
-						<label class="etiqueta" for={`firma-${funcion.clave}-cargo`}>Cargo</label>
-						<input id={`firma-${funcion.clave}-cargo`} bind:value={firma.cargo} />
-						<label class="etiqueta" for={`firma-${funcion.clave}-empresa`}>Empresa</label>
-						<input id={`firma-${funcion.clave}-empresa`} bind:value={firma.empresa} />
-					</fieldset>
+	<div class="contenido-editor">
+		{#if mensaje}
+			<div class="aviso aviso-error" role="alert">
+				<p>{mensaje}</p>
+				{#if estadoGuardado === 'conflicto'}
+					<button class="boton" type="button" on:click={() => window.location.reload()}
+						>Recargar el reporte</button
+					>
 				{/if}
-			{/each}
-		</div>
-	</section>
+			</div>
+		{/if}
 
-	<section class="card" aria-labelledby="titulo-objetivo">
-		<h2 id="titulo-objetivo" class="view-heading">1. Objetivo</h2>
-		<label class="sr-only" for="objetivo">Objetivo</label>
-		<textarea id="objetivo" rows="4" bind:value={reporte.objetivo}></textarea>
-	</section>
+		{#if mostrarResumen && reporte.estado === 'borrador'}
+			<section class="aviso aviso-alerta resumen-pendientes" aria-labelledby="titulo-resumen">
+				<h2 id="titulo-resumen" class="titulo-resumen" tabindex="-1" bind:this={tituloResumen}>
+					{listaResumen.length
+						? `Faltan ${plural(listaResumen.length, 'dato')} para enviar a revisión`
+						: 'Listo para enviar a revisión'}
+				</h2>
+				{#if listaResumen.length}
+					<ul>
+						{#each listaResumen as observacion (observacion.campo)}
+							<li>
+								<a
+									class="enlace"
+									href={`#${destinoDeObservacion(observacion, reporte)?.campoId ?? 'seccion-encabezado'}`}
+									on:click|preventDefault={() => irAPendiente(observacion)}>{observacion.mensaje}</a
+								>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+				<button class="boton" type="button" on:click={() => (mostrarResumen = false)}
+					>Ocultar</button
+				>
+			</section>
+		{/if}
 
-	<section class="card" aria-labelledby="titulo-alcance">
-		<h2 id="titulo-alcance" class="view-heading">2. Alcance</h2>
-		<label class="etiqueta" for="introduccion">Introducción (opcional)</label>
-		<textarea id="introduccion" rows="3" bind:value={reporte.introduccion}></textarea>
-
-		<label class="casilla-verificacion">
-			<input
-				type="checkbox"
-				checked={reporte.incluyeVerificacion}
-				on:change={alternarVerificacion}
-			/>
-			Incluir tabla de verificación
-		</label>
-		{#if confirmarOmitirTabla}
-			<div class="aviso aviso-alerta" role="alertdialog" aria-labelledby="texto-omitir">
-				<p id="texto-omitir">
-					Ya hay estados u observaciones capturados. El documento omitirá la tabla, pero se
-					conservan por si vuelve a activarla.
+		{#if catalogoCambiado && reporte.estado === 'borrador'}
+			<div class="aviso aviso-alerta" role="status">
+				<p>
+					La partida cambió en el catálogo después de crear este borrador. El borrador conserva su
+					contenido; puede aplicar los cambios (objetivo, alcances, herramientas y conclusiones).
+					Las fotos de los alcances que siguen en el catálogo se conservan.
 				</p>
 				<button
 					class="boton"
 					type="button"
-					on:click={() => {
-						reporte.incluyeVerificacion = false;
-						confirmarOmitirTabla = false;
-					}}>Omitir la tabla</button
-				>
-				<button class="boton" type="button" on:click={() => (confirmarOmitirTabla = false)}
-					>Mantenerla</button
+					disabled={ocupado}
+					on:click={() => accionConGuardado('aplicarCatalogo', {})}
+					>Aplicar cambios del catálogo</button
 				>
 			</div>
 		{/if}
+		{#if partidaPorConfirmar}
+			<p class="aviso aviso-alerta">
+				La partida de este reporte está por confirmar en el catálogo.
+			</p>
+		{/if}
+		{#if rechazadas.length}
+			<div class="aviso aviso-error" role="alert">
+				<p>Algunas fotos no se cargaron; las demás se conservaron.</p>
+				<ul>
+					{#each rechazadas as r, i (i)}<li>{r.nombre}: {r.motivo}</li>{/each}
+				</ul>
+			</div>
+		{/if}
 
-		<ol class="alcances">
-			{#each reporte.alcances as alcance, i (alcance.id)}
-				<li class="alcance">
-					<div class="cabecera-alcance">
-						<label for={`alcance-${alcance.id}`}>2.{i + 1}</label>
+		<fieldset class="editor-reporte" disabled={!editable} on:focusout={marcarTocado}>
+			<legend class="sr-only">Contenido del reporte</legend>
+
+			<section id="seccion-encabezado" class="card" aria-labelledby="seccion-encabezado-titulo">
+				<h2 id="seccion-encabezado-titulo" class="view-heading" tabindex="-1">Encabezado</h2>
+				<dl class="datos-contrato">
+					{#each DATOS_CONTRATO as dato (dato.clave)}
+						<div>
+							<dt class="etiqueta">{dato.etiqueta}</dt>
+							<dd
+								id={`dato-${dato.clave}`}
+								tabindex="-1"
+								aria-describedby={describir(errores, `dato-${dato.clave}`)}
+							>
+								{reporte[dato.campo] || '—'}
+							</dd>
+							<ErrorCampo id={`error-dato-${dato.clave}`} mensaje={errores[`dato-${dato.clave}`]} />
+						</div>
+					{/each}
+				</dl>
+				<p class="view-note nota-contrato">
+					Vienen del contrato y de la partida; si alguno está mal, corríjalo en el catálogo.
+				</p>
+				<div class="form-grid">
+					<div class="form-group ancho-completo">
+						<label for="titulo">Título</label>
 						<input
-							id={`alcance-${alcance.id}`}
-							placeholder="Título del alcance"
-							bind:value={alcance.titulo}
+							id="titulo"
+							bind:value={reporte.titulo}
+							required
+							aria-invalid={!!errores.titulo}
+							aria-describedby={describir(errores, 'titulo')}
 						/>
-						<div class="acciones-alcance">
-							<button
-								type="button"
-								class="action-btn"
-								aria-label={`Subir el alcance 2.${i + 1}`}
-								disabled={i === 0}
-								on:click={() => moverAlcance(i, -1)}>↑</button
+						<ErrorCampo id="error-titulo" mensaje={errores.titulo} />
+					</div>
+					<div class="form-group">
+						<label for="fecha">Fecha de ejecución ({textoMes(reporte.periodoMes)})</label>
+						<div class="fila-fecha">
+							<input
+								id="fecha"
+								type="date"
+								min={rango?.desde}
+								max={rango?.hasta}
+								bind:value={reporte.fechaEjecucion}
+								aria-invalid={!!errores.fecha}
+								aria-describedby={describir(errores, 'fecha', ...(rango ? ['ayuda-fecha'] : []))}
+							/>
+							{#if hoyEnPeriodo}
+								<button class="boton" type="button" on:click={() => (reporte.fechaEjecucion = hoy)}
+									>Hoy</button
+								>
+							{/if}
+						</div>
+						{#if rango}<p id="ayuda-fecha" class="ayuda">Periodo: {textoRango(rango)}</p>{/if}
+						<ErrorCampo id="error-fecha" mensaje={errores.fecha} />
+					</div>
+					<div class="form-group">
+						<label for="tipo">Tipo de mantenimiento</label>
+						<input
+							id="tipo"
+							bind:value={reporte.tipoMantenimiento}
+							aria-invalid={!!errores.tipo}
+							aria-describedby={describir(errores, 'tipo')}
+						/>
+						<ErrorCampo id="error-tipo" mensaje={errores.tipo} />
+					</div>
+				</div>
+				{#if equiposPartida.length}
+					<fieldset id="tags" class="casillas" aria-describedby={describir(errores, 'tags')}>
+						<legend>TAG ({textoTags(reporte.equipos.map((e) => e.tag))})</legend>
+						{#each equiposPartida as equipo (equipo.id)}
+							<label>
+								<input
+									type="checkbox"
+									checked={idsEquipos.has(equipo.id)}
+									on:change={(e) =>
+										alternarEquipo(equipo, (e.currentTarget as HTMLInputElement).checked)}
+								/>
+								{equipo.tag}
+							</label>
+						{/each}
+					</fieldset>
+					<ErrorCampo id="error-tags" mensaje={errores.tags} />
+				{:else}
+					<p class="view-note">TAG: {textoTags(reporte.equipos.map((e) => e.tag))}</p>
+				{/if}
+			</section>
+
+			<SeccionResumen
+				id="seccion-firmas"
+				titulo="Firmas"
+				pendientes={completitud.porSeccion.firmas}
+				{editable}
+				bind:abierta={abiertas.firmas}
+			>
+				<ul slot="resumen" class="resumen-firmas">
+					{#each FUNCIONES as funcion (funcion.clave)}
+						{@const firma = reporte.firmantes[funcion.clave]}
+						<li>
+							<span class="etiqueta">{funcion.etiqueta}</span>
+							<span
+								>{firma?.nombre || 'Sin nombre'}{firma?.cargo
+									? ` · ${firma.cargo}`
+									: ''}{firma?.empresa ? ` · ${firma.empresa}` : ''}</span
 							>
-							<button
-								type="button"
-								class="action-btn"
-								aria-label={`Bajar el alcance 2.${i + 1}`}
-								disabled={i === reporte.alcances.length - 1}
-								on:click={() => moverAlcance(i, 1)}>↓</button
+						</li>
+					{/each}
+				</ul>
+				<div class="firmas">
+					{#each FUNCIONES as funcion (funcion.clave)}
+						{@const firma = reporte.firmantes[funcion.clave]}
+						{@const campoNombre = `firma-${funcion.clave}-nombre`}
+						{#if firma}
+							<fieldset class="firma">
+								<legend>{funcion.etiqueta}</legend>
+								<label class="etiqueta" for={campoNombre}>Nombre</label>
+								<input
+									id={campoNombre}
+									bind:value={firma.nombre}
+									aria-invalid={!!errores[campoNombre]}
+									aria-describedby={describir(errores, campoNombre)}
+								/>
+								<ErrorCampo id={`error-${campoNombre}`} mensaje={errores[campoNombre]} />
+								<label class="etiqueta" for={`firma-${funcion.clave}-cargo`}>Cargo</label>
+								<input id={`firma-${funcion.clave}-cargo`} bind:value={firma.cargo} />
+								<label class="etiqueta" for={`firma-${funcion.clave}-empresa`}>Empresa</label>
+								<input id={`firma-${funcion.clave}-empresa`} bind:value={firma.empresa} />
+							</fieldset>
+						{/if}
+					{/each}
+				</div>
+			</SeccionResumen>
+
+			<SeccionResumen
+				id="seccion-objetivo"
+				titulo="1. Objetivo"
+				pendientes={completitud.porSeccion.objetivo}
+				{editable}
+				bind:abierta={abiertas.objetivo}
+			>
+				<p slot="resumen" class="resumen-texto">{reporte.objetivo || 'Sin objetivo.'}</p>
+				<label class="sr-only" for="objetivo">Objetivo</label>
+				<textarea
+					id="objetivo"
+					rows="4"
+					bind:value={reporte.objetivo}
+					aria-invalid={!!errores.objetivo}
+					aria-describedby={describir(errores, 'objetivo')}
+				></textarea>
+				<ErrorCampo id="error-objetivo" mensaje={errores.objetivo} />
+			</SeccionResumen>
+
+			<section id="seccion-alcance" class="card" aria-labelledby="seccion-alcance-titulo">
+				<h2 id="seccion-alcance-titulo" class="view-heading" tabindex="-1">2. Alcance</h2>
+				<label class="etiqueta" for="introduccion">Introducción (opcional)</label>
+				<textarea id="introduccion" rows="3" bind:value={reporte.introduccion}></textarea>
+
+				<label class="casilla-verificacion">
+					<input
+						type="checkbox"
+						checked={reporte.incluyeVerificacion}
+						on:change={alternarVerificacion}
+					/>
+					Incluir tabla de verificación
+				</label>
+				{#if confirmarOmitirTabla}
+					<div class="aviso aviso-alerta" role="alertdialog" aria-labelledby="texto-omitir">
+						<p id="texto-omitir">
+							Ya hay estados u observaciones capturados. El documento omitirá la tabla, pero se
+							conservan por si vuelve a activarla.
+						</p>
+						<button
+							class="boton"
+							type="button"
+							on:click={() => {
+								reporte.incluyeVerificacion = false;
+								confirmarOmitirTabla = false;
+							}}>Omitir la tabla</button
+						>
+						<button class="boton" type="button" on:click={() => (confirmarOmitirTabla = false)}
+							>Mantenerla</button
+						>
+					</div>
+				{/if}
+
+				<ol class="alcances">
+					{#each reporte.alcances as alcance, i (alcance.id)}
+						{@const campoTitulo = `titulo-alcance-${alcance.id}`}
+						{@const campoEstado = `estado-${alcance.id}`}
+						{@const campoObservaciones = `observaciones-${alcance.id}`}
+						<li id={`alcance-${alcance.id}`} class="alcance" tabindex="-1">
+							<div class="cabecera-alcance">
+								<label for={campoTitulo}>2.{i + 1}</label>
+								<input
+									id={campoTitulo}
+									placeholder="Título del alcance"
+									bind:value={alcance.titulo}
+									aria-invalid={!!errores[campoTitulo]}
+									aria-describedby={describir(errores, campoTitulo)}
+								/>
+								<div class="acciones-alcance">
+									<button
+										type="button"
+										class="action-btn"
+										aria-label={`Subir el alcance 2.${i + 1}`}
+										disabled={i === 0}
+										on:click={() => moverAlcance(i, -1)}>↑</button
+									>
+									<button
+										type="button"
+										class="action-btn"
+										aria-label={`Bajar el alcance 2.${i + 1}`}
+										disabled={i === reporte.alcances.length - 1}
+										on:click={() => moverAlcance(i, 1)}>↓</button
+									>
+									<button
+										type="button"
+										class="action-btn delete"
+										aria-label={`Quitar el alcance 2.${i + 1}`}
+										on:click={() => quitarAlcance(i)}>Quitar</button
+									>
+								</div>
+							</div>
+							<ErrorCampo id={`error-${campoTitulo}`} mensaje={errores[campoTitulo]} />
+							<label class="sr-only" for={`descripcion-${alcance.id}`}
+								>Descripción del alcance 2.{i + 1}</label
 							>
+							<textarea
+								id={`descripcion-${alcance.id}`}
+								rows="2"
+								placeholder="Descripción de lo realizado"
+								bind:value={alcance.descripcion}
+							></textarea>
+							<FotosAlcance
+								bind:fotos={alcance.fotos}
+								posicionAlcance={i + 1}
+								disposicion={reporte.disposicionFotos}
+								reporteId={reporte.id}
+								soloLectura={!editable}
+								cargando={cargandoPorAlcance[alcance.id] ?? 0}
+								otrosAlcances={reporte.alcances
+									.map((a, j) => ({ id: a.id, etiqueta: `2.${j + 1} ${a.titulo}` }))
+									.filter((a) => a.id !== alcance.id)}
+								on:cargar={(e) => cargarFotos(alcance.id, e.detail.archivos, e.detail.momento)}
+								on:mover={(e) => moverFoto(alcance.id, e.detail.fotoId, e.detail.alcanceId)}
+							/>
+							{#if reporte.incluyeVerificacion}
+								<div class="verificacion">
+									<label class="etiqueta" for={campoEstado}>Verificación</label>
+									<select
+										id={campoEstado}
+										bind:value={alcance.estadoVerificacion}
+										aria-invalid={!!errores[campoEstado]}
+										aria-describedby={describir(errores, campoEstado)}
+									>
+										{#each Object.entries(TEXTO_ESTADO_VERIFICACION) as [valor, texto] (valor)}
+											<option value={valor}>{texto}</option>
+										{/each}
+									</select>
+									<ErrorCampo id={`error-${campoEstado}`} mensaje={errores[campoEstado]} />
+									<label class="etiqueta" for={campoObservaciones}>Observaciones</label>
+									<input
+										id={campoObservaciones}
+										bind:value={alcance.observaciones}
+										required={alcance.estadoVerificacion === 'con_observacion'}
+										aria-invalid={!!errores[campoObservaciones]}
+										aria-describedby={describir(errores, campoObservaciones)}
+									/>
+									<ErrorCampo
+										id={`error-${campoObservaciones}`}
+										mensaje={errores[campoObservaciones]}
+									/>
+								</div>
+							{/if}
+						</li>
+					{/each}
+				</ol>
+				<button id="agregar-alcance" class="boton" type="button" on:click={agregarAlcance}
+					>Agregar alcance</button
+				>
+			</section>
+
+			<section id="seccion-herramientas" class="card" aria-labelledby="seccion-herramientas-titulo">
+				<h2 id="seccion-herramientas-titulo" class="view-heading" tabindex="-1">
+					Herramientas y equipo
+				</h2>
+				<ul class="lista-editable">
+					{#each reporte.herramientas as herramienta, i (i)}
+						<li>
+							<label class="sr-only" for={`cantidad-${i}`}>Cantidad</label>
+							<input
+								id={`cantidad-${i}`}
+								class="cantidad"
+								placeholder="Cantidad"
+								value={herramienta.cantidad ?? ''}
+								on:input={(e) =>
+									(herramienta.cantidad = (e.currentTarget as HTMLInputElement).value)}
+							/>
+							<label class="sr-only" for={`herramienta-${i}`}>Descripción</label>
+							<input
+								id={`herramienta-${i}`}
+								placeholder="Descripción"
+								bind:value={herramienta.descripcion}
+							/>
 							<button
 								type="button"
 								class="action-btn delete"
-								aria-label={`Quitar el alcance 2.${i + 1}`}
-								on:click={() => quitarAlcance(i)}>Quitar</button
+								aria-label={`Quitar la herramienta ${i + 1}`}
+								on:click={() =>
+									(reporte.herramientas = reporte.herramientas.filter((_, j) => j !== i))}
+								>Quitar</button
 							>
-						</div>
-					</div>
-					<label class="sr-only" for={`descripcion-${alcance.id}`}
-						>Descripción del alcance 2.{i + 1}</label
-					>
-					<textarea
-						id={`descripcion-${alcance.id}`}
-						rows="2"
-						placeholder="Descripción de lo realizado"
-						bind:value={alcance.descripcion}
-					></textarea>
-					<FotosAlcance
-						bind:fotos={alcance.fotos}
-						posicionAlcance={i + 1}
-						disposicion={reporte.disposicionFotos}
-						reporteId={reporte.id}
-						soloLectura={!editable}
-						cargando={cargandoPorAlcance[alcance.id] ?? 0}
-						otrosAlcances={reporte.alcances
-							.map((a, j) => ({ id: a.id, etiqueta: `2.${j + 1} ${a.titulo}` }))
-							.filter((a) => a.id !== alcance.id)}
-						on:cargar={(e) => cargarFotos(alcance.id, e.detail.archivos, e.detail.momento)}
-						on:mover={(e) => moverFoto(alcance.id, e.detail.fotoId, e.detail.alcanceId)}
-					/>
-					{#if reporte.incluyeVerificacion}
-						<div class="verificacion">
-							<label class="etiqueta" for={`estado-${alcance.id}`}>Verificación</label>
-							<select id={`estado-${alcance.id}`} bind:value={alcance.estadoVerificacion}>
-								{#each Object.entries(TEXTO_ESTADO_VERIFICACION) as [valor, texto] (valor)}
-									<option value={valor}>{texto}</option>
-								{/each}
-							</select>
-							<label class="etiqueta" for={`observaciones-${alcance.id}`}>Observaciones</label>
-							<input
-								id={`observaciones-${alcance.id}`}
-								bind:value={alcance.observaciones}
-								required={alcance.estadoVerificacion === 'con_observacion'}
-								aria-invalid={alcance.estadoVerificacion === 'con_observacion' &&
-									!alcance.observaciones.trim()}
-							/>
-						</div>
-					{/if}
-				</li>
-			{/each}
-		</ol>
-		<button class="boton" type="button" on:click={agregarAlcance}>Agregar alcance</button>
-	</section>
+						</li>
+					{/each}
+				</ul>
+				<button
+					class="boton"
+					type="button"
+					on:click={() =>
+						(reporte.herramientas = [...reporte.herramientas, { cantidad: null, descripcion: '' }])}
+					>Agregar herramienta</button
+				>
+			</section>
 
-	<section class="card" aria-labelledby="titulo-herramientas">
-		<h2 id="titulo-herramientas" class="view-heading">Herramientas y equipo</h2>
-		<ul class="lista-editable">
-			{#each reporte.herramientas as herramienta, i (i)}
-				<li>
-					<label class="sr-only" for={`cantidad-${i}`}>Cantidad</label>
-					<input
-						id={`cantidad-${i}`}
-						class="cantidad"
-						placeholder="Cantidad"
-						value={herramienta.cantidad ?? ''}
-						on:input={(e) => (herramienta.cantidad = (e.currentTarget as HTMLInputElement).value)}
-					/>
-					<label class="sr-only" for={`herramienta-${i}`}>Descripción</label>
-					<input
-						id={`herramienta-${i}`}
-						placeholder="Descripción"
-						bind:value={herramienta.descripcion}
-					/>
-					<button
-						type="button"
-						class="action-btn delete"
-						aria-label={`Quitar la herramienta ${i + 1}`}
-						on:click={() => (reporte.herramientas = reporte.herramientas.filter((_, j) => j !== i))}
-						>Quitar</button
-					>
-				</li>
-			{/each}
-		</ul>
-		<button
-			class="boton"
-			type="button"
-			on:click={() =>
-				(reporte.herramientas = [...reporte.herramientas, { cantidad: null, descripcion: '' }])}
-			>Agregar herramienta</button
-		>
-	</section>
-
-	<section class="card" aria-labelledby="titulo-conclusiones">
-		<h2 id="titulo-conclusiones" class="view-heading">Conclusiones y/o recomendaciones</h2>
-		<label class="sr-only" for="conclusiones">Conclusiones</label>
-		<textarea id="conclusiones" rows="4" bind:value={reporte.conclusiones}></textarea>
-	</section>
-</fieldset>
-
-{#if reporte.estado === 'borrador' && pendientes.length}
-	<section class="card" aria-labelledby="titulo-pendientes">
-		<h2 id="titulo-pendientes" class="view-heading">Pendiente para enviar a revisión</h2>
-		<ul>
-			{#each pendientes as o (o.campo)}<li>{o.mensaje}</li>{/each}
-		</ul>
-	</section>
-{/if}
+			<section id="seccion-conclusiones" class="card" aria-labelledby="seccion-conclusiones-titulo">
+				<h2 id="seccion-conclusiones-titulo" class="view-heading" tabindex="-1">
+					Conclusiones y/o recomendaciones
+				</h2>
+				<label class="sr-only" for="conclusiones">Conclusiones</label>
+				<textarea
+					id="conclusiones"
+					rows="4"
+					bind:value={reporte.conclusiones}
+					aria-invalid={!!errores.conclusiones}
+					aria-describedby={describir(errores, 'conclusiones')}
+				></textarea>
+				<ErrorCampo id="error-conclusiones" mensaje={errores.conclusiones} />
+			</section>
+		</fieldset>
+	</div>
+</div>
 
 <style>
 	/* Barra fija pegada al borde superior del área de contenido, sin hueco por el relleno. */
@@ -708,12 +1000,88 @@
 		z-index: 2;
 		padding: 10px 16px;
 	}
-	.estado-reporte,
+	.linea-estado {
+		display: flex;
+		flex: 1 1 320px;
+		gap: 8px 12px;
+		align-items: center;
+		min-width: 0;
+	}
+	.contexto {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-weight: 600;
+	}
+	.guardado {
+		display: inline-flex;
+		gap: 4px;
+		color: var(--muted);
+		font-size: 0.85rem;
+		white-space: nowrap;
+	}
+	.guardado-pendiente,
+	.guardado-guardando {
+		font-style: italic;
+	}
+	.guardado-conflicto,
+	.guardado-error {
+		color: var(--danger);
+		font-weight: 600;
+	}
 	.acciones-reporte {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 8px;
 		align-items: center;
+	}
+	.acciones-reporte .boton {
+		white-space: nowrap;
+	}
+	.faltan {
+		color: var(--danger);
+		border-color: var(--danger);
+		font-weight: 600;
+	}
+	.marca-faltan {
+		display: inline-grid;
+		place-items: center;
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		background: var(--danger);
+		color: var(--surface);
+		font-size: 0.75rem;
+	}
+	.completo {
+		color: var(--success);
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.cuerpo-editor {
+		display: grid;
+		gap: 16px;
+	}
+	.contenido-editor {
+		min-width: 0;
+	}
+	@media (min-width: 1100px) {
+		.cuerpo-editor {
+			grid-template-columns: 220px minmax(0, 1fr);
+			align-items: start;
+			gap: 24px;
+		}
+	}
+	.resumen-pendientes ul {
+		margin: 8px 0 12px;
+		padding-left: 20px;
+		display: grid;
+		gap: 4px;
+	}
+	.titulo-resumen {
+		margin: 0;
+		font-size: 1rem;
 	}
 	.editor-reporte {
 		border: 0;
@@ -726,6 +1094,28 @@
 	.editor-reporte select {
 		width: 100%;
 	}
+	.datos-contrato {
+		display: grid;
+		gap: 8px 16px;
+		grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+		margin: 0;
+	}
+	.datos-contrato dd {
+		margin: 2px 0 0;
+	}
+	.nota-contrato {
+		margin: 8px 0 16px;
+		font-size: 0.85rem;
+	}
+	.fila-fecha {
+		display: flex;
+		gap: 8px;
+	}
+	.ayuda {
+		margin: 0;
+		color: var(--muted);
+		font-size: 0.85rem;
+	}
 	.ancho-completo {
 		grid-column: 1 / -1;
 	}
@@ -733,6 +1123,26 @@
 		font-size: 0.85rem;
 		font-weight: 500;
 		color: var(--muted);
+	}
+	.resumen-firmas {
+		display: grid;
+		gap: 4px 16px;
+		grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.resumen-firmas li {
+		display: grid;
+	}
+	.resumen-texto {
+		margin: 0;
+		white-space: pre-line;
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
 	}
 	.firmas {
 		display: grid;
@@ -786,9 +1196,34 @@
 		grid-template-columns: auto minmax(0, 1fr);
 		align-items: center;
 	}
+	.verificacion :global(.error-campo) {
+		grid-column: 2;
+	}
+	.casilla-verificacion {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		margin: 12px 0 4px;
+	}
+	.cantidad {
+		max-width: 120px;
+	}
 	@media (max-width: 600px) {
+		/* En móvil la cabecera de la página ya muestra el reporte: la barra se queda en dos líneas. */
 		.barra-reporte {
 			padding: 8px 12px;
+		}
+		.contexto {
+			display: none;
+		}
+		/* Se oculta a la vista, no del nombre accesible («Descargar DOCX»). */
+		.texto-largo {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
 		}
 		.acciones-reporte {
 			flex-wrap: nowrap;
@@ -806,23 +1241,8 @@
 		.verificacion {
 			grid-template-columns: minmax(0, 1fr);
 		}
-	}
-	.casilla-verificacion {
-		display: flex;
-		gap: 8px;
-		align-items: center;
-		margin: 12px 0 4px;
-	}
-	.cantidad {
-		max-width: 120px;
-	}
-	.guardado-pendiente,
-	.guardado-guardando {
-		font-style: italic;
-	}
-	.guardado-conflicto,
-	.guardado-error {
-		color: var(--danger);
-		font-weight: 600;
+		.verificacion :global(.error-campo) {
+			grid-column: auto;
+		}
 	}
 </style>
