@@ -248,7 +248,13 @@
 					stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg
 				>
 			</button>
-			<button class="btn-icon" title="Cambiar tema" on:click={toggleTheme}>
+			<button
+				class="btn-icon"
+				type="button"
+				title={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+				aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+				on:click={toggleTheme}
+			>
 				{#if theme === 'dark'}
 					<svg
 						width="20"

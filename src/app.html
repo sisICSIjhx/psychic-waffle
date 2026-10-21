@@ -3,6 +3,22 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			// Tema antes de pintar, sin parpadeo: el guardado o el del sistema. Misma clave y regla que
+			// temaInicial en src/lib/layout/preferencias.ts.
+			(function () {
+				var tema = null;
+				try {
+					tema = localStorage.getItem('icsi-tema');
+				} catch (e) {
+					tema = null;
+				}
+				if (tema !== 'light' && tema !== 'dark') {
+					tema = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+				}
+				document.documentElement.setAttribute('data-theme', tema);
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
