@@ -95,7 +95,9 @@ los campos del reporte, no de la URL.
 Componente `SeccionResumen.svelte` con dos estados: resumen de lectura con «Editar» y campos abiertos con
 «Listo». Se abre solo si la sección tiene pendientes (D2) o si el usuario lo pide; abrir no cambia el
 dato. Los campos de una sección cerrada no se montan; por eso los enlaces de D3 abren antes de enfocar.
-El orden de las secciones sigue el del documento.
+El orden de las secciones sigue el del documento. Se usa en firmas y objetivo; usuario, contrato, sitio y
+periodicidad no forman parte del guardado (`aGuardado`) y se muestran de solo lectura en el encabezado,
+con la indicación de corregirlos en el catálogo.
 
 ### D7. Índice de secciones
 

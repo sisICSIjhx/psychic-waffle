@@ -151,10 +151,10 @@ esperada.
 
 ### Requirement: Datos del catálogo como resumen editable
 
-Las secciones que vienen del catálogo y casi no cambian (usuario, contrato, sitio, periodicidad, firmas
-y objetivo) SHALL mostrarse como resumen de lectura con la acción «Editar». Lo que cambia en cada
-ejecución (fecha, TAG, fotos, verificación y observaciones) SHALL quedar abierto. Una sección con datos
-pendientes SHALL mostrarse abierta.
+Las firmas y el objetivo, que vienen del catálogo y casi no cambian, SHALL mostrarse como resumen de
+lectura con «Editar»; usuario, contrato, sitio y periodicidad vienen del contrato y SHALL mostrarse de
+solo lectura, con la indicación de corregirlos en el catálogo. Lo que cambia en cada ejecución SHALL
+quedar abierto, y una sección con datos pendientes SHALL mostrarse abierta.
 
 #### Scenario: Editar las firmas
 
