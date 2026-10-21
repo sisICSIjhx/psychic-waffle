@@ -15,17 +15,17 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 
 ## 1. Base compartida (fase B)
 
-- [ ] 1.1 Crear la rama `feat/ux-fase-b` a partir de la rama con la fase A y comprobar que
+- [x] 1.1 Crear la rama `feat/ux-fase-b` a partir de la rama con la fase A y comprobar que
       `npm run test` pasa antes de cambiar nada.
-- [ ] 1.2 Crear `src/lib/components/ui/Dialogo.svelte` sobre `<dialog>` (foco inicial en la opción
+- [x] 1.2 Crear `src/lib/components/ui/Dialogo.svelte` sobre `<dialog>` (foco inicial en la opción
       segura, `Esc` cancela y el foco vuelve al botón que lo abrió) y verificarlo con una prueba de
       componente.
-- [ ] 1.3 Crear `src/lib/components/ui/notificaciones.ts` y `Notificaciones.svelte` (región
+- [x] 1.3 Crear `src/lib/components/ui/notificaciones.ts` y `Notificaciones.svelte` (región
       `role="status"` en `+layout.svelte`, acción «Deshacer» y plazo) y verificar con pruebas que
       «Deshacer» funciona dentro del plazo y que al vencer se ejecuta la acción final.
-- [ ] 1.4 Crear `src/lib/components/ui/BotonesSegmentados.svelte` (`radiogroup`, una pulsación,
+- [x] 1.4 Crear `src/lib/components/ui/BotonesSegmentados.svelte` (`radiogroup`, una pulsación,
       flechas y tabulación itinerante) y verificarlo con una prueba de teclado.
-- [ ] 1.5 Agregar `destinoDeObservacion(observacion, reporte)` y `completitudPorSeccion` a
+- [x] 1.5 Agregar `destinoDeObservacion(observacion, reporte)` y `completitudPorSeccion` a
       `src/lib/dominio/captura.ts` y verificar con pruebas que cada observación de
       `validarParaRevision` tiene sección y campo de destino, y que el destino de un alcance es su
       `id` también después de reordenar o quitar alcances.
