@@ -71,11 +71,11 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 
 ## 5. Datos para la fase C
 
-- [ ] 5.1 Crear la rama `feat/ux-fase-c`, agregar `supabase/migrations/0013_resumen_reportes_partida.sql`
+- [x] 5.1 Crear la rama `feat/ux-fase-c`, agregar `supabase/migrations/0013_resumen_reportes_partida.sql`
       (`partidaId` y `sitioId` en `api_listar_reportes`) y el campo en `esquemaReporteResumen`;
       verificar con una prueba sobre PGlite que las filas los traen y pedir al usuario reiniciar el
       servidor de desarrollo para aplicarla.
-- [ ] 5.2 Agregar `listarTodos(filtro)` al repositorio de reportes (recorre las páginas de 100 hasta el
+- [x] 5.2 Agregar `listarTodos(filtro)` al repositorio de reportes (recorre las páginas de 100 hasta el
       total) y verificar con una prueba sobre PGlite con más de 100 borradores que no omite ninguno.
 - [ ] 5.3 Agregar `siguienteTrabajo` a `src/lib/dominio/planeacion.ts` y verificar con pruebas el orden
       por urgencia, lo que falta por mes y los borradores por partida, mes y ocurrencia.

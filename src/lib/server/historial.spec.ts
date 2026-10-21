@@ -12,6 +12,7 @@ let repos: Repositorios;
 let carpeta: string;
 let servicio: ServicioCaptura;
 const partidas: Record<string, string> = {};
+const sitios: Record<string, string> = {};
 
 /** Dos clientes ficticios con una partida mensual cada uno. */
 beforeAll(async () => {
@@ -47,6 +48,7 @@ beforeAll(async () => {
 			alcances: [{ tipo: 'alcance', texto: 'Medición' }]
 		});
 		partidas[clave] = partida.id;
+		sitios[clave] = sitio.id;
 	}
 }, 60_000);
 
@@ -126,5 +128,15 @@ describe('filtros del historial', () => {
 		const mayo = (await repos.programa.obtenerAvance(programa.id)).partidas[0].celdas[0];
 		expect(mayo).toMatchObject({ realizado: 2, ejecucionesReportes: 1, realizadoSinReporte: 1 });
 		expect(mayo.reportes).toHaveLength(1);
+	});
+});
+
+describe('filas del historial con su partida y sitio', () => {
+	it('cada fila trae el id de la partida y del sitio del reporte (0013)', async () => {
+		const creado = await reporte('dos', '2026-08-01', false);
+		const fila = (
+			await repos.reportes.listar({ partidaId: partidas.dos, desde: '2026-08-01' })
+		).filas.find((f) => f.id === creado.id);
+		expect(fila).toMatchObject({ partidaId: partidas.dos, sitioId: sitios.dos });
 	});
 });

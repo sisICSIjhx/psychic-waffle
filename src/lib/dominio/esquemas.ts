@@ -404,6 +404,9 @@ export type ReporteGuardado = z.input<typeof esquemaReporteGuardado>;
 
 export const esquemaReporteResumen = z.object({
 	id,
+	/** Desde 0013: relacionan el reporte con su partida y sitio sin comparar textos. */
+	partidaId: id,
+	sitioId: id,
 	titulo: z.string(),
 	clienteClave: z.string(),
 	usuario: z.string(),
