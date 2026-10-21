@@ -2,8 +2,7 @@
 
 Cada fase (B: editor; C: inicio y captura) se trabaja en su rama y cierra con estos pasos:
 
-1. `npm run check`, `npx eslint .`, `npx prettier --check --end-of-line auto .` y `npm run test` sin
-   errores.
+1. `npm run check`, `npm run lint` y `npm run test` sin errores.
 2. Revisión en el navegador a 1366 × 800 y 375 × 812, en tema claro y oscuro: contraste, objetivos de
    24 px (44 px táctil), foco visible y sin desborde horizontal, con capturas antes y después fuera del
    repositorio.
@@ -11,8 +10,8 @@ Cada fase (B: editor; C: inicio y captura) se trabaja en su rama y cierra con es
    `docs/PLAN_DISENO_UX.md` y los artefactos de este cambio (como máximo 2 rondas).
 4. Resumen en `docs/revisiones/ux-fase-B.md` o `ux-fase-C.md` y entrada en `HISTORIAL.md`.
 
-Las tareas marcadas «(decisión 1)» o «(decisión 2)» esperan la respuesta del usuario (`design.md`,
-«Decisiones pendientes del usuario»).
+Decisiones del usuario aplicadas (`design.md`): uso solo en escritorio y la misma persona envía a
+revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por rol.
 
 ## 1. Base compartida (fase B)
 
@@ -60,14 +59,10 @@ Las tareas marcadas «(decisión 1)» o «(decisión 2)» esperan la respuesta d
       con una prueba de `drop` que se cargan las fotos y se informa el archivo rechazado.
 - [ ] 3.4 Mostrar el avance por archivo («Cargando 3 de 12») y verificarlo con una prueba de carga con
       un rechazo intermedio.
-- [ ] 3.5 (decisión 1) Agregar «Tomar foto» con `capture="environment"` solo con puntero táctil y
-      verificar que aparece en móvil y no en escritorio.
-- [ ] 3.6 Emitir con `Dialogo` (título, revisión y fotos; foco en «Cancelar») y verificar que `Esc` no
+- [ ] 3.5 Emitir con `Dialogo` (título, revisión y fotos; foco en «Cancelar») y verificar que `Esc` no
       emite y devuelve el foco a «Emitir».
-- [ ] 3.7 Mostrar «Descargar DOCX» siempre, deshabilitado con el motivo cuando falta la fecha, y
+- [ ] 3.6 Mostrar «Descargar DOCX» siempre, deshabilitado con el motivo cuando falta la fecha, y
       verificarlo con una prueba de componente.
-- [ ] 3.8 (decisión 2) Ajustar qué acciones de estado se muestran según quién envía y quién emite, y
-      verificarlo con pruebas por estado.
 
 ## 4. Cierre de la fase B
 
@@ -103,8 +98,6 @@ Las tareas marcadas «(decisión 1)» o «(decisión 2)» esperan la respuesta d
       clics o menos.
 - [ ] 6.5 Renombrar la vista de inicio a «Mi trabajo» en `navegacion.ts` y en el menú, y actualizar las
       pruebas de navegación y de la barra lateral.
-- [ ] 6.6 (decisión 2) Ajustar la tarjeta y la lista de «En revisión» según quién revisa y verificarlo
-      con pruebas.
 
 ## 7. Captura (fase C)
 

@@ -32,8 +32,8 @@ comportamiento de los módulos, por eso se planean con OpenSpec.
   completitud; «Enviar a revisión» siempre disponible que, si faltan datos, abre un resumen con
   enlaces a cada campo; lo que viene del catálogo y no cambia (encabezado fijo, firmas, objetivo) se
   muestra como resumen con «Editar»; verificación con botones segmentados de un clic; fotos con
-  arrastrar y soltar, «Tomar foto» en dispositivos con cámara, progreso por archivo y quitar con
-  «Deshacer»; quitar alcance con «Deshacer»; diálogo propio para emitir con el foco en «Cancelar»;
+  arrastrar y soltar, progreso por archivo y quitar con «Deshacer»; quitar alcance con «Deshacer»;
+  diálogo propio para emitir con el foco en «Cancelar»;
   «Descargar DOCX» siempre visible, deshabilitado con el motivo; atajo «Hoy» para la fecha.
 - **Inicio «Mi trabajo» (fase C):** avance del mes contra lo programado, tarjetas accionables
   (vencidos, pendientes del mes, borradores, en revisión) y la lista «Siguiente trabajo» ordenada por
@@ -48,6 +48,11 @@ comportamiento de los módulos, por eso se planean con OpenSpec.
 Fuera de alcance (fases D y E del plan): planeación e historial, copiar del último reporte, bandeja de
 fotos sin asignar, atajos de teclado, pestañas del catálogo y limpieza de CSS. Sin cambios en el DOCX
 ni en las reglas de validación, estados o autoguardado.
+
+Decisiones del usuario (2026-10-21) que acotan el alcance: los reportes se capturan **solo en
+escritorio** (las fotos se pasan a la PC), así que no se agrega la captura con la cámara del
+dispositivo y en móvil solo se garantiza que todo funcione; **la misma persona** envía a revisión y
+emite, así que no hay vistas ni acciones distintas por rol.
 
 ## Capabilities
 
@@ -75,5 +80,4 @@ Ninguna en `openspec/specs/`.
 - Datos: migración `supabase/migrations/0013_*` que redefine `api_listar_reportes` para incluir
   `partidaId` y `sitioId`; `esquemaReporteResumen` los agrega. PGlite la aplica al reiniciar el
   servidor de desarrollo.
-- Sin dependencias nuevas. Decisiones abiertas del plan (sección 8) que condicionan partes del
-  alcance: peso del uso en celular o tableta (1) y quién envía a revisión y quién emite (2).
+- Sin dependencias nuevas.

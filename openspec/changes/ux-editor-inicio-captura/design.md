@@ -34,7 +34,10 @@ Motivación y alcance en `proposal.md`; requisitos en `specs/captura-reportes/sp
 **Non-Goals:**
 
 - Cambiar las validaciones para revisión, los estados, el autoguardado o el DOCX.
-- Permisos por rol (llegan con la autenticación) y diseño fuera de línea.
+- Vistas o acciones por rol: la misma persona envía a revisión y emite (decisión del usuario); los
+  permisos llegarán con la autenticación sin cambiar este flujo.
+- Captura de fotos con la cámara del dispositivo y diseño fuera de línea: el uso es en escritorio
+  (decisión del usuario). En móvil se mantiene lo de la fase A: sin desborde y objetivos de 44 px.
 - Planeación, historial, atajos de teclado y «Copiar del último reporte» (fases D y E).
 
 ## Decisions
@@ -107,12 +110,12 @@ angostas, el índice es un `<details>` bajo la barra. Cada sección y alcance ti
 campo de observaciones se muestra si el estado es «Con observación» o si ya tiene texto (no se oculta
 información capturada antes).
 
-### D9. Fotos: arrastre, cámara y progreso
+### D9. Fotos: arrastre y progreso
 
 Cada grupo de `FotosAlcance` es zona de soltar (`dragover`/`drop`) y conserva el botón «Agregar fotos».
-«Tomar foto» es un `input type="file" accept="image/*" capture="environment"` que solo se muestra con
-puntero táctil (`(pointer: coarse)`). El editor lleva por alcance `{ total, hechas }` en lugar del
-contador actual para mostrar «Cargando 3 de 12»; los rechazos ya llegan por archivo con su causa.
+El editor lleva por alcance `{ total, hechas }` en lugar del contador actual para mostrar «Cargando 3
+de 12»; los rechazos ya llegan por archivo con su causa. Sin captura con la cámara del dispositivo: el
+uso es solo en escritorio (decisión del usuario).
 
 ### D10. Emisión y descarga
 
@@ -177,12 +180,12 @@ del dominio y ordena primero la coincidencia exacta por número.
 3. Reversión: los cambios de interfaz se revierten por commit; `0013` solo agrega campos a la salida de
    la función, y volver a la definición de `0003` no afecta datos.
 
-## Decisiones pendientes del usuario
+## Decisiones del usuario
 
-Respuestas que condicionan tareas marcadas en `tasks.md`; mientras tanto se implementa lo que no
-depende de ellas.
+Respondidas el 2026-10-21 (plan, sección 8):
 
-1. **Uso en celular o tableta en campo** (plan, sección 8.1): define si se implementa «Tomar foto» con
-   la cámara y el índice desplegable como prioridad o se deja el editor optimizado para escritorio.
-2. **Quién envía a revisión y quién emite** (8.2): sin autenticación todos ven lo mismo; la respuesta
-   define si «En revisión» se destaca en «Mi trabajo» y si «Emitir» se muestra a quien captura.
+1. **Solo escritorio** (8.1): las fotos se pasan a la PC y se suben desde ahí. El editor se optimiza
+   para escritorio (índice fijo desde 1100 px); el índice desplegable en pantallas angostas se conserva
+   como respaldo sencillo y no hay captura con la cámara.
+2. **La misma persona envía a revisión y emite** (8.2): «Mi trabajo» trata los borradores y lo que está
+   en revisión como pasos del mismo flujo y el editor muestra todas las acciones del estado, como hoy.

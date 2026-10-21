@@ -197,11 +197,10 @@ periodo del reporte, y SHALL mostrar el rango permitido cuando no lo esté.
 - **WHEN** el reporte es de mayo de 2026 y hoy es 21 de octubre de 2026
 - **THEN** no se ofrece «Hoy» y se muestra el rango del 1 al 31 de mayo de 2026
 
-### Requirement: Carga de fotos por arrastre y cámara
+### Requirement: Carga de fotos por arrastre
 
 Cada alcance, y cada espacio antes, durante y después, SHALL aceptar fotos soltadas sobre él además del
-botón «Agregar fotos». En dispositivos con cámara, SHALL ofrecer «Tomar foto» con la cámara trasera. El
-botón SHALL seguir disponible como alternativa al arrastre.
+botón «Agregar fotos», que SHALL seguir disponible como alternativa al arrastre.
 
 #### Scenario: Soltar varias fotos
 

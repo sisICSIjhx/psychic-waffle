@@ -63,7 +63,7 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-a`).
   cierre (fase 7) en curso. Todo funciona en local con PGlite.
 - Plan de diseño UX: fase A (fundamentos y arreglos rápidos) terminada en `feat/ux-fase-a`; las
   fases B y C (editor, «Mi trabajo» y captura) están planeadas en el cambio OpenSpec
-  `ux-editor-inicio-captura`, pendiente de las decisiones abiertas 1 y 2 del plan.
+  `ux-editor-inicio-captura` (uso solo en escritorio; la misma persona envía y emite).
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas

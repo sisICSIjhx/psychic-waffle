@@ -339,13 +339,18 @@ Criterios de aceptación generales para cada fase:
 
 ## 8. Decisiones abiertas para el usuario
 
+Respuestas del 2026-10-21 entre corchetes; la 4 sigue abierta (fase E).
+
 1. ¿Los técnicos usan celular o tableta en campo para tomar y subir fotos, o solo escritorio? Define
-   cuánto peso tiene el diseño móvil en las fases B y C.
+   cuánto peso tiene el diseño móvil en las fases B y C. [Solo escritorio: sin captura con la cámara;
+   en móvil se garantiza que todo funcione.]
 2. ¿Quién envía a revisión y quién emite: la misma persona o un supervisor? Define qué ve cada quien
-   en «Mi trabajo» y se resuelve con la autenticación.
-3. ¿Tema por omisión claro, oscuro o el del sistema?
+   en «Mi trabajo» y se resuelve con la autenticación. [La misma persona.]
+3. ¿Tema por omisión claro, oscuro o el del sistema? [El del sistema, valor por omisión aplicado en la
+   fase A.]
 4. ¿Se quiere «Copiar del último reporte» y con qué campos (herramientas, observaciones, firmas)?
-5. ¿Se entra a capturar por cliente desde el menú (como hoy) o desde «Capturar» con selector?
+5. ¿Se entra a capturar por cliente desde el menú (como hoy) o desde «Capturar» con selector? [Se
+   conservan los accesos por cliente en el menú, valor por omisión.]
 
 ## 9. Fuentes
 
