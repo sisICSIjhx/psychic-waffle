@@ -38,6 +38,23 @@ describe('Sidebar', () => {
 		await expect.element(page.getByRole('link', { name: 'Proagro' })).toHaveClass(/active/);
 		await expect.element(page.getByRole('link', { name: 'Cerritos' })).not.toHaveClass(/active/);
 		await expect.element(page.getByRole('link', { name: 'Anual' })).not.toHaveClass(/active/);
+		// La página activa se anuncia también a los lectores de pantalla.
+		await expect
+			.element(page.getByRole('link', { name: 'Proagro' }))
+			.toHaveAttribute('aria-current', 'page');
+		await expect
+			.element(page.getByRole('link', { name: 'Cerritos' }))
+			.not.toHaveAttribute('aria-current');
+	});
+
+	it('anuncia la vista activa con aria-current', async () => {
+		render(Sidebar, { activeView: 'historial' });
+		await expect
+			.element(page.getByRole('link', { name: 'Historial Global' }))
+			.toHaveAttribute('aria-current', 'page');
+		await expect
+			.element(page.getByRole('link', { name: 'Panel de Control' }))
+			.not.toHaveAttribute('aria-current');
 	});
 
 	it('avisa al layout al navegar entre vistas', async () => {

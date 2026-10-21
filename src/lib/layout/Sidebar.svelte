@@ -29,7 +29,11 @@
 	}
 </script>
 
-<aside class="sidebar {isCollapsed ? 'collapsed' : ''}" class:mobile-open={isMobileOpen}>
+<aside
+	id="menu-principal"
+	class="sidebar {isCollapsed ? 'collapsed' : ''}"
+	class:mobile-open={isMobileOpen}
+>
 	<div class="sidebar-header-fixed">
 		<div class="brand">
 			<div class="brand-logo">
@@ -54,6 +58,7 @@
 			<a
 				href={resolve('/')}
 				class="nav-item {activeView === 'dashboard' ? 'active' : ''}"
+				aria-current={activeView === 'dashboard' ? 'page' : undefined}
 				title="Panel de Control"
 				on:click={() => navigate('dashboard')}
 			>
@@ -85,6 +90,7 @@
 			<a
 				href={resolve('/planeacion')}
 				class="nav-item {activeView === 'planeacion' ? 'active' : ''}"
+				aria-current={activeView === 'planeacion' ? 'page' : undefined}
 				title="Planeación Anual"
 				on:click={() => navigate('planeacion')}
 			>
@@ -114,6 +120,9 @@
 					class="nav-item {activeView === 'captura' && activeCliente === cliente.clave
 						? 'active'
 						: ''}"
+					aria-current={activeView === 'captura' && activeCliente === cliente.clave
+						? 'page'
+						: undefined}
 					title={`Captura: ${cliente.etiqueta}`}
 					on:click={() => navigate('captura', cliente.clave)}
 				>
@@ -137,6 +146,7 @@
 			<a
 				href={resolve('/historial')}
 				class="nav-item {activeView === 'historial' ? 'active' : ''}"
+				aria-current={activeView === 'historial' ? 'page' : undefined}
 				title="Historial Global"
 				on:click={() => navigate('historial')}
 			>
@@ -154,6 +164,7 @@
 			<a
 				href={resolve('/catalogo')}
 				class="nav-item {activeView === 'catalogo' ? 'active' : ''}"
+				aria-current={activeView === 'catalogo' ? 'page' : undefined}
 				title="Catálogo de Contratos"
 				on:click={() => navigate('catalogo')}
 			>
@@ -175,6 +186,7 @@
 			<a
 				href={resolve('/personal')}
 				class="nav-item {activeView === 'personal' ? 'active' : ''}"
+				aria-current={activeView === 'personal' ? 'page' : undefined}
 				title="Administración de Personal"
 				on:click={() => navigate('personal')}
 			>
@@ -194,6 +206,7 @@
 			<a
 				href={resolve('/perfil')}
 				class="nav-item {activeView === 'perfil' ? 'active' : ''}"
+				aria-current={activeView === 'perfil' ? 'page' : undefined}
 				title="Mi Perfil"
 				on:click={() => navigate('perfil')}
 			>
@@ -215,7 +228,14 @@
 		</nav>
 
 		<div class="sidebar-footer">
-			<button class="btn-icon" title="Colapsar menú" on:click={toggleCollapse}>
+			<button
+				class="btn-icon"
+				type="button"
+				title={isCollapsed ? 'Expandir el menú' : 'Contraer el menú'}
+				aria-label={isCollapsed ? 'Expandir el menú' : 'Contraer el menú'}
+				aria-expanded={!isCollapsed}
+				on:click={toggleCollapse}
+			>
 				<svg
 					class={isCollapsed ? 'rotate-180' : ''}
 					width="20"

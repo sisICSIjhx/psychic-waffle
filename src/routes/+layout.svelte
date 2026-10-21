@@ -43,11 +43,18 @@
 	function toggleMobileMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
 	}
+
+	// El enrutador atiende el ancla; el foco se mueve aquí para que Tab siga dentro del contenido.
+	function saltarAlContenido() {
+		document.getElementById('contenido')?.focus();
+	}
 </script>
 
 <svelte:head>
 	<title>{pageTitle} · ICSI Reportes</title>
 </svelte:head>
+
+<a class="saltar-contenido" href="#contenido" on:click={saltarAlContenido}>Saltar al contenido</a>
 
 <div
 	class="sidebar-overlay"
@@ -68,9 +75,9 @@
 		on:toggleTheme={toggleTheme}
 	/>
 
-	<HeaderBar {pageTitle} on:toggleMobileMenu={toggleMobileMenu} />
+	<HeaderBar {pageTitle} menuAbierto={mobileMenuOpen} on:toggleMobileMenu={toggleMobileMenu} />
 
-	<main class="main">
+	<main class="main" id="contenido" tabindex="-1">
 		<div class="view-section">
 			<slot />
 		</div>

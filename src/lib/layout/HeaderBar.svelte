@@ -3,6 +3,7 @@
 	import { createEventDispatcher } from 'svelte';
 
 	export let pageTitle = 'Panel de Control';
+	export let menuAbierto = false;
 
 	const dispatch = createEventDispatcher<{ toggleMobileMenu: void }>();
 
@@ -13,9 +14,17 @@
 
 <header class="header">
 	<div class="header-left">
-		<button class="mobile-menu-trigger" on:click={toggleMobileMenu} title="Abrir Menú">
+		<button
+			class="mobile-menu-trigger"
+			type="button"
+			aria-label={menuAbierto ? 'Cerrar el menú' : 'Abrir el menú'}
+			aria-expanded={menuAbierto}
+			aria-controls="menu-principal"
+			on:click={toggleMobileMenu}
+		>
 			<div class="brand-logo" style="width: 28px; height: 28px; box-shadow: none">
 				<svg
+					aria-hidden="true"
 					viewBox="0 0 24 24"
 					fill="none"
 					stroke="currentColor"

@@ -343,6 +343,26 @@ textarea {
 	scroll-padding-top: 80px;
 }
 
+/* Visible solo con el foco del teclado (WCAG 2.4.1). */
+.saltar-contenido {
+	position: fixed;
+	top: 8px;
+	left: 8px;
+	z-index: 100;
+	padding: 10px 16px;
+	border-radius: 8px;
+	background: var(--primary);
+	color: var(--on-primary);
+	font-weight: 600;
+	transform: translateY(-200%);
+}
+.saltar-contenido:focus {
+	transform: none;
+}
+.main:focus {
+	outline: none;
+}
+
 .view-section {
 	animation: fadeIn 0.3s ease;
 	max-width: 1200px;
