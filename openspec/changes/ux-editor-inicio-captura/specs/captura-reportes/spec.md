@@ -87,8 +87,8 @@ aviso no SHALL impedir crear el reporte nuevo.
 
 El editor SHALL mantener visible una barra con el contexto del reporte (cliente, partida y periodo), su
 estado en icono y texto, el estado del guardado, el número de datos que faltan para enviarlo a revisión y
-la acción principal del estado. La barra no SHALL superar 64 px de alto en escritorio ni dos líneas en
-móvil.
+la acción principal del estado. La barra no SHALL superar 64 px de alto en escritorio; en móvil SHALL
+usar dos líneas, más la del motivo de «Descargar DOCX» cuando falte la fecha.
 
 #### Scenario: Borrador incompleto
 

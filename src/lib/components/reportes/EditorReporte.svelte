@@ -1345,11 +1345,17 @@
 			clip-path: inset(50%);
 			white-space: nowrap;
 		}
+		/* Los botones van en una fila; sin fecha, el motivo de la descarga ocupa la línea siguiente. */
 		.acciones-reporte {
-			flex-wrap: nowrap;
+			flex-wrap: wrap;
+			row-gap: 4px;
 		}
 		.acciones-reporte .boton {
 			padding-inline: 12px;
+		}
+		.motivo-descarga {
+			order: 1;
+			flex-basis: 100%;
 		}
 		.cabecera-alcance {
 			grid-template-columns: auto minmax(0, 1fr);
