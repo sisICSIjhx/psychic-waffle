@@ -176,15 +176,19 @@
 </div>
 
 <style>
+	/* min(…, 100%) y min-width: 0 evitan que una foto o la lista «Mover a…» ensanchen la página. */
 	.fotos-alcance.espacios {
 		display: grid;
 		gap: 12px;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+	}
+	.grupo-fotos {
+		min-width: 0;
 	}
 	.lista-fotos {
 		display: grid;
 		gap: 12px;
-		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
 		list-style: none;
 		margin: 0 0 8px;
 		padding: 0;
@@ -194,13 +198,23 @@
 		border-radius: 8px;
 		padding: 8px;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 6px;
+		min-width: 0;
+	}
+	.foto input,
+	.acciones-foto select {
+		min-width: 0;
+		max-width: 100%;
+	}
+	.acciones-foto select {
+		flex: 1 1 100px;
 	}
 	.foto img {
 		width: 100%;
 		aspect-ratio: 4 / 3;
 		object-fit: contain;
-		background: var(--surface-2, rgba(127, 127, 127, 0.1));
+		background: var(--surface-2);
 		border-radius: 4px;
 	}
 	.pie {

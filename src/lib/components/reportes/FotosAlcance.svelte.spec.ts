@@ -73,4 +73,24 @@ describe('FotosAlcance', () => {
 		expect(container.querySelector('input[type=file]')).toBeNull();
 		expect((container.querySelector('.foto input') as HTMLInputElement).disabled).toBe(true);
 	});
+
+	it('no ensancha un contenedor de móvil con títulos de alcance largos', async () => {
+		const target = document.body.appendChild(document.createElement('div'));
+		target.style.width = '280px';
+		render(FotosAlcance, {
+			target,
+			props: {
+				fotos: [foto(1, 'Uno'), foto(2, 'Dos')],
+				otrosAlcances: [
+					{ id: 'otro', etiqueta: `2.1 ${'Inspección visual del derecho de vía '.repeat(4)}` }
+				]
+			}
+		});
+		// Sin los estilos globales el campo de archivo no se oculta; se mide la lista de fotos.
+		const lista = target.querySelector('.lista-fotos') as HTMLElement;
+		expect(lista.scrollWidth).toBeLessThanOrEqual(280);
+		for (const elemento of target.querySelectorAll('.foto')) {
+			expect(elemento.getBoundingClientRect().width).toBeLessThanOrEqual(280);
+		}
+	});
 });

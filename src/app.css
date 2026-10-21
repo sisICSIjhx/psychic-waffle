@@ -331,10 +331,16 @@ textarea {
 	border-radius: 4px;
 }
 .main {
+	--relleno-main: 30px;
 	grid-area: main;
-	padding: 30px;
+	padding: var(--relleno-main);
 	overflow-y: auto;
 	position: relative;
+	min-width: 0;
+}
+/* El foco no queda bajo la barra fija del editor (WCAG 2.4.11). */
+.main:has(.barra-reporte) {
+	scroll-padding-top: 80px;
 }
 
 .view-section {
@@ -951,7 +957,17 @@ tr:last-child td {
 		display: none;
 	}
 	.header {
-		padding: 0 20px;
+		padding: 0 16px;
+	}
+	.main {
+		--relleno-main: 16px;
+	}
+	.main:has(.barra-reporte) {
+		scroll-padding-top: 112px;
+	}
+	.card {
+		padding: 16px;
+		margin-bottom: 16px;
 	}
 	.kpi-grid,
 	.form-grid,
@@ -979,8 +995,11 @@ tr:last-child td {
 	white-space: nowrap;
 	border: 0;
 }
+/* «relative» contiene los textos .sr-only de las celdas: sin él, su posición absoluta los saca del
+   desplazamiento de la tabla y ensancha la página en móvil. */
 .tabla-desplazable {
 	overflow-x: auto;
+	position: relative;
 }
 .enlace {
 	color: var(--primary);

@@ -573,26 +573,28 @@
 							placeholder="Título del alcance"
 							bind:value={alcance.titulo}
 						/>
-						<button
-							type="button"
-							class="action-btn"
-							aria-label={`Subir el alcance 2.${i + 1}`}
-							disabled={i === 0}
-							on:click={() => moverAlcance(i, -1)}>↑</button
-						>
-						<button
-							type="button"
-							class="action-btn"
-							aria-label={`Bajar el alcance 2.${i + 1}`}
-							disabled={i === reporte.alcances.length - 1}
-							on:click={() => moverAlcance(i, 1)}>↓</button
-						>
-						<button
-							type="button"
-							class="action-btn delete"
-							aria-label={`Quitar el alcance 2.${i + 1}`}
-							on:click={() => quitarAlcance(i)}>Quitar</button
-						>
+						<div class="acciones-alcance">
+							<button
+								type="button"
+								class="action-btn"
+								aria-label={`Subir el alcance 2.${i + 1}`}
+								disabled={i === 0}
+								on:click={() => moverAlcance(i, -1)}>↑</button
+							>
+							<button
+								type="button"
+								class="action-btn"
+								aria-label={`Bajar el alcance 2.${i + 1}`}
+								disabled={i === reporte.alcances.length - 1}
+								on:click={() => moverAlcance(i, 1)}>↓</button
+							>
+							<button
+								type="button"
+								class="action-btn delete"
+								aria-label={`Quitar el alcance 2.${i + 1}`}
+								on:click={() => quitarAlcance(i)}>Quitar</button
+							>
+						</div>
 					</div>
 					<label class="sr-only" for={`descripcion-${alcance.id}`}
 						>Descripción del alcance 2.{i + 1}</label
@@ -695,15 +697,17 @@
 {/if}
 
 <style>
+	/* Barra fija pegada al borde superior del área de contenido, sin hueco por el relleno. */
 	.barra-reporte {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 12px;
+		gap: 8px 12px;
 		align-items: center;
 		justify-content: space-between;
 		position: sticky;
-		top: 0;
+		top: calc(-1 * var(--relleno-main, 0px));
 		z-index: 2;
+		padding: 10px 16px;
 	}
 	.estado-reporte,
 	.acciones-reporte {
@@ -765,18 +769,44 @@
 		padding: 12px;
 		display: grid;
 		gap: 8px;
+		min-width: 0;
 	}
 	.cabecera-alcance {
 		display: grid;
-		grid-template-columns: auto 1fr auto auto auto;
+		grid-template-columns: auto minmax(0, 1fr) auto;
 		gap: 6px;
 		align-items: center;
 	}
+	.acciones-alcance {
+		display: flex;
+		gap: 2px;
+	}
 	.verificacion {
 		display: grid;
-		gap: 4px;
-		grid-template-columns: auto 1fr;
+		gap: 4px 8px;
+		grid-template-columns: auto minmax(0, 1fr);
 		align-items: center;
+	}
+	@media (max-width: 600px) {
+		.barra-reporte {
+			padding: 8px 12px;
+		}
+		.acciones-reporte {
+			flex-wrap: nowrap;
+		}
+		.acciones-reporte .boton {
+			padding-inline: 12px;
+		}
+		.cabecera-alcance {
+			grid-template-columns: auto minmax(0, 1fr);
+		}
+		.acciones-alcance {
+			grid-column: 1 / -1;
+			justify-self: end;
+		}
+		.verificacion {
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 	.casilla-verificacion {
 		display: flex;
