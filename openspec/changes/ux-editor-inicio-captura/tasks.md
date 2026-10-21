@@ -101,7 +101,7 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 
 ## 7. Captura (fase C)
 
-- [ ] 7.1 Crear `src/lib/components/ui/SelectorBusqueda.svelte` (combobox con grupos y estado sin
+- [x] 7.1 Crear `src/lib/components/ui/SelectorBusqueda.svelte` (combobox con grupos y estado sin
       resultados) y verificarlo con pruebas de teclado y de lector de pantalla (roles y
       `aria-activedescendant`).
 - [ ] 7.2 Ampliar la carga de `src/routes/captura/+page.server.ts` con los vencidos y el estado del mes
