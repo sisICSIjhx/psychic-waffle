@@ -19,6 +19,7 @@
 
 	let sidebarCollapsed = false;
 	let mobileMenuOpen = false;
+	let esMovil = false;
 	// El script de app.html ya aplicó el tema al documento; aquí solo se sincroniza el botón.
 	let theme: Tema = 'dark';
 
@@ -28,12 +29,16 @@
 	$: currentView = vistaDesdeRuta(pathname);
 	$: tituloReporte = ($page.data as { reporte?: { titulo?: string } }).reporte?.titulo ?? null;
 	$: pageTitle = tituloDePagina(pathname, cliente, tituloReporte);
+	// En móvil el menú es un panel completo: la preferencia de contraerlo solo aplica en escritorio.
+	$: menuContraido = sidebarCollapsed && !esMovil;
 
 	onMount(() => {
 		const sistema = window.matchMedia('(prefers-color-scheme: dark)');
+		const movil = window.matchMedia('(max-width: 768px)');
 		theme = temaInicial(leerPreferencia(CLAVE_TEMA), sistema.matches);
 		aplicarTema(theme);
 		sidebarCollapsed = leerPreferencia(CLAVE_MENU_CONTRAIDO) === '1';
+		esMovil = movil.matches;
 
 		// Mientras no se elija un tema, se sigue el del sistema.
 		const alCambiarSistema = (evento: MediaQueryListEvent) => {
@@ -41,8 +46,13 @@
 			theme = evento.matches ? 'dark' : 'light';
 			aplicarTema(theme);
 		};
+		const alCambiarAncho = (evento: MediaQueryListEvent) => (esMovil = evento.matches);
 		sistema.addEventListener('change', alCambiarSistema);
-		return () => sistema.removeEventListener('change', alCambiarSistema);
+		movil.addEventListener('change', alCambiarAncho);
+		return () => {
+			sistema.removeEventListener('change', alCambiarSistema);
+			movil.removeEventListener('change', alCambiarAncho);
+		};
 	});
 
 	function aplicarTema(tema: Tema) {
@@ -89,11 +99,11 @@
 	on:click={toggleMobileMenu}
 ></div>
 
-<div class="layout" class:is-collapsed={sidebarCollapsed}>
+<div class="layout" class:is-collapsed={menuContraido}>
 	<Sidebar
 		activeView={currentView}
 		activeCliente={cliente}
-		isCollapsed={sidebarCollapsed}
+		isCollapsed={menuContraido}
 		isMobileOpen={mobileMenuOpen}
 		{theme}
 		on:navigate={handleNavigate}

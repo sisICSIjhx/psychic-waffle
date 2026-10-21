@@ -187,7 +187,7 @@
 
 		<div class="sidebar-footer">
 			<button
-				class="btn-icon"
+				class="btn-icon btn-contraer"
 				type="button"
 				title={isCollapsed ? 'Expandir el menú' : 'Contraer el menú'}
 				aria-label={isCollapsed ? 'Expandir el menú' : 'Contraer el menú'}
@@ -393,5 +393,11 @@
 	}
 	.rotate-180 {
 		transform: rotate(180deg);
+	}
+	/* En móvil el menú se abre y cierra desde la cabecera; contraerlo no aplica. */
+	@media (max-width: 768px) {
+		.btn-contraer {
+			display: none;
+		}
 	}
 </style>

@@ -958,7 +958,9 @@ tr:last-child td {
 	pointer-events: auto;
 }
 @media (max-width: 768px) {
-	.layout {
+	/* En móvil el menú es un panel superpuesto: el estado contraído no reserva columna. */
+	.layout,
+	.layout.is-collapsed {
 		grid-template-columns: minmax(0, 1fr);
 		grid-template-areas:
 			'header'
@@ -990,9 +992,6 @@ tr:last-child td {
 		width: 44px;
 		height: 44px;
 		margin-left: -8px;
-	}
-	#btn-collapse {
-		display: none;
 	}
 	.header {
 		padding: 0 16px;
