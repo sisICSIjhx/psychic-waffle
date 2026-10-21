@@ -73,6 +73,9 @@
 <style>
 	.segmentados {
 		display: inline-flex;
+		justify-self: start;
+		width: fit-content;
+		max-width: 100%;
 		flex-wrap: wrap;
 		border: 1px solid var(--borde-campo);
 		border-radius: 8px;
@@ -86,7 +89,7 @@
 		align-items: center;
 		gap: 4px;
 		min-height: var(--alto-control);
-		padding: 6px 14px;
+		padding: 6px 12px;
 		border: 0;
 		border-right: 1px solid var(--borde-campo);
 		background: var(--bg);

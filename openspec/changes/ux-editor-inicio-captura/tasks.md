@@ -50,18 +50,18 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 
 ## 3. Editor: verificación, fotos y acciones (fase B)
 
-- [ ] 3.1 Usar `BotonesSegmentados` en la verificación y mostrar observaciones con «Con observación» o
+- [x] 3.1 Usar `BotonesSegmentados` en la verificación y mostrar observaciones con «Con observación» o
       con texto previo; verificarlo con pruebas de ambos casos.
-- [ ] 3.2 Quitar alcances y fotos con «Deshacer» (baja aplazada, D4) y verificar con pruebas que
+- [x] 3.2 Quitar alcances y fotos con «Deshacer» (baja aplazada, D4) y verificar con pruebas que
       deshacer restaura después de un autoguardado, que al vencer el plazo se quita y que descargar,
       enviar, emitir o navegar aplican antes las bajas pendientes.
-- [ ] 3.3 Hacer de cada grupo de fotos una zona para soltar archivos, conservando el botón, y verificar
+- [x] 3.3 Hacer de cada grupo de fotos una zona para soltar archivos, conservando el botón, y verificar
       con una prueba de `drop` que se cargan las fotos y se informa el archivo rechazado.
-- [ ] 3.4 Mostrar el avance por archivo («Cargando 3 de 12») y verificarlo con una prueba de carga con
+- [x] 3.4 Mostrar el avance por archivo («Cargando 3 de 12») y verificarlo con una prueba de carga con
       un rechazo intermedio.
-- [ ] 3.5 Emitir con `Dialogo` (título, revisión y fotos; foco en «Cancelar») y verificar que `Esc` no
+- [x] 3.5 Emitir con `Dialogo` (título, revisión y fotos; foco en «Cancelar») y verificar que `Esc` no
       emite y devuelve el foco a «Emitir».
-- [ ] 3.6 Mostrar «Descargar DOCX» siempre, deshabilitado con el motivo cuando falta la fecha, y
+- [x] 3.6 Mostrar «Descargar DOCX» siempre, deshabilitado con el motivo cuando falta la fecha, y
       verificarlo con una prueba de componente.
 
 ## 4. Cierre de la fase B

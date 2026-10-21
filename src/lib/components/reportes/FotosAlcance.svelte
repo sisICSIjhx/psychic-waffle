@@ -1,10 +1,10 @@
-<!-- Fotos de un alcance: carga múltiple, pie con la numeración «Ilustración 2.n.m», reordenamiento,
-     cambio de alcance y, en la disposición antes/durante/después, tres espacios etiquetados. -->
+<!-- Fotos de un alcance: carga múltiple con botón o arrastrando archivos, pie con la numeración
+     «Ilustración 2.n.m», reordenamiento, cambio de alcance y, en la disposición antes/durante/después,
+     tres espacios etiquetados. Quitar avisa al editor, que aplaza la baja para poder deshacerla. -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { ordenDeAparicion, pieIlustracion } from '$lib/dominio/documento';
 	import type { Foto } from '$lib/dominio/esquemas';
-	import { plural } from '$lib/dominio/textos';
 
 	type Momento = 'antes' | 'durante' | 'despues';
 
@@ -15,12 +15,19 @@
 	export let soloLectura = false;
 	/** Otros alcances del reporte, para mover una foto. */
 	export let otrosAlcances: { id: string; etiqueta: string }[] = [];
-	export let cargando = 0;
+	/** Avance de la carga en curso de este alcance. */
+	export let progreso: { total: number; hechas: number } | null = null;
+	/** Fotos quitadas que aún pueden deshacerse: no se muestran ni se numeran. */
+	export let ocultas: Record<string, unknown> = {};
 
 	const dispatch = createEventDispatcher<{
 		cargar: { archivos: File[]; momento: Momento | null };
 		mover: { fotoId: string; alcanceId: string };
+		quitar: { fotoId: string; pie: string };
 	}>();
+
+	/** Grupo sobre el que se están arrastrando archivos. */
+	let sobre: string | null = null;
 
 	const ACEPTA = '.jpg,.jpeg,.png,.heic,.heif,image/jpeg,image/png,image/heic,image/heif';
 	const ESPACIOS: { momento: Momento; etiqueta: string }[] = [
@@ -31,11 +38,12 @@
 
 	const momentoDe = (foto: Foto): Momento => foto.momento ?? 'durante';
 
-	$: numeracion = new Map(ordenDeAparicion(fotos, disposicion).map((f, i) => [f.id, i + 1]));
+	$: visibles = fotos.filter((f) => !ocultas[f.id]);
+	$: numeracion = new Map(ordenDeAparicion(visibles, disposicion).map((f, i) => [f.id, i + 1]));
 	$: grupos =
 		disposicion === 'antes_durante_despues'
-			? ESPACIOS.map((e) => ({ ...e, fotos: fotos.filter((f) => momentoDe(f) === e.momento) }))
-			: [{ momento: null, etiqueta: '', fotos }];
+			? ESPACIOS.map((e) => ({ ...e, fotos: visibles.filter((f) => momentoDe(f) === e.momento) }))
+			: [{ momento: null, etiqueta: '', fotos: visibles }];
 
 	function seleccionar(evento: Event, momento: Momento | null) {
 		const entrada = evento.currentTarget as HTMLInputElement;
@@ -44,12 +52,32 @@
 		if (archivos.length) dispatch('cargar', { archivos, momento });
 	}
 
-	/** Intercambia la foto con la anterior o la siguiente de su mismo grupo. */
+	function arrastrar(evento: DragEvent, clave: string) {
+		if (!evento.dataTransfer?.types.includes('Files')) return;
+		evento.preventDefault();
+		evento.dataTransfer.dropEffect = 'copy';
+		sobre = clave;
+	}
+
+	function salir(evento: DragEvent) {
+		const zona = evento.currentTarget as HTMLElement;
+		if (!zona.contains(evento.relatedTarget as Node | null)) sobre = null;
+	}
+
+	/** Los archivos soltados siguen el mismo camino que los del botón; el servidor valida cada uno. */
+	function soltar(evento: DragEvent, momento: Momento | null) {
+		evento.preventDefault();
+		sobre = null;
+		const archivos = Array.from(evento.dataTransfer?.files ?? []);
+		if (archivos.length) dispatch('cargar', { archivos, momento });
+	}
+
+	/** Intercambia la foto con la anterior o la siguiente visible de su mismo grupo. */
 	function mover(foto: Foto, paso: -1 | 1) {
 		const grupo = disposicion === 'antes_durante_despues' ? momentoDe(foto) : null;
 		const indices = fotos
 			.map((f, i) => ({ f, i }))
-			.filter(({ f }) => grupo === null || momentoDe(f) === grupo)
+			.filter(({ f }) => !ocultas[f.id] && (grupo === null || momentoDe(f) === grupo))
 			.map(({ i }) => i);
 		const posicion = indices.indexOf(fotos.indexOf(foto));
 		const destino = indices[posicion + paso];
@@ -69,16 +97,27 @@
 	}
 
 	function quitar(foto: Foto) {
-		if (!confirm(`¿Quitar la ${pieIlustracion(posicionAlcance, numeracion.get(foto.id) ?? 1)}?`)) {
-			return;
-		}
-		fotos = fotos.filter((f) => f.id !== foto.id);
+		dispatch('quitar', {
+			fotoId: foto.id,
+			pie: pieIlustracion(posicionAlcance, numeracion.get(foto.id) ?? 1)
+		});
 	}
 </script>
 
 <div class="fotos-alcance" class:espacios={disposicion === 'antes_durante_despues'}>
 	{#each grupos as grupo (grupo.momento ?? 'todas')}
-		<div class="grupo-fotos">
+		{@const clave = grupo.momento ?? 'todas'}
+		<div
+			class="grupo-fotos"
+			class:zona-soltar={!soloLectura}
+			class:arrastrando={sobre === clave}
+			role="group"
+			aria-label={`Fotos del alcance 2.${posicionAlcance}${grupo.etiqueta ? ` (${grupo.etiqueta})` : ''}`}
+			on:dragenter={(e) => !soloLectura && arrastrar(e, clave)}
+			on:dragover={(e) => !soloLectura && arrastrar(e, clave)}
+			on:dragleave={salir}
+			on:drop={(e) => !soloLectura && soltar(e, grupo.momento)}
+		>
 			{#if grupo.etiqueta}<h4 class="etiqueta-espacio">{grupo.etiqueta}</h4>{/if}
 			<ul class="lista-fotos">
 				{#each grupo.fotos as foto, i (foto.id)}
@@ -158,21 +197,27 @@
 				{/each}
 			</ul>
 			{#if !soloLectura}
-				<label class="boton cargar-fotos">
-					Agregar fotos{grupo.etiqueta ? ` (${grupo.etiqueta})` : ''}
-					<input
-						class="sr-only"
-						type="file"
-						multiple
-						accept={ACEPTA}
-						on:change={(e) => seleccionar(e, grupo.momento)}
-					/>
-				</label>
+				<div class="agregar">
+					<label class="boton cargar-fotos">
+						Agregar fotos{grupo.etiqueta ? ` (${grupo.etiqueta})` : ''}
+						<input
+							class="sr-only"
+							type="file"
+							multiple
+							accept={ACEPTA}
+							on:change={(e) => seleccionar(e, grupo.momento)}
+						/>
+					</label>
+					<span class="pista">o arrástrelas aquí</span>
+				</div>
 			{/if}
 		</div>
 	{/each}
-	{#if cargando > 0}
-		<p class="view-note" role="status">Cargando {plural(cargando, 'foto')}…</p>
+	{#if progreso}
+		<div class="progreso" role="status">
+			<span>Cargando {Math.min(progreso.hechas + 1, progreso.total)} de {progreso.total}…</span>
+			<progress max={progreso.total} value={progreso.hechas}></progress>
+		</div>
 	{/if}
 </div>
 
@@ -236,5 +281,40 @@
 	.cargar-fotos {
 		display: inline-flex;
 		cursor: pointer;
+	}
+	.zona-soltar {
+		border: 2px dashed transparent;
+		border-radius: 8px;
+		padding: 4px;
+		transition: border-color 0.15s;
+	}
+	.zona-soltar:hover {
+		border-color: var(--border);
+	}
+	.zona-soltar.arrastrando {
+		border-color: var(--primary);
+		background: var(--primary-soft);
+	}
+	.agregar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		align-items: center;
+	}
+	.pista {
+		color: var(--muted);
+		font-size: 0.85rem;
+	}
+	.progreso {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		align-items: center;
+		margin-top: 8px;
+		font-size: 0.9rem;
+	}
+	.progreso progress {
+		flex: 1 1 160px;
+		accent-color: var(--primary);
 	}
 </style>

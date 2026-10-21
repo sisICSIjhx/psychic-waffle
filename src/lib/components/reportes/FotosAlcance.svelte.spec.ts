@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import type { Foto } from '$lib/dominio/esquemas';
 import FotosAlcance from './FotosAlcance.svelte';
@@ -92,5 +92,45 @@ describe('FotosAlcance', () => {
 		for (const elemento of target.querySelectorAll('.foto')) {
 			expect(elemento.getBoundingClientRect().width).toBeLessThanOrEqual(280);
 		}
+	});
+
+	it('acepta fotos soltadas sobre el grupo, conserva el botón y no numera las ocultas', async () => {
+		const cargar = vi.fn();
+		const quitar = vi.fn();
+		const target = document.body.appendChild(document.createElement('div'));
+		const { container } = render(FotosAlcance, {
+			target,
+			props: {
+				fotos: [foto(1, 'Uno'), foto(2, 'Dos'), foto(3, 'Tres')],
+				posicionAlcance: 1,
+				ocultas: { [foto(1, '').id]: 1 }
+			},
+			events: { cargar, quitar }
+		});
+		expect(fotosMostradas(container)).toEqual([
+			{ pie: 'Ilustración 2.1.1', descripcion: 'Dos' },
+			{ pie: 'Ilustración 2.1.2', descripcion: 'Tres' }
+		]);
+
+		const datos = new DataTransfer();
+		for (const nombre of ['a.jpg', 'b.pdf']) datos.items.add(new File(['x'], nombre));
+		page
+			.getByRole('group', { name: 'Fotos del alcance 2.1' })
+			.element()
+			.dispatchEvent(
+				new DragEvent('drop', { dataTransfer: datos, bubbles: true, cancelable: true })
+			);
+		expect(cargar).toHaveBeenCalledTimes(1);
+		expect(cargar.mock.calls[0][0].detail.archivos.map((a: File) => a.name)).toEqual([
+			'a.jpg',
+			'b.pdf'
+		]);
+		await expect.element(page.getByText('Agregar fotos')).toBeInTheDocument();
+
+		await page.getByRole('button', { name: 'Quitar la Ilustración 2.1.2' }).click();
+		expect(quitar.mock.calls[0][0].detail).toEqual({
+			fotoId: foto(3, '').id,
+			pie: 'Ilustración 2.1.2'
+		});
 	});
 });

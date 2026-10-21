@@ -14,10 +14,17 @@
 		validarParaRevision,
 		type Observacion
 	} from '$lib/dominio/captura';
-	import { TEXTO_ESTADO_VERIFICACION, textoTags } from '$lib/dominio/documento';
+	import {
+		TEXTO_ESTADO_VERIFICACION,
+		textoTags,
+		type EstadoVerificacion
+	} from '$lib/dominio/documento';
 	import type { Equipo, Foto, Reporte, ReporteGuardado } from '$lib/dominio/esquemas';
 	import { fechaEnZona } from '$lib/dominio/fechas';
 	import { plural, textoHaceTiempo, textoMes, textoRango } from '$lib/dominio/textos';
+	import BotonesSegmentados from '$lib/components/ui/BotonesSegmentados.svelte';
+	import Dialogo from '$lib/components/ui/Dialogo.svelte';
+	import { notificaciones, PLAZO_DESHACER } from '$lib/components/ui/notificaciones';
 	import { llamarAccion, type EnviarAccion, type ResultadoAccion } from './acciones';
 	import ErrorCampo from './ErrorCampo.svelte';
 	import FotosAlcance from './FotosAlcance.svelte';
@@ -34,6 +41,8 @@
 	export let enviar: EnviarAccion = llamarAccion;
 	/** Fecha de hoy («AAAA-MM-DD») en la zona del negocio, para el atajo «Hoy». */
 	export let hoy = fechaEnZona();
+	/** Tiempo para deshacer una foto o un alcance quitados, en milisegundos. */
+	export let plazoDeshacer = PLAZO_DESHACER;
 
 	type EstadoGuardado = 'guardado' | 'pendiente' | 'guardando' | 'conflicto' | 'error';
 	type Momento = 'antes' | 'durante' | 'despues';
@@ -67,6 +76,25 @@
 	};
 	const ENFOCABLE =
 		'input:not([type=hidden]):not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]';
+	/** «Pendiente» se representa sin opción elegida. */
+	const OPCIONES_VERIFICACION = (['ok', 'no_aplica', 'con_observacion'] as const).map((valor) => ({
+		valor,
+		texto: TEXTO_ESTADO_VERIFICACION[valor]
+	}));
+
+	/**
+	 * El reporte sin lo quitado que todavía puede deshacerse. Es lo que se ve, se numera y se valida;
+	 * lo que se autoguarda sigue incluyéndolo hasta que la baja se aplica.
+	 */
+	function conBajas(r: Reporte, quitados: Record<string, number>): Reporte {
+		if (!Object.keys(quitados).length) return r;
+		return {
+			...r,
+			alcances: r.alcances
+				.filter((a) => !quitados[a.id])
+				.map((a) => ({ ...a, fotos: a.fotos.filter((f) => !quitados[f.id]) }))
+		};
+	}
 
 	/** Completa los firmantes que falten para poder editarlos. */
 	function normalizar(r: Reporte): Reporte {
@@ -127,7 +155,11 @@
 	let mensaje = '';
 	let observacionesServidor: Observacion[] = [];
 	let rechazadas: { nombre: string; motivo: string }[] = [];
-	let cargandoPorAlcance: Record<string, number> = {};
+	/** Avance de las cargas de fotos en curso, por alcance. */
+	let cargas: Record<string, { total: number; hechas: number }> = {};
+	/** Alcances y fotos quitados que aún pueden deshacerse, con su notificación. */
+	let bajas: Record<string, number> = {};
+	let dialogoEmision = false;
 	let ocupado = false;
 	let confirmarOmitirTabla = false;
 	let mostrarResumen = false;
@@ -149,9 +181,13 @@
 		estadoGuardado !== 'guardando'
 	)
 		programar();
-	$: pendientes = validarParaRevision(reporte, { requiereTag: equiposPartida.length > 0 });
-	$: completitud = completitudPorSeccion(pendientes, reporte);
-	$: errores = erroresVisibles(pendientes, reporte, tocados, intentoEnvio);
+	$: visible = conBajas(reporte, bajas);
+	$: numeroAlcance = new Map(visible.alcances.map((a, i) => [a.id, i + 1]));
+	$: totalFotos = visible.alcances.reduce((total, a) => total + a.fotos.length, 0);
+	$: puedeDescargar = !!reporte.fechaEjecucion;
+	$: pendientes = validarParaRevision(visible, { requiereTag: equiposPartida.length > 0 });
+	$: completitud = completitudPorSeccion(pendientes, visible);
+	$: errores = erroresVisibles(pendientes, visible, tocados, intentoEnvio);
 	// Las observaciones del servidor (422) se suman a las locales sin repetir campos.
 	$: listaResumen = [
 		...pendientes,
@@ -170,7 +206,7 @@
 		seccion('seccion-firmas', 'Firmas', completitud.porSeccion.firmas),
 		seccion('seccion-objetivo', '1. Objetivo', completitud.porSeccion.objetivo),
 		seccion('seccion-alcance', '2. Alcance', completitud.porSeccion.alcance),
-		...reporte.alcances.map(
+		...visible.alcances.map(
 			(a, i): EntradaIndice => ({
 				id: `alcance-${a.id}`,
 				texto: `2.${i + 1} ${a.titulo.trim() || 'Sin título'}`,
@@ -269,11 +305,10 @@
 	}
 
 	async function cargarFotos(alcanceId: string, archivos: File[], momento: Momento | null) {
-		rechazadas = [];
-		cargandoPorAlcance = {
-			...cargandoPorAlcance,
-			[alcanceId]: (cargandoPorAlcance[alcanceId] ?? 0) + archivos.length
-		};
+		// Los rechazos de una carga anterior se conservan mientras haya otra en curso.
+		if (!Object.keys(cargas).length) rechazadas = [];
+		const actual = cargas[alcanceId] ?? { total: 0, hechas: 0 };
+		cargas = { ...cargas, [alcanceId]: { ...actual, total: actual.total + archivos.length } };
 		for (const archivo of archivos) {
 			await encolar(async () => {
 				try {
@@ -300,13 +335,53 @@
 						a.id === alcanceId ? { ...a, fotos: [...a.fotos, ...nuevas] } : a
 					);
 				} finally {
-					cargandoPorAlcance = {
-						...cargandoPorAlcance,
-						[alcanceId]: (cargandoPorAlcance[alcanceId] ?? 1) - 1
-					};
+					avanzarCarga(alcanceId);
 				}
 			});
 		}
+	}
+
+	function avanzarCarga(alcanceId: string) {
+		const carga = cargas[alcanceId];
+		if (!carga) return;
+		const resto = { ...cargas };
+		if (carga.hechas + 1 >= carga.total) delete resto[alcanceId];
+		else resto[alcanceId] = { ...carga, hechas: carga.hechas + 1 };
+		cargas = resto;
+	}
+
+	/** Oculta el alcance o la foto y ofrece «Deshacer»; la baja se aplica al vencer el plazo. */
+	function quitarConDeshacer(id: string, aviso: string) {
+		const notificacion = notificaciones.mostrar({
+			mensaje: aviso,
+			textoDeshacer: 'Deshacer',
+			plazo: plazoDeshacer,
+			alDeshacer: () => olvidarBaja(id),
+			alVencer: () => aplicarBaja(id)
+		});
+		bajas = { ...bajas, [id]: notificacion };
+	}
+
+	function olvidarBaja(id: string) {
+		const resto = { ...bajas };
+		delete resto[id];
+		bajas = resto;
+	}
+
+	function aplicarBaja(id: string) {
+		olvidarBaja(id);
+		reporte.alcances = reporte.alcances
+			.filter((a) => a.id !== id)
+			.map((a) =>
+				a.fotos.some((f) => f.id === id) ? { ...a, fotos: a.fotos.filter((f) => f.id !== id) } : a
+			);
+	}
+
+	/** Antes de guardar para salir, descargar o cambiar de estado, las bajas pendientes se aplican. */
+	function aplicarBajasPendientes(): boolean {
+		const pendientesDeAplicar = Object.values(bajas);
+		for (const notificacion of pendientesDeAplicar) notificaciones.confirmar(notificacion);
+		return pendientesDeAplicar.length > 0;
 	}
 
 	function moverFoto(origenId: string, fotoId: string, destinoId: string) {
@@ -324,6 +399,7 @@
 	}
 
 	async function accionConGuardado(accion: string, campos: Record<string, string>) {
+		aplicarBajasPendientes();
 		ocupado = true;
 		observacionesServidor = [];
 		mensaje = '';
@@ -372,18 +448,9 @@
 		ocupado = false;
 	}
 
-	function emitir() {
-		if (
-			confirm(
-				'Un reporte emitido ya no se puede modificar; para corregirlo se crea una revisión. ¿Emitir?'
-			)
-		) {
-			accionConGuardado('estado', { estado: 'emitido' });
-		}
-	}
-
 	async function descargar(evento: MouseEvent) {
-		if (estadoGuardado === 'guardado' || reporte.estado !== 'borrador') return;
+		const habiaBajas = aplicarBajasPendientes();
+		if (!habiaBajas && (estadoGuardado === 'guardado' || reporte.estado !== 'borrador')) return;
 		// Se guarda primero para descargar exactamente lo que está en pantalla.
 		evento.preventDefault();
 		const destino = (evento.currentTarget as HTMLAnchorElement).href;
@@ -402,7 +469,7 @@
 	}
 
 	function irAPendiente(observacion: Observacion) {
-		const destino = destinoDeObservacion(observacion, reporte);
+		const destino = destinoDeObservacion(observacion, visible);
 		if (!destino) return;
 		if (destino.seccion === 'firmas') abiertas.firmas = true;
 		if (destino.seccion === 'objetivo') abiertas.objetivo = true;
@@ -435,20 +502,25 @@
 		];
 	}
 
-	function moverAlcance(indice: number, paso: -1 | 1) {
-		const destino = indice + paso;
-		if (destino < 0 || destino >= reporte.alcances.length) return;
+	/** Intercambia el alcance con el anterior o el siguiente visible. */
+	function moverAlcance(id: string, paso: -1 | 1) {
+		const orden = visible.alcances.map((a) => a.id);
+		const vecino = orden[orden.indexOf(id) + paso];
+		if (!vecino) return;
+		const i = reporte.alcances.findIndex((a) => a.id === id);
+		const j = reporte.alcances.findIndex((a) => a.id === vecino);
 		const nuevos = [...reporte.alcances];
-		[nuevos[indice], nuevos[destino]] = [nuevos[destino], nuevos[indice]];
+		[nuevos[i], nuevos[j]] = [nuevos[j], nuevos[i]];
 		reporte.alcances = nuevos;
 	}
 
-	function quitarAlcance(indice: number) {
-		const alcance = reporte.alcances[indice];
-		const aviso = alcance.fotos.length
-			? `El alcance 2.${indice + 1} tiene ${plural(alcance.fotos.length, 'foto')}, que también se ${alcance.fotos.length === 1 ? 'quitará' : 'quitarán'}. ¿Continuar?`
-			: `¿Quitar el alcance 2.${indice + 1}?`;
-		if (confirm(aviso)) reporte.alcances = reporte.alcances.filter((_, i) => i !== indice);
+	function quitarAlcance(alcance: Reporte['alcances'][number]) {
+		const fotos = alcance.fotos.filter((f) => !bajas[f.id]).length;
+		const numero = numeroAlcance.get(alcance.id);
+		quitarConDeshacer(
+			alcance.id,
+			`Se quitó el alcance 2.${numero}${fotos ? ` con ${plural(fotos, 'foto')}` : ''}.`
+		);
 	}
 
 	function alternarEquipo(equipo: Equipo, marcado: boolean) {
@@ -471,18 +543,23 @@
 		reporte.incluyeVerificacion = casilla.checked;
 	}
 
-	/** Hay cambios sin guardar o un guardado en curso. */
+	/** Hay cambios sin guardar, un guardado en curso o algo quitado que aún puede deshacerse. */
 	export function hayCambiosPendientes(): boolean {
 		return (
 			reporte.estado === 'borrador' &&
 			(estadoGuardado === 'pendiente' ||
 				estadoGuardado === 'guardando' ||
+				Object.keys(bajas).length > 0 ||
 				huella(reporte) !== ultimaHuella)
 		);
 	}
 
-	/** Guarda de inmediato, después de lo que ya esté en curso. La página lo usa antes de navegar. */
+	/**
+	 * Aplica lo quitado y guarda de inmediato, después de lo que ya esté en curso. La página lo usa
+	 * antes de navegar.
+	 */
 	export function guardarAhora(): Promise<boolean> {
+		aplicarBajasPendientes();
 		return encolar(guardar);
 	}
 
@@ -498,6 +575,8 @@
 
 	onDestroy(() => {
 		if (temporizador) clearTimeout(temporizador);
+		// Sin el editor, una baja pendiente ya no se aplica: el elemento sigue en el reporte.
+		for (const notificacion of Object.values(bajas)) notificaciones.descartar(notificacion);
 	});
 </script>
 
@@ -536,11 +615,17 @@
 				<span class="completo"><span aria-hidden="true">✓</span> Completo</span>
 			{/if}
 		{/if}
-		{#if reporte.fechaEjecucion}
+		<!-- Siempre a la vista; sin fecha de ejecución no hay documento y se dice por qué. -->
+		{#if puedeDescargar}
 			<a
 				class="boton"
 				href={resolve('/reportes/[id]/documento', { id: reporte.id })}
 				on:click={descargar}><span class="texto-largo">Descargar </span>DOCX</a
+			>
+		{:else}
+			<span id="motivo-descarga" class="motivo-descarga">Indique la fecha de ejecución</span>
+			<button class="boton" type="button" disabled aria-describedby="motivo-descarga"
+				><span class="texto-largo">Descargar </span>DOCX</button
 			>
 		{/if}
 		{#if reporte.estado === 'borrador'}
@@ -558,8 +643,11 @@
 				on:click={() => accionConGuardado('estado', { estado: 'borrador' })}
 				>Regresar a borrador</button
 			>
-			<button class="boton primario" type="button" disabled={ocupado} on:click={emitir}
-				>Emitir</button
+			<button
+				class="boton primario"
+				type="button"
+				disabled={ocupado}
+				on:click={() => (dialogoEmision = true)}>Emitir</button
 			>
 		{:else if reporte.estado === 'emitido'}
 			<button class="boton" type="button" disabled={ocupado} on:click={crearRevision}
@@ -602,7 +690,7 @@
 							<li>
 								<a
 									class="enlace"
-									href={`#${destinoDeObservacion(observacion, reporte)?.campoId ?? 'seccion-encabezado'}`}
+									href={`#${destinoDeObservacion(observacion, visible)?.campoId ?? 'seccion-encabezado'}`}
 									on:click|preventDefault={() => irAPendiente(observacion)}>{observacion.mensaje}</a
 								>
 							</li>
@@ -831,95 +919,108 @@
 				{/if}
 
 				<ol class="alcances">
-					{#each reporte.alcances as alcance, i (alcance.id)}
-						{@const campoTitulo = `titulo-alcance-${alcance.id}`}
-						{@const campoEstado = `estado-${alcance.id}`}
-						{@const campoObservaciones = `observaciones-${alcance.id}`}
-						<li id={`alcance-${alcance.id}`} class="alcance" tabindex="-1">
-							<div class="cabecera-alcance">
-								<label for={campoTitulo}>2.{i + 1}</label>
-								<input
-									id={campoTitulo}
-									placeholder="Título del alcance"
-									bind:value={alcance.titulo}
-									aria-invalid={!!errores[campoTitulo]}
-									aria-describedby={describir(errores, campoTitulo)}
-								/>
-								<div class="acciones-alcance">
-									<button
-										type="button"
-										class="action-btn"
-										aria-label={`Subir el alcance 2.${i + 1}`}
-										disabled={i === 0}
-										on:click={() => moverAlcance(i, -1)}>↑</button
-									>
-									<button
-										type="button"
-										class="action-btn"
-										aria-label={`Bajar el alcance 2.${i + 1}`}
-										disabled={i === reporte.alcances.length - 1}
-										on:click={() => moverAlcance(i, 1)}>↓</button
-									>
-									<button
-										type="button"
-										class="action-btn delete"
-										aria-label={`Quitar el alcance 2.${i + 1}`}
-										on:click={() => quitarAlcance(i)}>Quitar</button
-									>
-								</div>
-							</div>
-							<ErrorCampo id={`error-${campoTitulo}`} mensaje={errores[campoTitulo]} />
-							<label class="sr-only" for={`descripcion-${alcance.id}`}
-								>Descripción del alcance 2.{i + 1}</label
-							>
-							<textarea
-								id={`descripcion-${alcance.id}`}
-								rows="2"
-								placeholder="Descripción de lo realizado"
-								bind:value={alcance.descripcion}
-							></textarea>
-							<FotosAlcance
-								bind:fotos={alcance.fotos}
-								posicionAlcance={i + 1}
-								disposicion={reporte.disposicionFotos}
-								reporteId={reporte.id}
-								soloLectura={!editable}
-								cargando={cargandoPorAlcance[alcance.id] ?? 0}
-								otrosAlcances={reporte.alcances
-									.map((a, j) => ({ id: a.id, etiqueta: `2.${j + 1} ${a.titulo}` }))
-									.filter((a) => a.id !== alcance.id)}
-								on:cargar={(e) => cargarFotos(alcance.id, e.detail.archivos, e.detail.momento)}
-								on:mover={(e) => moverFoto(alcance.id, e.detail.fotoId, e.detail.alcanceId)}
-							/>
-							{#if reporte.incluyeVerificacion}
-								<div class="verificacion">
-									<label class="etiqueta" for={campoEstado}>Verificación</label>
-									<select
-										id={campoEstado}
-										bind:value={alcance.estadoVerificacion}
-										aria-invalid={!!errores[campoEstado]}
-										aria-describedby={describir(errores, campoEstado)}
-									>
-										{#each Object.entries(TEXTO_ESTADO_VERIFICACION) as [valor, texto] (valor)}
-											<option value={valor}>{texto}</option>
-										{/each}
-									</select>
-									<ErrorCampo id={`error-${campoEstado}`} mensaje={errores[campoEstado]} />
-									<label class="etiqueta" for={campoObservaciones}>Observaciones</label>
+					{#each reporte.alcances as alcance (alcance.id)}
+						{#if !bajas[alcance.id]}
+							{@const numero = numeroAlcance.get(alcance.id) ?? 0}
+							{@const campoTitulo = `titulo-alcance-${alcance.id}`}
+							{@const campoEstado = `estado-${alcance.id}`}
+							{@const campoObservaciones = `observaciones-${alcance.id}`}
+							<li id={`alcance-${alcance.id}`} class="alcance" tabindex="-1">
+								<div class="cabecera-alcance">
+									<label for={campoTitulo}>2.{numero}</label>
 									<input
-										id={campoObservaciones}
-										bind:value={alcance.observaciones}
-										required={alcance.estadoVerificacion === 'con_observacion'}
-										aria-invalid={!!errores[campoObservaciones]}
-										aria-describedby={describir(errores, campoObservaciones)}
+										id={campoTitulo}
+										placeholder="Título del alcance"
+										bind:value={alcance.titulo}
+										aria-invalid={!!errores[campoTitulo]}
+										aria-describedby={describir(errores, campoTitulo)}
 									/>
-									<ErrorCampo
-										id={`error-${campoObservaciones}`}
-										mensaje={errores[campoObservaciones]}
-									/>
+									<div class="acciones-alcance">
+										<button
+											type="button"
+											class="action-btn"
+											aria-label={`Subir el alcance 2.${numero}`}
+											disabled={numero === 1}
+											on:click={() => moverAlcance(alcance.id, -1)}>↑</button
+										>
+										<button
+											type="button"
+											class="action-btn"
+											aria-label={`Bajar el alcance 2.${numero}`}
+											disabled={numero === visible.alcances.length}
+											on:click={() => moverAlcance(alcance.id, 1)}>↓</button
+										>
+										<button
+											type="button"
+											class="action-btn delete"
+											aria-label={`Quitar el alcance 2.${numero}`}
+											on:click={() => quitarAlcance(alcance)}>Quitar</button
+										>
+									</div>
 								</div>
-							{/if}
-						</li>
+								<ErrorCampo id={`error-${campoTitulo}`} mensaje={errores[campoTitulo]} />
+								<label class="sr-only" for={`descripcion-${alcance.id}`}
+									>Descripción del alcance 2.{numero}</label
+								>
+								<textarea
+									id={`descripcion-${alcance.id}`}
+									rows="2"
+									placeholder="Descripción de lo realizado"
+									bind:value={alcance.descripcion}
+								></textarea>
+								<FotosAlcance
+									bind:fotos={alcance.fotos}
+									posicionAlcance={numero}
+									disposicion={reporte.disposicionFotos}
+									reporteId={reporte.id}
+									soloLectura={!editable}
+									progreso={cargas[alcance.id] ?? null}
+									ocultas={bajas}
+									otrosAlcances={visible.alcances
+										.map((a, j) => ({ id: a.id, etiqueta: `2.${j + 1} ${a.titulo}` }))
+										.filter((a) => a.id !== alcance.id)}
+									on:cargar={(e) => cargarFotos(alcance.id, e.detail.archivos, e.detail.momento)}
+									on:mover={(e) => moverFoto(alcance.id, e.detail.fotoId, e.detail.alcanceId)}
+									on:quitar={(e) =>
+										quitarConDeshacer(e.detail.fotoId, `Se quitó la ${e.detail.pie}.`)}
+								/>
+								{#if reporte.incluyeVerificacion}
+									{@const conObservacion = alcance.estadoVerificacion === 'con_observacion'}
+									<div class="verificacion">
+										<span class="etiqueta" aria-hidden="true">Verificación</span>
+										<BotonesSegmentados
+											id={campoEstado}
+											etiqueta={`Verificación del alcance 2.${numero}`}
+											opciones={OPCIONES_VERIFICACION}
+											valor={alcance.estadoVerificacion}
+											disabled={!editable}
+											invalido={!!errores[campoEstado]}
+											describedby={describir(errores, campoEstado)}
+											on:change={(e) =>
+												(alcance.estadoVerificacion = e.detail as EstadoVerificacion)}
+										/>
+										<ErrorCampo id={`error-${campoEstado}`} mensaje={errores[campoEstado]} />
+										<!-- Se muestran con «Con observación» o si ya tienen texto: no se oculta lo capturado. -->
+										{#if conObservacion || alcance.observaciones.trim()}
+											<label class="etiqueta" for={campoObservaciones}
+												>Observaciones{conObservacion ? ' (obligatorias)' : ''}</label
+											>
+											<input
+												id={campoObservaciones}
+												bind:value={alcance.observaciones}
+												required={conObservacion}
+												aria-invalid={!!errores[campoObservaciones]}
+												aria-describedby={describir(errores, campoObservaciones)}
+											/>
+											<ErrorCampo
+												id={`error-${campoObservaciones}`}
+												mensaje={errores[campoObservaciones]}
+											/>
+										{/if}
+									</div>
+								{/if}
+							</li>
+						{/if}
 					{/each}
 				</ol>
 				<button id="agregar-alcance" class="boton" type="button" on:click={agregarAlcance}
@@ -986,6 +1087,18 @@
 		</fieldset>
 	</div>
 </div>
+
+<Dialogo
+	id="dialogo-emitir"
+	bind:abierto={dialogoEmision}
+	titulo="¿Emitir el reporte?"
+	textoConfirmar="Emitir"
+	on:confirmar={() => accionConGuardado('estado', { estado: 'emitido' })}
+>
+	<p class="titulo-emision">{reporte.titulo}</p>
+	<p>Revisión {reporte.revision} · {plural(totalFotos, 'foto')}</p>
+	<p>Un reporte emitido ya no se puede modificar; para corregirlo se crea una revisión.</p>
+</Dialogo>
 
 <style>
 	/* Barra fija pegada al borde superior del área de contenido, sin hueco por el relleno. */
@@ -1054,6 +1167,14 @@
 		color: var(--surface);
 		font-size: 0.75rem;
 	}
+	.motivo-descarga {
+		color: var(--muted);
+		font-size: 0.85rem;
+	}
+	.titulo-emision {
+		margin: 0;
+		font-weight: 600;
+	}
 	.completo {
 		color: var(--success);
 		font-weight: 600;
@@ -1090,8 +1211,7 @@
 		min-width: 0;
 	}
 	.editor-reporte textarea,
-	.editor-reporte input:not([type='checkbox']),
-	.editor-reporte select {
+	.editor-reporte input:not([type='checkbox']) {
 		width: 100%;
 	}
 	.datos-contrato {
