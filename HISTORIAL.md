@@ -3,6 +3,13 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-20 — Plan de diseño de interfaz y experiencia de usuario
+
+- Motivo: solicitud del usuario de un plan para mejorar la interfaz con prioridad en funcionalidad y experiencia de usuario, basado en reglas de diseño investigadas.
+- Alcance: `docs/PLAN_DISENO_UX.md` (reglas: heurísticas de Nielsen, reglas de Shneiderman, leyes de UX, Gestalt, patrones de formularios, autoguardado, tablas y paneles, WCAG 2.2 AA; diagnóstico con 17 hallazgos; principios; propuesta por pantalla; hoja de ruta en fases A a E con su nivel de OpenSpec; medición y decisiones abiertas). Sin cambios de código.
+- Validación: auditoría en el navegador con la base local a 1366 × 800 y 375 × 812 (contraste calculado, tamaño de controles, alto de página y desbordes) sobre el servidor de desarrollo que ya estaba abierto; Prettier sobre el documento.
+- Pendientes: respuestas del usuario a las decisiones abiertas (sección 8 del plan); línea base de tiempo de un reporte real (7.1) antes de implementar.
+
 ## 2026-10-20 — FOR-ICSI-RMT-01, fase 7: cierre (parcial)
 
 - Motivo: dejar el cambio listo para su uso local y para archivarlo (tareas 7.1 a 7.4).

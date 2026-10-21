@@ -50,6 +50,7 @@ Verificado el 2026-10-20 contra los archivos locales (rama `feat/reportes-rmt-01
 | Cambio en curso                | openspec/changes/reportes-mantenimiento-for-icsi-rmt-01/            |
 | Revisiones con Codex           | docs/revisiones/fase-N.md                                           |
 | Propuesta técnica y pendientes | docs/PROPUESTA_TECNOLOGICA_Y_PENDIENTES.md                          |
+| Plan de diseño UI/UX           | docs/PLAN_DISENO_UX.md                                              |
 | Validación                     | npm run check, npm run lint, npm run test (raíz)                    |
 | Decisiones anteriores          | Buscar por tema en HISTORIAL.md                                     |
 | Requisitos                     | openspec/specs/<capacidad>/spec.md y los deltas del cambio en curso |
