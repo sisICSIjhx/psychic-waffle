@@ -5,7 +5,9 @@ import {
 	filtrarPartidas,
 	pendientesVencidos,
 	programaVigente,
-	resumenDelMes
+	resumenDelMes,
+	siguienteTrabajo,
+	type BorradorResumen
 } from './planeacion';
 
 const HOY = '2026-07-15';
@@ -124,5 +126,84 @@ describe('resumen del mes para el panel', () => {
 		expect(programaVigente(programas, HOY)).toBe(programas[1]);
 		expect(programaVigente(programas, '2030-01-01')).toBe(programas[1]);
 		expect(programaVigente([], HOY)).toBeNull();
+	});
+});
+
+describe('siguiente trabajo para «Mi trabajo»', () => {
+	const hoy = '2026-10-21';
+	const avance = (partidas: AvancePrograma['partidas']): AvancePrograma => ({
+		programa: {
+			id: ID(1),
+			contratoId: ID(2),
+			sitioId: ID(3),
+			nombre: null,
+			periodoInicio: '2026-05-01',
+			periodoFin: '2027-04-30',
+			meses: []
+		},
+		partidas
+	});
+	const borrador = (
+		n: number,
+		partidaId: string,
+		periodoMes: string,
+		cambios: Partial<BorradorResumen> = {}
+	): BorradorResumen => ({
+		id: ID(500 + n),
+		partidaId,
+		sitioId: ID(3),
+		periodoMes,
+		ocurrencia: null,
+		titulo: `Borrador ${n}`,
+		actualizadoEn: `2026-10-0${n}T00:00:00Z`,
+		...cambios
+	});
+
+	it('ordena por urgencia: vencidos del más antiguo y luego el mes en curso, sin meses futuros', () => {
+		const trabajo = siguienteTrabajo(
+			[
+				avance([
+					partida(7, [
+						['2026-10-01', 1, 0],
+						['2026-11-01', 1, 0]
+					]),
+					partida(1, [
+						['2026-08-01', 1, 0],
+						['2026-09-01', 1, 1]
+					]),
+					partida(3, [['2026-06-01', 2, 1]])
+				])
+			],
+			[],
+			hoy
+		);
+		expect(trabajo.map((t) => [t.numero, t.mes, t.estado, t.faltan])).toEqual([
+			['3', '2026-06-01', 'vencido', 1],
+			['1', '2026-08-01', 'vencido', 1],
+			['7', '2026-10-01', 'pendiente', 1]
+		]);
+		expect(trabajo[0]).toMatchObject({ contratoId: ID(2), sitioId: ID(3), partidaId: ID(3) });
+	});
+
+	it('relaciona los borradores por partida, sitio y mes, el más reciente primero', () => {
+		const semanal = partida(15, [['2026-10-01', 4, 1]], { periodicidad: 'semanal' });
+		const trabajo = siguienteTrabajo(
+			[avance([semanal, partida(7, [['2026-10-01', 1, 0]])])],
+			[
+				borrador(1, ID(15), '2026-10-01', { ocurrencia: { tipo: 'semana', numero: 2 } }),
+				borrador(2, ID(15), '2026-10-01', { ocurrencia: { tipo: 'semana', numero: 3 } }),
+				borrador(3, ID(15), '2026-09-01'),
+				borrador(4, ID(15), '2026-10-01', { sitioId: ID(99) }),
+				borrador(5, ID(8), '2026-10-01')
+			],
+			hoy
+		);
+		const semanalPendiente = trabajo.find((t) => t.partidaId === ID(15));
+		expect(semanalPendiente?.faltan).toBe(3);
+		expect(semanalPendiente?.borradores.map((b) => [b.id, b.ocurrencia?.numero])).toEqual([
+			[ID(502), 3],
+			[ID(501), 2]
+		]);
+		expect(trabajo.find((t) => t.partidaId === ID(7))?.borradores).toEqual([]);
 	});
 });

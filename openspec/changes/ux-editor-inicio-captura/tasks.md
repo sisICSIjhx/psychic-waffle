@@ -77,9 +77,9 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
       servidor de desarrollo para aplicarla.
 - [x] 5.2 Agregar `listarTodos(filtro)` al repositorio de reportes (recorre las páginas de 100 hasta el
       total) y verificar con una prueba sobre PGlite con más de 100 borradores que no omite ninguno.
-- [ ] 5.3 Agregar `siguienteTrabajo` a `src/lib/dominio/planeacion.ts` y verificar con pruebas el orden
+- [x] 5.3 Agregar `siguienteTrabajo` a `src/lib/dominio/planeacion.ts` y verificar con pruebas el orden
       por urgencia, lo que falta por mes y los borradores por partida, mes y ocurrencia.
-- [ ] 5.4 Agregar al dominio la búsqueda normalizada, la agrupación de partidas (vencidos anteriores con
+- [x] 5.4 Agregar al dominio la búsqueda normalizada, la agrupación de partidas (vencidos anteriores con
       su mes y estado del mes de referencia) y el mes sugerido, y verificar con pruebas acentos,
       mayúsculas, coincidencia exacta por número, los tres grupos (una partida pendiente con borrador
       solo en «Con borrador», con su estado) y la sugerencia del vencido más antiguo.

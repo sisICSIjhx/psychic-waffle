@@ -1,6 +1,7 @@
 // Reglas puras de la planeación anual: estado de cada celda P/R, pendientes vencidos, filtros de la
 // matriz y resumen del mes para el panel de control.
-import type { AvancePrograma, CeldaPrograma } from './esquemas.ts';
+import type { Ocurrencia } from './documento.ts';
+import type { AvancePrograma, CeldaPrograma, ReporteResumen } from './esquemas.ts';
 
 type PartidaAvance = AvancePrograma['partidas'][number];
 
@@ -114,5 +115,76 @@ export function programaVigente<T extends { periodoInicio: string; periodoFin: s
 		programas.find((p) => p.periodoInicio <= hoy && hoy <= p.periodoFin) ??
 		[...programas].sort((a, b) => b.periodoInicio.localeCompare(a.periodoInicio))[0] ??
 		null
+	);
+}
+
+/** Lo que necesita «Mi trabajo» de cada borrador para relacionarlo con un pendiente. */
+export type BorradorResumen = Pick<
+	ReporteResumen,
+	'id' | 'partidaId' | 'sitioId' | 'periodoMes' | 'ocurrencia' | 'titulo' | 'actualizadoEn'
+>;
+
+export interface TrabajoPendiente {
+	contratoId: string;
+	sitioId: string;
+	partidaId: string;
+	numero: string;
+	actividad: string;
+	periodicidad: PartidaAvance['periodicidad'];
+	/** Primer día del mes del pendiente («AAAA-MM-01»). */
+	mes: string;
+	estado: 'vencido' | 'pendiente';
+	/** Ejecuciones programadas que aún no se realizan en ese mes. */
+	faltan: number;
+	/** Borradores de esa partida, sitio y mes, del más reciente al más antiguo. */
+	borradores: { id: string; titulo: string; ocurrencia: Ocurrencia | null }[];
+}
+
+/**
+ * Pendientes de los programas para «Mi trabajo», por urgencia: primero los vencidos, del mes más
+ * antiguo al más reciente, y después los pendientes del mes en curso (los de meses futuros no). Cada
+ * uno trae los borradores que coinciden por partida, sitio y mes.
+ */
+export function siguienteTrabajo(
+	avances: readonly AvancePrograma[],
+	borradores: readonly BorradorResumen[],
+	hoy: string
+): TrabajoPendiente[] {
+	const mesActual = `${hoy.slice(0, 7)}-01`;
+	const ordenados = [...borradores].sort((a, b) => b.actualizadoEn.localeCompare(a.actualizadoEn));
+	const trabajo: TrabajoPendiente[] = [];
+	for (const { programa, partidas } of avances) {
+		for (const partida of partidas) {
+			for (const celda of partida.celdas) {
+				const estado = estadoCelda(celda, hoy);
+				if (estado !== 'vencido' && !(estado === 'pendiente' && celda.mes === mesActual)) continue;
+				trabajo.push({
+					contratoId: programa.contratoId,
+					sitioId: programa.sitioId,
+					partidaId: partida.id,
+					numero: partida.numero,
+					actividad: partida.actividad,
+					periodicidad: partida.periodicidad,
+					mes: celda.mes,
+					estado,
+					faltan: (celda.programado ?? 0) - celda.realizado,
+					borradores: ordenados
+						.filter(
+							(b) =>
+								b.partidaId === partida.id &&
+								b.sitioId === programa.sitioId &&
+								b.periodoMes.slice(0, 7) === celda.mes.slice(0, 7)
+						)
+						.map(({ id, titulo, ocurrencia }) => ({ id, titulo, ocurrencia }))
+				});
+			}
+		}
+	}
+	const rango = (t: TrabajoPendiente) => (t.estado === 'vencido' ? 0 : 1);
+	return trabajo.sort(
+		(a, b) =>
+			rango(a) - rango(b) ||
+			a.mes.localeCompare(b.mes) ||
+			a.numero.localeCompare(b.numero, 'es', { numeric: true })
 	);
 }
