@@ -373,7 +373,7 @@
 	}
 	.btn-icon {
 		width: 100%;
-		height: 40px;
+		height: var(--alto-control);
 		display: flex;
 		align-items: center;
 		justify-content: center;

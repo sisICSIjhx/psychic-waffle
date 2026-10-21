@@ -19,6 +19,9 @@
 	--ring: rgba(3, 105, 161, 0.25);
 	--sidebar-w: 260px;
 	--sidebar-collapsed-w: 80px;
+	/* Objetivos: 24 px mínimo (WCAG 2.5.8); 44 px con puntero táctil. */
+	--alto-control: 40px;
+	--objetivo-min: 32px;
 	--radius: 12px;
 	--shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 	--border: #e2e8f0;
@@ -60,6 +63,13 @@ html[data-theme='dark'] {
 	--danger-bg: #450a0a;
 	--info-bg: #082f49;
 	--neutral-bg: #334155;
+}
+
+@media (pointer: coarse) {
+	:root {
+		--alto-control: 44px;
+		--objetivo-min: 44px;
+	}
 }
 
 /* Scrollbars */
@@ -230,7 +240,7 @@ textarea {
 }
 .btn-icon {
 	width: 100%;
-	height: 40px;
+	height: var(--alto-control);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -437,10 +447,30 @@ textarea {
 	background: var(--bg);
 	color: var(--text);
 }
+input:not([type='checkbox'], [type='radio'], [type='file'], [type='hidden'], [type='range']),
+select {
+	min-height: var(--alto-control);
+}
 input:focus,
 select:focus,
 textarea:focus {
 	border-color: var(--primary);
+}
+input[type='checkbox'],
+input[type='radio'] {
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	flex-shrink: 0;
+	accent-color: var(--primary);
+}
+/* La etiqueta amplía el objetivo de la casilla. */
+label:has(> input[type='checkbox'], > input[type='radio']) {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: var(--objetivo-min);
+	cursor: pointer;
 }
 ::placeholder {
 	color: var(--muted);
@@ -506,13 +536,22 @@ tr:last-child td {
 	border-bottom: none;
 }
 .action-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: var(--objetivo-min);
+	min-height: var(--objetivo-min);
 	background: none;
 	border: none;
 	color: var(--text);
 	cursor: pointer;
-	padding: 4px;
-	border-radius: 4px;
+	padding: 4px 8px;
+	border-radius: 6px;
+	font-size: 1rem;
 	transition: 0.2s;
+}
+.action-btn.delete {
+	font-size: 0.9rem;
 }
 .action-btn:hover {
 	background: var(--hover);
@@ -902,7 +941,11 @@ tr:last-child td {
 		transform: translateX(0);
 	}
 	.mobile-menu-trigger {
-		display: block;
+		display: grid;
+		place-items: center;
+		width: 44px;
+		height: 44px;
+		margin-left: -8px;
 	}
 	#btn-collapse {
 		display: none;
@@ -952,6 +995,11 @@ tr:last-child td {
 	font-size: 0.85rem;
 }
 .boton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: var(--alto-control);
 	background: var(--bg-soft);
 	color: var(--text);
 	border: 1px solid var(--borde-campo);
@@ -1017,6 +1065,11 @@ tr:last-child td {
 	display: flex;
 	gap: 12px;
 	align-items: center;
+}
+.acciones-fila > a.enlace {
+	display: inline-flex;
+	align-items: center;
+	min-height: var(--objetivo-min);
 }
 .acciones-formulario {
 	justify-content: flex-end;
@@ -1109,6 +1162,12 @@ tr:last-child td {
 }
 details > summary {
 	cursor: pointer;
+	padding-block: 6px;
+}
+@media (pointer: coarse) {
+	details > summary {
+		padding-block: 11px;
+	}
 }
 @media (max-width: 768px) {
 	.campo-ancho {

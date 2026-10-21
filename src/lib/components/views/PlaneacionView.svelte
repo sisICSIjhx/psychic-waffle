@@ -406,8 +406,14 @@
 	.celda .view-note {
 		color: inherit;
 	}
-	.capturar {
-		font-size: 0.75rem;
+	.capturar,
+	.reportes-celda {
+		display: inline-flex;
+		align-items: center;
+		min-height: 24px;
+		padding: 0 4px;
+		font-size: 0.8rem;
+		text-decoration: underline;
 	}
 	.total {
 		white-space: nowrap;
