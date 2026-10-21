@@ -364,20 +364,32 @@ textarea {
 }
 
 .view-section {
-	animation: fadeIn 0.3s ease;
+	animation: fadeIn 0.2s ease;
 	max-width: 1200px;
 	margin: 0 auto;
 	padding-bottom: 80px;
 }
 
+/* Solo opacidad: un desplazamiento dejaría la vista (y su barra fija) corrida si la animación se
+   detiene, por ejemplo en una pestaña en segundo plano. */
 @keyframes fadeIn {
 	from {
 		opacity: 0;
-		transform: translateY(10px);
 	}
 	to {
 		opacity: 1;
-		transform: translateY(0);
+	}
+}
+
+/* Sin animaciones ni transiciones cuando el sistema pide reducir el movimiento. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
 	}
 }
 
