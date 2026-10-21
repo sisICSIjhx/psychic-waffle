@@ -335,6 +335,11 @@
 		padding: 4px 6px;
 		vertical-align: top;
 	}
+	/* Meses y periodicidad en formato de oración, no en las mayúsculas de los encabezados. */
+	.matriz th {
+		text-transform: none;
+		letter-spacing: normal;
+	}
 	.columna-partida {
 		position: sticky;
 		left: 0;
