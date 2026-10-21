@@ -9,6 +9,7 @@ Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 - Alcance: `openspec/changes/ux-editor-inicio-captura/` con propuesta, deltas de `mi-trabajo` (nueva) y `captura-reportes` (solo requisitos agregados, para integrarse con el cambio anterior en cualquier orden de archivado), diseño (D1 a D13) y tareas por fase. Sin cambios de código.
 - Decisiones: componentes propios sin dependencias nuevas (`<dialog>`, combobox ARIA); completitud y destino de cada pendiente derivados de `validarParaRevision`; quitar con «Deshacer» mediante baja aplazada, sin cambios en el servidor; migración aditiva `0013` para que el listado de reportes traiga partida y sitio en lugar de relacionarlos por texto.
 - Validación: `openspec validate --strict` y `npm run spec:check` aprobados; Prettier sobre los artefactos.
+- Revisión de Codex en 2 rondas: 4 hallazgos medios corregidos en los artefactos (`docs/revisiones/ux-especificacion-BC.md`): destino de cada pendiente con el reporte validado (las rutas traen el índice del alcance), vencidos de meses anteriores en el selector con mes sugerido, todos los borradores con `listarTodos` en lugar de los 100 más recientes, y precedencia de «Con borrador» sobre «Pendientes».
 - Pendientes: respuestas a las decisiones abiertas 1 (uso en celular o tableta) y 2 (quién envía a revisión y quién emite), que condicionan las tareas 3.5, 3.8 y 6.6.
 
 ## 2026-10-21 — UX, fase A: fundamentos y arreglos rápidos

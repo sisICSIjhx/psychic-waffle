@@ -145,8 +145,10 @@ renumeradas o sitios escritos de otra forma, que es justo el error que el sistem
 La carga de `/captura` agrega, cuando hay contrato y sitio, el trabajo pendiente de cada partida según el
 avance del programa vigente del sitio: sus meses vencidos (todas las celdas anteriores al mes de
 referencia, con `pendientesVencidos`, conservando el mes de cada uno) y el estado de la celda del mes de
-referencia (`estadoCelda`). El grupo «Pendientes» reúne las partidas con algún vencido o pendiente en el
-mes de referencia; al elegir una partida vencida sin `?mes=`, el mes sugerido es su vencido más antiguo.
+referencia (`estadoCelda`). Cada partida cae en un solo grupo, en este orden de precedencia: «Con
+borrador» (algún borrador en el rango de meses, sin perder su estado y mes pendientes), «Pendientes»
+(algún vencido o pendiente en el mes de referencia) y «Otras partidas». Al elegir una partida vencida sin
+`?mes=`, el mes sugerido es su vencido más antiguo.
 Los borradores del sitio en ese rango de meses se obtienen completos con `listarTodos` (D11). El selector
 reemplaza la lista desplegable de partida y conserva el parámetro `partida` en la URL (los enlaces desde
 la planeación y «Mi trabajo» siguen funcionando). Con partida y mes elegidos, la

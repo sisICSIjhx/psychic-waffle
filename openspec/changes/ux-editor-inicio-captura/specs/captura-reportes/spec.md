@@ -31,19 +31,20 @@ actividad completa y la periodicidad. El selector SHALL poder usarse solo con el
 
 ### Requirement: Partidas agrupadas por el trabajo pendiente
 
-El selector SHALL agrupar las partidas en «Pendientes» (con meses vencidos anteriores al mes de
-referencia o pendientes en él, con su estado y mes en icono y texto), «Con borrador» y «Otras
-partidas». El mes de referencia SHALL ser el pedido en la dirección o, si no hay, el mes en curso.
+El selector SHALL agrupar las partidas en «Con borrador», «Pendientes» (meses vencidos anteriores al
+mes de referencia o pendientes en él) y «Otras partidas». Cada partida SHALL aparecer una sola vez: con
+algún borrador en esos meses va en «Con borrador», con su estado y mes pendientes en icono y texto. El
+mes de referencia SHALL ser el pedido en la dirección o el mes en curso.
 
 #### Scenario: Partida vencida primero
 
 - **WHEN** en octubre de 2026 la partida 3 tiene junio de 2026 vencido y la partida 7 está pendiente en octubre
 - **THEN** ambas aparecen en «Pendientes», la 3 primero con «Vencida · junio 2026» y la 7 con «Pendiente · octubre 2026»
 
-#### Scenario: Partida con borrador
+#### Scenario: Partida pendiente con borrador
 
-- **WHEN** la partida 12 tiene un borrador de un mes pendiente
-- **THEN** aparece en «Con borrador» con la indicación del borrador existente
+- **WHEN** la partida 12 está pendiente en octubre de 2026 y ya tiene un borrador de ese mes
+- **THEN** aparece solo en «Con borrador», con «Pendiente · octubre 2026» y la indicación del borrador, y no en «Pendientes»
 
 ### Requirement: Mes sugerido según el pendiente
 

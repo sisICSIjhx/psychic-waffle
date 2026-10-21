@@ -86,8 +86,8 @@ Las tareas marcadas «(decisión 1)» o «(decisión 2)» esperan la respuesta d
       por urgencia, lo que falta por mes y los borradores por partida, mes y ocurrencia.
 - [ ] 5.4 Agregar al dominio la búsqueda normalizada, la agrupación de partidas (vencidos anteriores con
       su mes y estado del mes de referencia) y el mes sugerido, y verificar con pruebas acentos,
-      mayúsculas, coincidencia exacta por número, los tres grupos y la sugerencia del vencido más
-      antiguo.
+      mayúsculas, coincidencia exacta por número, los tres grupos (una partida pendiente con borrador
+      solo en «Con borrador», con su estado) y la sugerencia del vencido más antiguo.
 
 ## 6. Inicio «Mi trabajo» (fase C)
 
