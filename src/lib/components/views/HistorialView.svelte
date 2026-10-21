@@ -2,8 +2,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import InsigniaEstado from '$lib/components/reportes/InsigniaEstado.svelte';
-	import { ETIQUETA_ESTADO_REPORTE, partesMes } from '$lib/dominio/captura';
-	import { MESES } from '$lib/dominio/documento';
+	import { ETIQUETA_ESTADO_REPORTE } from '$lib/dominio/captura';
+	import { textoMes } from '$lib/dominio/textos';
 	import type {
 		Cliente,
 		Contrato,
@@ -35,8 +35,7 @@
 	$: hastaFila = Math.min(resultado.pagina * resultado.tamano, resultado.total);
 
 	const periodo = (fila: PaginaReportes['filas'][number]) => {
-		const { anio, mes } = partesMes(fila.periodoMes);
-		const base = `${MESES[mes - 1].slice(0, 3)} ${anio}`;
+		const base = textoMes(fila.periodoMes, { inicial: true, corto: true });
 		return fila.ocurrencia
 			? `${base} · ${OCURRENCIA[fila.ocurrencia.tipo]}${fila.ocurrencia.numero}`
 			: base;

@@ -86,7 +86,7 @@
 				{#if !isCollapsed}<span>Panel de Control</span>{/if}
 			</a>
 
-			{#if !isCollapsed}<div class="nav-header">PLANEACIÓN</div>{/if}
+			{#if !isCollapsed}<div class="nav-header">Planeación</div>{/if}
 			<a
 				href={resolve('/planeacion')}
 				class="nav-item {activeView === 'planeacion' ? 'active' : ''}"
@@ -111,7 +111,7 @@
 				{#if !isCollapsed}<span>Anual</span>{/if}
 			</a>
 
-			{#if !isCollapsed}<div class="nav-header">CAPTURA</div>{/if}
+			{#if !isCollapsed}<div class="nav-header">Captura</div>{/if}
 			{#each clientesCaptura as cliente (cliente.clave)}
 				<!-- resolve() se aplica a la ruta; el filtro por cliente va en la consulta. -->
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -142,7 +142,7 @@
 				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			{/each}
 
-			{#if !isCollapsed}<div class="nav-header">REPORTES</div>{/if}
+			{#if !isCollapsed}<div class="nav-header">Reportes</div>{/if}
 			<a
 				href={resolve('/historial')}
 				class="nav-item {activeView === 'historial' ? 'active' : ''}"

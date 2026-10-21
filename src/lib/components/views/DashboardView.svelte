@@ -2,8 +2,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import InsigniaEstado from '$lib/components/reportes/InsigniaEstado.svelte';
-	import { partesMes } from '$lib/dominio/captura';
-	import { MESES } from '$lib/dominio/documento';
+	import { plural, textoMes } from '$lib/dominio/textos';
 	import type { ReporteResumen } from '$lib/dominio/esquemas';
 	import { fechaEnZona } from '$lib/dominio/fechas';
 	import type { PendienteVencido, ResumenMes } from '$lib/dominio/planeacion';
@@ -21,11 +20,6 @@
 	export let enRevision = 0;
 	export let recientes: ReporteResumen[] = [];
 
-	const textoMes = (mes: string) => {
-		const { anio, mes: numero } = partesMes(mes);
-		return `${MESES[numero - 1]} ${anio}`;
-	};
-
 	$: indicadores = [
 		{ valor: resumen.programadas, etiqueta: 'Partidas programadas del mes' },
 		{ valor: resumen.cumplidas, etiqueta: 'Realizado del mes' },
@@ -41,9 +35,9 @@
 <section aria-labelledby="titulo-indicadores">
 	<h2 id="titulo-indicadores" class="view-heading">Indicadores del mes</h2>
 	<p class="view-note">
-		{textoMes(hoy)} · {programasVigentes === 0
+		{textoMes(hoy, { inicial: true })} · {programasVigentes === 0
 			? 'No hay programas anuales vigentes; impórtelos desde el catálogo.'
-			: `${programasVigentes} programa(s) anual(es) vigente(s).`}
+			: `${plural(programasVigentes, 'programa anual vigente', 'programas anuales vigentes')}.`}
 	</p>
 	<div class="kpi-grid">
 		{#each indicadores as indicador (indicador.etiqueta)}
@@ -65,7 +59,7 @@
 		<ul class="lista-panel">
 			{#each vencidos as v (v.sitioId + v.partidaId + v.mes)}
 				<li>
-					<strong>{textoMes(v.mes)}</strong> · {v.sitio} · Partida {v.numero}.- {v.actividad}
+					<strong>{textoMes(v.mes, { inicial: true })}</strong> · {v.sitio} · Partida {v.numero}.- {v.actividad}
 					<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
 					<!-- eslint-disable svelte/no-navigation-without-resolve -->
 					<a

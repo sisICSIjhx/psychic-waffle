@@ -165,5 +165,8 @@ describe('EditorReporte', () => {
 		await expect
 			.element(page.getByRole('link', { name: 'Descargar DOCX' }))
 			.toHaveAttribute('href', `/reportes/${ID(1)}/documento`);
+		// Estado con icono y texto; el mes de la fecha en formato de oración.
+		await expect.element(page.getByText('Emitido', { exact: true })).toBeInTheDocument();
+		await expect.element(page.getByLabelText('Fecha de ejecución (mayo 2026)')).toBeDisabled();
 	});
 });

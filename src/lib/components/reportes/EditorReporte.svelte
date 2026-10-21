@@ -6,12 +6,12 @@
 	import { resolve } from '$app/paths';
 	import {
 		aGuardado,
-		partesMes,
 		rangoDelPeriodo,
 		validarParaRevision,
 		type Observacion
 	} from '$lib/dominio/captura';
-	import { MESES, TEXTO_ESTADO_VERIFICACION, textoTags } from '$lib/dominio/documento';
+	import { TEXTO_ESTADO_VERIFICACION, textoTags } from '$lib/dominio/documento';
+	import { plural, textoMes } from '$lib/dominio/textos';
 	import type { Equipo, Foto, Reporte, ReporteGuardado } from '$lib/dominio/esquemas';
 	import { llamarAccion, type EnviarAccion, type ResultadoAccion } from './acciones';
 	import FotosAlcance from './FotosAlcance.svelte';
@@ -86,7 +86,6 @@
 	$: huellaActual = huella(reporte);
 	$: if (editable && huellaActual !== ultimaHuella && estadoGuardado !== 'guardando') programar();
 	$: pendientes = validarParaRevision(reporte, { requiereTag: equiposPartida.length > 0 });
-	$: mes = partesMes(reporte.periodoMes);
 	// Días válidos: el mes o, si aplica, la semana, quincena o día elegidos.
 	$: rango = rangoDelPeriodo(reporte.periodoMes, reporte.ocurrencia);
 	$: idsEquipos = new Set(reporte.equipos.map((e) => e.id));
@@ -299,7 +298,7 @@
 	function quitarAlcance(indice: number) {
 		const alcance = reporte.alcances[indice];
 		const aviso = alcance.fotos.length
-			? `El alcance 2.${indice + 1} tiene ${alcance.fotos.length} foto(s), que también se quitarán. ¿Continuar?`
+			? `El alcance 2.${indice + 1} tiene ${plural(alcance.fotos.length, 'foto')}, que también se ${alcance.fotos.length === 1 ? 'quitará' : 'quitarán'}. ¿Continuar?`
 			: `¿Quitar el alcance 2.${indice + 1}?`;
 		if (confirm(aviso)) reporte.alcances = reporte.alcances.filter((_, i) => i !== indice);
 	}
@@ -469,7 +468,7 @@
 				<span>{reporte.periodicidad}</span>
 			</div>
 			<div class="form-group">
-				<label for="fecha">Fecha de ejecución ({MESES[mes.mes - 1]} {mes.anio})</label>
+				<label for="fecha">Fecha de ejecución ({textoMes(reporte.periodoMes)})</label>
 				<input
 					id="fecha"
 					type="date"

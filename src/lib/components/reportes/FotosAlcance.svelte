@@ -4,6 +4,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { ordenDeAparicion, pieIlustracion } from '$lib/dominio/documento';
 	import type { Foto } from '$lib/dominio/esquemas';
+	import { plural } from '$lib/dominio/textos';
 
 	type Momento = 'antes' | 'durante' | 'despues';
 
@@ -171,7 +172,7 @@
 		</div>
 	{/each}
 	{#if cargando > 0}
-		<p class="view-note" role="status">Cargando {cargando} foto(s)…</p>
+		<p class="view-note" role="status">Cargando {plural(cargando, 'foto')}…</p>
 	{/if}
 </div>
 

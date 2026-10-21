@@ -32,7 +32,7 @@ describe('/+page.svelte', () => {
 		const heading = page.getByRole('heading', { level: 2, name: 'Indicadores del mes' });
 		await expect.element(heading).toBeInTheDocument();
 		await expect
-			.element(page.getByText('JULIO 2026 · 1 programa(s) anual(es) vigente(s).'))
+			.element(page.getByText('Julio 2026 · 1 programa anual vigente.'))
 			.toBeInTheDocument();
 		await expect.element(page.getByText('Realizado del mes')).toBeInTheDocument();
 		const valores = [...document.querySelectorAll('.kpi-card')].map((tarjeta) =>

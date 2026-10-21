@@ -5,10 +5,10 @@
 	import {
 		ETIQUETA_OCURRENCIA,
 		ETIQUETA_PERIODICIDAD,
-		ocurrenciasDelMes,
-		partesMes
+		ocurrenciasDelMes
 	} from '$lib/dominio/captura';
-	import { MESES, type Ocurrencia } from '$lib/dominio/documento';
+	import type { Ocurrencia } from '$lib/dominio/documento';
+	import { textoMes } from '$lib/dominio/textos';
 	import type {
 		Cliente,
 		Contrato,
@@ -37,11 +37,6 @@
 	$: if (!meses.includes(periodoMes)) periodoMes = mesSugerido ?? '';
 	$: ocurrencias =
 		tipoOcurrencia && periodoMes ? ocurrenciasDelMes(tipoOcurrencia, periodoMes) : [];
-
-	const textoMes = (mes: string) => {
-		const { anio, mes: numero } = partesMes(mes);
-		return `${MESES[numero - 1]} ${anio}`;
-	};
 
 	function enviarAlCambiar(evento: Event) {
 		(evento.currentTarget as HTMLSelectElement).form?.requestSubmit();
@@ -135,7 +130,7 @@
 					<label for="periodoMes">4. Mes del reporte</label>
 					<select id="periodoMes" name="periodoMes" bind:value={periodoMes} required>
 						{#each meses as mes (mes)}
-							<option value={mes}>{textoMes(mes)}</option>
+							<option value={mes}>{textoMes(mes, { inicial: true })}</option>
 						{/each}
 					</select>
 				</div>

@@ -3,8 +3,8 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
-	import { ETIQUETA_PERIODICIDAD, partesMes } from '$lib/dominio/captura';
-	import { MESES } from '$lib/dominio/documento';
+	import { ETIQUETA_PERIODICIDAD } from '$lib/dominio/captura';
+	import { plural, textoMes } from '$lib/dominio/textos';
 	import type { AvancePrograma, Contrato, Programa, Sitio } from '$lib/dominio/esquemas';
 	import {
 		estadoCelda,
@@ -44,12 +44,6 @@
 		extra: '+'
 	};
 	const LEYENDA: EstadoCelda[] = ['cumplido', 'pendiente', 'vencido', 'extra'];
-
-	const textoMes = (mes: string, corto = false) => {
-		const { anio, mes: numero } = partesMes(mes);
-		const nombre = MESES[numero - 1];
-		return corto ? `${nombre.slice(0, 3)} ${String(anio).slice(2)}` : `${nombre} ${anio}`;
-	};
 
 	/** Consulta de una captura nueva con contrato, sitio, partida y mes ya elegidos. */
 	const consultaCaptura = (partidaId: string, mes: string) =>
@@ -149,7 +143,9 @@
 			<details open={vencidos.length <= 10}>
 				<summary class="view-heading">Pendientes vencidos ({vencidos.length})</summary>
 				{#each vencidosPorMes as grupo (grupo.mes)}
-					<h3 class="mes-vencido">{textoMes(grupo.mes)} ({grupo.pendientes.length})</h3>
+					<h3 class="mes-vencido">
+						{textoMes(grupo.mes, { inicial: true })} ({grupo.pendientes.length})
+					</h3>
 					<ul class="lista-vencidos">
 						{#each grupo.pendientes as v (v.partidaId)}
 							<li>
@@ -194,7 +190,7 @@
 						<th scope="col" class="columna-partida">Partida</th>
 						{#each meses as mes (mes)}
 							<th scope="col" class:mes-actual={mes.slice(0, 7) === hoy.slice(0, 7)}
-								>{textoMes(mes, true)}</th
+								>{textoMes(mes, { inicial: true, corto: true })}</th
 							>
 						{/each}
 						<th scope="col">Total</th>
@@ -224,7 +220,7 @@
 											<a
 												class="reportes-celda"
 												href={`${resolve('/historial')}?${consultaHistorial(p.id, celda.mes)}`}
-												aria-label={`Ver ${celda.reportes.length} reporte(s) emitido(s) de la partida ${p.numero} en ${textoMes(celda.mes)}`}
+												aria-label={`Ver ${plural(celda.reportes.length, 'reporte emitido', 'reportes emitidos')} de la partida ${p.numero} en ${textoMes(celda.mes)}`}
 												>{celda.reportes.length} rep.</a
 											>
 											<!-- eslint-enable svelte/no-navigation-without-resolve -->
@@ -292,7 +288,7 @@
 					<select id="manual-mes" name="mes" required>
 						{#each meses as mes (mes)}
 							<option value={mes} selected={mes.slice(0, 7) === hoy.slice(0, 7)}
-								>{textoMes(mes)}</option
+								>{textoMes(mes, { inicial: true })}</option
 							>
 						{/each}
 					</select>
