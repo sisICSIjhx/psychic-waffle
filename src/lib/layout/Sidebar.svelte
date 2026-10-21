@@ -59,7 +59,7 @@
 				href={resolve('/')}
 				class="nav-item {activeView === 'dashboard' ? 'active' : ''}"
 				aria-current={activeView === 'dashboard' ? 'page' : undefined}
-				title="Panel de Control"
+				title="Mi trabajo"
 				on:click={() => navigate('dashboard')}
 			>
 				<svg
@@ -83,7 +83,7 @@
 						rx="1"
 					/></svg
 				>
-				{#if !isCollapsed}<span>Panel de Control</span>{/if}
+				{#if !isCollapsed}<span>Mi trabajo</span>{/if}
 			</a>
 
 			{#if !isCollapsed}<div class="nav-header">Planeación</div>{/if}

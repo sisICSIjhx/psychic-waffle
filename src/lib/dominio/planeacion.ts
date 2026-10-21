@@ -121,7 +121,7 @@ export function programaVigente<T extends { periodoInicio: string; periodoFin: s
 /** Lo que necesita «Mi trabajo» de cada borrador para relacionarlo con un pendiente. */
 export type BorradorResumen = Pick<
 	ReporteResumen,
-	'id' | 'partidaId' | 'sitioId' | 'periodoMes' | 'ocurrencia' | 'titulo' | 'actualizadoEn'
+	'id' | 'partidaId' | 'sitioId' | 'periodoMes' | 'ocurrencia' | 'titulo' | 'tags' | 'actualizadoEn'
 >;
 
 export interface TrabajoPendiente {
@@ -137,7 +137,7 @@ export interface TrabajoPendiente {
 	/** Ejecuciones programadas que aún no se realizan en ese mes. */
 	faltan: number;
 	/** Borradores de esa partida, sitio y mes, del más reciente al más antiguo. */
-	borradores: { id: string; titulo: string; ocurrencia: Ocurrencia | null }[];
+	borradores: { id: string; titulo: string; tags: string | null; ocurrencia: Ocurrencia | null }[];
 }
 
 /**
@@ -175,7 +175,7 @@ export function siguienteTrabajo(
 								b.sitioId === programa.sitioId &&
 								b.periodoMes.slice(0, 7) === celda.mes.slice(0, 7)
 						)
-						.map(({ id, titulo, ocurrencia }) => ({ id, titulo, ocurrencia }))
+						.map(({ id, titulo, tags, ocurrencia }) => ({ id, titulo, tags, ocurrencia }))
 				});
 			}
 		}

@@ -86,17 +86,17 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 
 ## 6. Inicio «Mi trabajo» (fase C)
 
-- [ ] 6.1 Ampliar la carga de `src/routes/+page.server.ts` (todos los borradores del rango de meses con
+- [x] 6.1 Ampliar la carga de `src/routes/+page.server.ts` (todos los borradores del rango de meses con
       `listarTodos`, siguiente trabajo y `?ver=`) y verificarla con una prueba del componente con datos
       de ejemplo.
-- [ ] 6.2 Mostrar el avance del mes con barra de progreso y el estado sin programas vigentes, y
+- [x] 6.2 Mostrar el avance del mes con barra de progreso y el estado sin programas vigentes, y
       verificar ambos escenarios con pruebas.
-- [ ] 6.3 Mostrar las tarjetas accionables con sus destinos y el color de peligro solo con vencidos, y
+- [x] 6.3 Mostrar las tarjetas accionables con sus destinos y el color de peligro solo con vencidos, y
       verificarlo con pruebas.
 - [ ] 6.4 Mostrar la lista del siguiente trabajo con «Capturar» o «Continuar borrador», «Ver todos» y el
       estado «al día», y verificar con pruebas y en el navegador que de un pendiente al editor hay 3
       clics o menos.
-- [ ] 6.5 Renombrar la vista de inicio a «Mi trabajo» en `navegacion.ts` y en el menú, y actualizar las
+- [x] 6.5 Renombrar la vista de inicio a «Mi trabajo» en `navegacion.ts` y en el menú, y actualizar las
       pruebas de navegación y de la barra lateral.
 
 ## 7. Captura (fase C)

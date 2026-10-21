@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 
-	export let pageTitle = 'Panel de Control';
+	export let pageTitle = 'Mi trabajo';
 	export let menuAbierto = false;
 
 	const dispatch = createEventDispatcher<{ toggleMobileMenu: void }>();

@@ -25,6 +25,7 @@ describe('navegación entre vistas', () => {
 		expect(tituloDePagina('/captura', 'desconocido')).toBe('Captura de Reportes');
 		expect(tituloDePagina('/historial', 'proagro')).toBe('Historial Global');
 		expect(tituloDePagina('/no-existe')).toBe('ICSI Reportes');
+		expect(tituloDePagina('/')).toBe('Mi trabajo');
 	});
 
 	it('titula el editor con el reporte abierto', () => {

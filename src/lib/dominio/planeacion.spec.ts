@@ -155,6 +155,7 @@ describe('siguiente trabajo para «Mi trabajo»', () => {
 		periodoMes,
 		ocurrencia: null,
 		titulo: `Borrador ${n}`,
+		tags: null,
 		actualizadoEn: `2026-10-0${n}T00:00:00Z`,
 		...cambios
 	});

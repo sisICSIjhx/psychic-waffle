@@ -14,7 +14,7 @@ describe('Sidebar', () => {
 		render(Sidebar, { activeView: 'dashboard' });
 
 		const esperados: [string, string][] = [
-			['Panel de Control', '/'],
+			['Mi trabajo', '/'],
 			['Anual', '/planeacion'],
 			['Cerritos', '/captura?cliente=cerritos'],
 			['Proagro', '/captura?cliente=proagro'],
@@ -55,7 +55,7 @@ describe('Sidebar', () => {
 			.element(page.getByRole('link', { name: 'Historial Global' }))
 			.toHaveAttribute('aria-current', 'page');
 		await expect
-			.element(page.getByRole('link', { name: 'Panel de Control' }))
+			.element(page.getByRole('link', { name: 'Mi trabajo' }))
 			.not.toHaveAttribute('aria-current');
 	});
 

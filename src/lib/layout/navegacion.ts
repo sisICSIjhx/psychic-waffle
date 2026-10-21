@@ -20,7 +20,7 @@ export const routesByView = {
 } as const satisfies Record<VistaId, string>;
 
 export const titulosPorVista: Record<VistaId, string> = {
-	dashboard: 'Panel de Control',
+	dashboard: 'Mi trabajo',
 	planeacion: 'Planeación Anual',
 	captura: 'Captura de Reportes',
 	historial: 'Historial Global',
