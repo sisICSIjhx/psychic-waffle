@@ -512,11 +512,11 @@
 				{#if firma}
 					<fieldset class="firma">
 						<legend>{funcion.etiqueta}</legend>
-						<label for={`firma-${funcion.clave}-nombre`}>Nombre</label>
+						<label class="etiqueta" for={`firma-${funcion.clave}-nombre`}>Nombre</label>
 						<input id={`firma-${funcion.clave}-nombre`} bind:value={firma.nombre} />
-						<label for={`firma-${funcion.clave}-cargo`}>Cargo</label>
+						<label class="etiqueta" for={`firma-${funcion.clave}-cargo`}>Cargo</label>
 						<input id={`firma-${funcion.clave}-cargo`} bind:value={firma.cargo} />
-						<label for={`firma-${funcion.clave}-empresa`}>Empresa</label>
+						<label class="etiqueta" for={`firma-${funcion.clave}-empresa`}>Empresa</label>
 						<input id={`firma-${funcion.clave}-empresa`} bind:value={firma.empresa} />
 					</fieldset>
 				{/if}
@@ -532,7 +532,7 @@
 
 	<section class="card" aria-labelledby="titulo-alcance">
 		<h2 id="titulo-alcance" class="view-heading">2. Alcance</h2>
-		<label for="introduccion">Introducción (opcional)</label>
+		<label class="etiqueta" for="introduccion">Introducción (opcional)</label>
 		<textarea id="introduccion" rows="3" bind:value={reporte.introduccion}></textarea>
 
 		<label class="casilla-verificacion">
@@ -618,13 +618,13 @@
 					/>
 					{#if reporte.incluyeVerificacion}
 						<div class="verificacion">
-							<label for={`estado-${alcance.id}`}>Verificación</label>
+							<label class="etiqueta" for={`estado-${alcance.id}`}>Verificación</label>
 							<select id={`estado-${alcance.id}`} bind:value={alcance.estadoVerificacion}>
 								{#each Object.entries(TEXTO_ESTADO_VERIFICACION) as [valor, texto] (valor)}
 									<option value={valor}>{texto}</option>
 								{/each}
 							</select>
-							<label for={`observaciones-${alcance.id}`}>Observaciones</label>
+							<label class="etiqueta" for={`observaciones-${alcance.id}`}>Observaciones</label>
 							<input
 								id={`observaciones-${alcance.id}`}
 								bind:value={alcance.observaciones}
@@ -727,20 +727,30 @@
 		grid-column: 1 / -1;
 	}
 	.etiqueta {
-		font-size: 0.8rem;
+		font-size: 0.85rem;
+		font-weight: 500;
 		color: var(--muted);
 	}
 	.firmas {
 		display: grid;
 		gap: 12px;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
 	}
 	.firma {
 		display: grid;
-		gap: 4px;
+		gap: 6px;
 		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 8px 12px 12px;
+		margin: 0;
+		min-width: 0;
+	}
+	.firma legend {
+		padding: 0 4px;
+		font-weight: 600;
+	}
+	.firma .etiqueta:not(:first-of-type) {
+		margin-top: 4px;
 	}
 	.alcances {
 		list-style: none;

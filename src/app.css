@@ -370,7 +370,7 @@ textarea {
 .toolbar button {
 	background: var(--bg-soft);
 	color: var(--text);
-	border: 1px solid var(--border);
+	border: 1px solid var(--borde-campo);
 	border-radius: 8px;
 	padding: 8px 16px;
 	box-shadow: var(--shadow);
@@ -424,6 +424,27 @@ textarea {
 .kpi-label {
 	font-size: 0.875rem;
 	color: var(--muted);
+}
+
+/* Campos: un solo estilo en toda la aplicación (firmas, alcances, filtros y catálogo). Los
+   contenedores más específicos solo ajustan el relleno o el ancho. */
+input:not([type='checkbox'], [type='radio'], [type='file'], [type='hidden'], [type='range']),
+select,
+textarea {
+	padding: 8px 10px;
+	border-radius: 8px;
+	border: 1px solid var(--borde-campo);
+	background: var(--bg);
+	color: var(--text);
+}
+input:focus,
+select:focus,
+textarea:focus {
+	border-color: var(--primary);
+}
+::placeholder {
+	color: var(--muted);
+	opacity: 1;
 }
 
 /* Form grid & fields */
@@ -933,7 +954,7 @@ tr:last-child td {
 .boton {
 	background: var(--bg-soft);
 	color: var(--text);
-	border: 1px solid var(--border);
+	border: 1px solid var(--borde-campo);
 	border-radius: 8px;
 	padding: 8px 16px;
 	cursor: pointer;
@@ -1027,7 +1048,7 @@ tr:last-child td {
 .lista-editable textarea {
 	padding: 8px;
 	border-radius: 8px;
-	border: 1px solid var(--border);
+	border: 1px solid var(--borde-campo);
 	background: var(--bg);
 	color: var(--text);
 }
