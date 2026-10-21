@@ -3,6 +3,15 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-21 — UX, fase B: editor del reporte
+
+- Motivo: fase B del cambio OpenSpec `ux-editor-inicio-captura` (tareas 1.1 a 4.1), para acortar la captura y resolver los hallazgos A del editor (H2, H11 y H12). Rama `feat/ux-fase-b`.
+- Alcance: componentes compartidos en `src/lib/components/ui/` (`Dialogo`, `Notificaciones` con su tienda y «Deshacer», `BotonesSegmentados`); en el dominio, `destinoDeObservacion` y `completitudPorSeccion` (`captura.ts`) y `textoRango` y `textoHaceTiempo` (`textos.ts`); en `src/lib/components/reportes/`, `IndiceSecciones`, `SeccionResumen` y `ErrorCampo`, y el editor reorganizado: barra con contexto, estado, guardado con hora relativa y «Reintentar», «Faltan N» y la acción del estado; índice con completitud; resumen enlazado al enviar con datos faltantes; error junto al campo; firmas y objetivo como resumen con «Editar» y datos del contrato de solo lectura; «Hoy» con el rango del periodo; verificación segmentada; quitar fotos y alcances con «Deshacer» (baja aplazada, aplicada antes de descargar, enviar, emitir, salir o cerrar la pestaña); fotos por arrastre con «Cargando n de N»; emisión con diálogo propio; «Descargar DOCX» siempre visible con su motivo. `FotosAlcance` deja de usar `confirm()`.
+- Decisiones: sin dependencias nuevas; tras un guardado fallido no se reintenta en bucle (reintento manual, al seguir editando o al volver la red); usuario, contrato, sitio y periodicidad siguen de solo lectura porque no forman parte del guardado (spec y diseño ajustados); en móvil el motivo de la descarga ocupa una línea propia (spec ajustada). Sin cambios en el DOCX, las validaciones, los estados ni el servidor.
+- Validación: `check` 0/0; `lint` sin observaciones; `test` 28 archivos y 181 pruebas. Auditoría en Chromium (6 vistas × 2 anchos × 2 temas) sin fallos de contraste, objetivos ni desborde; barra del editor de 62 px en escritorio y 96 px en móvil. Revisión visual sobre el reporte real con las peticiones POST bloqueadas (ninguna se emitió).
+- Revisión de Codex en 2 rondas (`docs/revisiones/ux-fase-B.md`): 1 hallazgo medio corregido (bajas pendientes al cerrar la pestaña, ahora con guardado `keepalive`); la autorrevisión corrigió 5 más (sección que se cerraba al escribir, foto no subida sin aviso, reintento al volver la red, soltar fuera de la zona y pruebas que pedían imágenes al servidor de Vite). La ronda 2 no tuvo hallazgos.
+- Pendientes: fase C (inicio «Mi trabajo» y captura con selector de partida; requiere reiniciar el servidor de desarrollo para aplicar la migración `0013`); pruebas con usuarios y medición del tiempo de un reporte.
+
 ## 2026-10-21 — UX, fases B y C: cambio OpenSpec `ux-editor-inicio-captura`
 
 - Motivo: las fases B (editor) y C (inicio «Mi trabajo» y captura) cambian el comportamiento de los módulos (nivel 2–3), por eso se planean con OpenSpec antes de implementar; separado de `reportes-mantenimiento-for-icsi-rmt-01`, que está en cierre.

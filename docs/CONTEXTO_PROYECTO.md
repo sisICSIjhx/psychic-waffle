@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-a`).
+Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-b`).
 
 ## Producto y arquitectura
 
@@ -19,7 +19,8 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-a`).
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, plantilla en
     `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
   - `supabase/migrations/0001…0012`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
-  - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes y campos. Tokens de
+  - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
+    notificaciones con deshacer y botones segmentados). Tokens de
     tema (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
 - Rutas: `/` panel; `/planeacion` matriz P/R; `/captura` (`?cliente=`, `?mes=`) selección guiada;
   `/reportes/[id]` editor (autoguardado, fotos, estados), `/reportes/[id]/documento` DOCX y
@@ -61,9 +62,10 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-a`).
 
 - Cambio `reportes-mantenimiento-for-icsi-rmt-01`: fases 0 a 6 implementadas y revisadas con Codex;
   cierre (fase 7) en curso. Todo funciona en local con PGlite.
-- Plan de diseño UX: fase A (fundamentos y arreglos rápidos) terminada en `feat/ux-fase-a`; las
-  fases B y C (editor, «Mi trabajo» y captura) están planeadas en el cambio OpenSpec
-  `ux-editor-inicio-captura` (uso solo en escritorio; la misma persona envía y emite).
+- Plan de diseño UX: fase A (fundamentos) en `feat/ux-fase-a` y fase B (editor: índice, resumen de
+  pendientes, deshacer, arrastre de fotos y diálogo de emisión) en `feat/ux-fase-b`, del cambio
+  OpenSpec `ux-editor-inicio-captura` (uso solo en escritorio; la misma persona envía y emite). Sigue
+  la fase C (inicio «Mi trabajo» y captura).
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas

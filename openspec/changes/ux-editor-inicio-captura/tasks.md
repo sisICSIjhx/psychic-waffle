@@ -66,7 +66,7 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 
 ## 4. Cierre de la fase B
 
-- [ ] 4.1 Ejecutar los pasos de cierre (comprobaciones, navegador, Codex, `docs/revisiones/ux-fase-B.md`
+- [x] 4.1 Ejecutar los pasos de cierre (comprobaciones, navegador, Codex, `docs/revisiones/ux-fase-B.md`
       e `HISTORIAL.md`) y verificar que no queda ningún hallazgo A del plan abierto en el editor.
 
 ## 5. Datos para la fase C
