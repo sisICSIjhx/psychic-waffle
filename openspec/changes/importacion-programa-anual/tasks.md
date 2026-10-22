@@ -85,7 +85,7 @@ de personas ni de reportes.
 
 ## 6. Interfaz de importación en el contrato
 
-- [ ] 6.1 Hacer que `importarEnsayo` e `importarAplicar` (`src/routes/catalogo/contratos/[id]/+page.server.ts`)
+- [x] 6.1 Hacer que `importarEnsayo` e `importarAplicar` (`src/routes/catalogo/contratos/[id]/+page.server.ts`)
       decidan por tipo de libro (D9) y que el programa use el bloque del sitio elegido. Verificar con
       `npm run check` y en el navegador dos cosas: un libro de programa sintético se ensaya y se aplica,
       y el catálogo sintético sigue usando el resumen actual.
@@ -95,7 +95,7 @@ de personas ni de reportes.
       advertencias generales y por partida, y partidas no incluidas; sin cambios no ofrece «Aplicar».
       Verificar con pruebas de componente, incluido que la acción se lee como texto y no solo por
       color.
-- [ ] 6.3 Renombrar la sección de `ContratoView.svelte` a «Importar catálogo o programa desde Excel»
+- [x] 6.3 Renombrar la sección de `ContratoView.svelte` a «Importar catálogo o programa desde Excel»
       con la nota de los dos formatos y mostrar `ResumenPrograma` cuando `form.tipo === 'programa'`.
       Verificar en el navegador que el ensayo caducado muestra el mensaje actual y no guarda nada.
 
@@ -113,10 +113,10 @@ de personas ni de reportes.
 
 ## 8. Carga del programa de Proagro en la base de desarrollo
 
-- [ ] 8.1 Detener el servidor de desarrollo y copiar `storage/pglite` a una carpeta fechada fuera del
+- [x] 8.1 Detener el servidor de desarrollo y copiar `storage/pglite` a una carpeta fechada fuera del
       repositorio. Verificar que la copia tiene los mismos archivos y el mismo tamaño. Al abrir la
       base, se aplicará la migración 0015.
-- [ ] 8.2 Ensayar la carga completa sobre otra copia (`STORAGE_DIR` temporal):
+- [x] 8.2 Ensayar la carga completa sobre otra copia (`STORAGE_DIR` temporal):
   - EM-30184 con `--programa --ajustar-vigencia 2026-03-01:2027-02-28 --usar-actividad 22`;
   - EM-30185 con `--programa --periodicidad 25=cuatrimestral`.
 
@@ -125,10 +125,10 @@ de personas ni de reportes.
   30185-25 «por confirmar», cuatrimestral, con cantidad 3. Una segunda ejecución debe informar «sin
   cambios».
 
-- [ ] 8.3 Repetir 8.2 sobre `storage/pglite`, con el servidor todavía detenido: primero EM-30184 y
+- [x] 8.3 Repetir 8.2 sobre `storage/pglite`, con el servidor todavía detenido: primero EM-30184 y
       luego EM-30185, cada uno con su ensayo antes de `--aplicar`. Verificar que los resúmenes coinciden
       con los de la copia.
-- [ ] 8.4 Iniciar el servidor y verificar con un GET a `/planeacion/__data.json?contrato=<id>&sitio=<id>`
+- [x] 8.4 Iniciar el servidor y verificar con un GET a `/planeacion/__data.json?contrato=<id>&sitio=<id>`
       de cada sitio, con un script fuera del repositorio:
   - el programa vigente va del 2026-03-01 al 2027-02-28, con 12 meses;
   - por partida, la suma de los meses coincide con la cantidad anual, salvo las diferencias de D12;
@@ -139,22 +139,22 @@ de personas ni de reportes.
 
 ## 9. Cierre
 
-- [ ] 9.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores.
-- [ ] 9.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro, el ensayo y el resumen en
+- [x] 9.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores.
+- [x] 9.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro, el ensayo y el resumen en
       `/catalogo/contratos/[id]` y la planeación de EM-30184 y EM-30185. Comprobar contraste AA, foco
       visible y que no hay desborde horizontal (la tabla del resumen se desplaza dentro de su
       contenedor). Guardar las capturas fuera del repositorio.
-- [ ] 9.3 Hacer commit (sin push) y ejecutar `scripts/revision-codex.ps1` con
+- [x] 9.3 Hacer commit (sin push) y ejecutar `scripts/revision-codex.ps1` con
       `-Cambio 'el cambio OpenSpec importacion-programa-anual'`, `-Base` (último commit de
       `feat/ux-fase-c`), `-Sha` (último commit del cambio), `-Fase programa-anual`, `-Ronda` y como
       `-ArchivosContexto` `proposal.md`, `design.md`, `tasks.md` y las specs de este cambio. Hacer como
       máximo 2 rondas, corregir lo que proceda y registrar los
       hallazgos y su resolución en `docs/revisiones/importacion-programa-anual.md`.
-- [ ] 9.4 Agregar la entrada en `HISTORIAL.md` con fecha local, motivo, alcance, archivos, validación
+- [x] 9.4 Agregar la entrada en `HISTORIAL.md` con fecha local, motivo, alcance, archivos, validación
       real, resultado de 3.7, 4.1 y 8.x y los ajustes de la carga: vigencia anterior → nueva, actividad
       de la 30184-22 y la 30185-25. Anotar como pendientes el «.» de la 30185-2, el número provisional
       del contrato y los 78 reportes Word sin cargar. Verificar que no contiene datos personales.
-- [ ] 9.5 Actualizar `docs/CONTEXTO_PROYECTO.md`: migraciones `0001…0015`, importación de programa
+- [x] 9.5 Actualizar `docs/CONTEXTO_PROYECTO.md`: migraciones `0001…0015`, importación de programa
       (interfaz y `npm run importar -- --programa`), Proagro con programa 2026-03 a 2027-02 y estado
       del cambio. Ejecutar `npm run graph:sync` y verificar el formato con `npx prettier --check` sobre
       los documentos tocados.

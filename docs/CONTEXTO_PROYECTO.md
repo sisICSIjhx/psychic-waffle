@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-c`).
+Verificado el 2026-10-21 contra los archivos locales (rama `feat/programa-anual`).
 
 ## Producto y arquitectura
 
@@ -18,7 +18,7 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-c`).
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, plantilla en
     `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0014`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0015`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
   - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
     notificaciones con deshacer, botones segmentados y selector con búsqueda). Tokens de tema
     (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
@@ -31,7 +31,8 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-c`).
 - Datos locales: sin `.env` se usa PGlite en `storage/pglite`; fotos y documentos en `storage/`
   (ignorado). Supabase se activa con `PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (tarea 3.8,
   pendiente del usuario). PGlite no admite dos procesos: detener el servidor antes de usar los scripts.
-- Scripts: `npm run importar` (Excel del catálogo, ensayo por omisión), `node scripts/derivar-partidas.ts`
+- Scripts: `npm run importar` (Excel del catálogo, o `--programa` para un programa anual por sitio;
+  ensayo por omisión), `node scripts/derivar-partidas.ts`
   (partidas por confirmar desde reportes; `--complementar` para las confirmadas),
   `npm run verificar:datos` (nombres de los insumos fuera de lo versionable), `npm run prueba:documental`.
 
@@ -69,6 +70,10 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-c`).
   `feat/ux-fase-b` y `feat/ux-fase-c`, con todas sus tareas hechas (uso solo en escritorio; la misma
   persona envía y emite). Siguen las pruebas con usuarios y archivar el cambio; fases D y E por
   planear.
+- Cambios de octubre de 2026 (seis cambios OpenSpec apilados, uno por rama): `importacion-programa-anual`
+  terminado (Proagro con programa 2026-03 a 2027-02 en EM-30184 y EM-30185 y vigencia ajustada);
+  siguen `fechas-ejecucion-multiples`, `indice-docx-actualizado`, `editor-fotos`,
+  `edicion-contratos-bitacora` y `tablero-cumplimiento`.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas

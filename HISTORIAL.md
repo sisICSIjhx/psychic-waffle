@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-22 — Programa anual de Proagro: importación de solo programa
+
+- Motivo: integrar el programa anual 2026 de Proagroindustrias (pedido del usuario); primer cambio OpenSpec (`importacion-programa-anual`) de los seis planeados el 2026-10-21 (programa, fechas múltiples, índice del DOCX, fotos, edición de contratos y tablero de cumplimiento). Rama `feat/programa-anual`.
+- Alcance: `leerLibro` lee columnas y filas ocultas; analizador nuevo `src/lib/server/importacion/programa.ts` (meses sin año, rangos combinados, bloques por sitio «(ERM nnnnn)», columnas por posición, marcas por relleno, advertencias); `0015_importar_programa.sql` con `api_importar_programa` (solo periodicidad, cantidad anual, meses y R importadas, con ensayo); importación en la pantalla del contrato con `ResumenPrograma`; CLI `npm run importar -- --programa` con `--usar-actividad`, `--periodicidad` y `--ajustar-vigencia`; corrección del último mes del importador del catálogo (antes tomaba solo 2 columnas).
+- Carga en la base de desarrollo (servidor detenido, respaldo previo fuera del repositorio): vigencia del contrato de Proagro 2026-05-01..2027-04-30 → 2026-03-01..2027-02-28; EM-30184 con 31 partidas y 446 programados (actividad de la 22 tomada del Excel); EM-30185 con 25 partidas y 278 programados (la 25 creada «por confirmar», cuatrimestral, cantidad 3, abril, agosto y diciembre). Después se corrigieron los acentos de las actividades 30184-22 y 30185-25 en el editor de partidas. Las partidas siguen «por confirmar».
+- Validación: `check` 0/0, `lint` sin observaciones, `test` 36 archivos y 241 pruebas; libro real con los totales y diferencias previstos; GET de `/planeacion` y `/captura` (captura desde marzo de 2026); ensayo del libro real en la interfaz y planeación en temas claro y oscuro sin desborde. Revisión de Codex en 2 rondas (`docs/revisiones/importacion-programa-anual.md`): 5 hallazgos corregidos con pruebas.
+- Pendientes: el «.» de la 30185-2 en septiembre se ignoró (registrar a mano si fue realizado); diferencias del Excel entre cantidad anual y marcas (semanales 53/52, 30184-10, 30185-13 a 17); el número de contrato sigue provisional; los 78 reportes Word de Proagro no están en la base, así que marzo a septiembre aparecen vencidos; reimportar desde la interfaz devolvería la 30185-25 a mensual (la interfaz no tiene el ajuste `--periodicidad`).
+
 ## 2026-10-21 — UX, fase C: inicio «Mi trabajo» y captura
 
 - Motivo: fase C del cambio OpenSpec `ux-editor-inicio-captura` (tareas 5.1 a 8.1), para llegar de un pendiente al editor en pocos clics y resolver H1 (elegir la partida) y H8 (panel sin acciones). Rama `feat/ux-fase-c`.
