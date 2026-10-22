@@ -65,9 +65,9 @@
 		tipoOcurrencia && periodoMes ? ocurrenciasDelMes(tipoOcurrencia, periodoMes) : [];
 	$: if (ocurrencias.length && !ocurrencias.includes(Number(ocurrenciaNumero)))
 		ocurrenciaNumero = String(ocurrencias[0]);
-	// Con un solo contrato y un solo sitio, se muestran como resumen en lugar de listas de una opción.
-	$: contextoResuelto =
-		!!contrato && !!sitio && contratos.length === 1 && sitios.length === 1 && !cambiarContexto;
+	// Contrato y sitio ya resueltos (uno solo de cada uno, o elegidos en la dirección) se muestran como
+	// resumen; «Cambiar» abre las listas.
+	$: contextoResuelto = !!contrato && !!sitio && !cambiarContexto;
 	$: opciones = partidas
 		.map((p) => opcionDe(p, trabajo[p.id]))
 		.sort((a, b) => urgencia(a.valor) - urgencia(b.valor));

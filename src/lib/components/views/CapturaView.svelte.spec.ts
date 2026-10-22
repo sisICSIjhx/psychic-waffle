@@ -105,6 +105,19 @@ describe('CapturaView', () => {
 		await expect.element(page.getByLabelText('Sitio')).toBeInTheDocument();
 	});
 
+	it('con varios contratos también resume el contexto si ya viene elegido', async () => {
+		montar({ contratos: [contrato, { ...contrato, id: ID(9), numero: 'OC-OTRA' }] });
+		await expect
+			.element(page.getByText('Ficticio · OC-FICTICIA · EM-99999 SITIO FICTICIO'))
+			.toBeInTheDocument();
+		const sinElegir = montar({
+			contratos: [contrato, { ...contrato, id: ID(9) }],
+			contrato: null,
+			sitio: null
+		});
+		await expect.element(sinElegir.getByLabelText('Contrato')).toBeInTheDocument();
+	});
+
 	it('agrupa las partidas por el trabajo pendiente, con su estado y la vencida primero', async () => {
 		montar();
 		await expect.element(page.getByRole('heading', { name: '1 Partida' })).toBeInTheDocument();

@@ -93,7 +93,7 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
       verificar ambos escenarios con pruebas.
 - [x] 6.3 Mostrar las tarjetas accionables con sus destinos y el color de peligro solo con vencidos, y
       verificarlo con pruebas.
-- [ ] 6.4 Mostrar la lista del siguiente trabajo con «Capturar» o «Continuar borrador», «Ver todos» y el
+- [x] 6.4 Mostrar la lista del siguiente trabajo con «Capturar» o «Continuar borrador», «Ver todos» y el
       estado «al día», y verificar con pruebas y en el navegador que de un pendiente al editor hay 3
       clics o menos.
 - [x] 6.5 Renombrar la vista de inicio a «Mi trabajo» en `navegacion.ts` y en el menú, y actualizar las
@@ -107,7 +107,7 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 - [x] 7.2 Ampliar la carga de `src/routes/captura/+page.server.ts` con los vencidos y el estado del mes
       de referencia de cada partida, el mes sugerido, todos los borradores del sitio en el rango de
       meses y los reportes de la partida y mes elegidos, y verificarlo con una prueba sobre PGlite.
-- [ ] 7.3 Usar el selector en `CapturaView.svelte`, mostrar el contexto resuelto como resumen con
+- [x] 7.3 Usar el selector en `CapturaView.svelte`, mostrar el contexto resuelto como resumen con
       «Cambiar» y los pasos numerados, conservando `?partida=` y `?mes=`; verificarlo con pruebas y con el
       enlace desde la planeación.
 - [x] 7.4 Mostrar el aviso de reporte existente (por ocurrencia, con TAG y enlace) sin impedir crear, y
