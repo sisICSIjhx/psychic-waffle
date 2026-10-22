@@ -208,6 +208,171 @@ export async function crearLibroSintetico({
 	return zip.generateAsync({ type: 'uint8array' });
 }
 
+export interface PartidaProgramaSintetica {
+	numero: number | string;
+	actividad: string;
+	cantidad: number | null;
+	periodicidad: string;
+	/** Columnas visibles marcadas en la fila P: 0-47 (4 por mes, de marzo a febrero). */
+	marcas: number[];
+	/** Columnas visibles marcadas en la fila R. */
+	realizados?: number[];
+	/** Columnas ocultas (enero y febrero anteriores, 0-8) marcadas en la fila P. */
+	marcasOcultas?: number[];
+	/** Valores de texto en columnas visibles de la fila R (p. ej. «.»). */
+	textosR?: { columna: number; valor: string }[];
+	/** Número y actividad con relleno rojo. */
+	roja?: boolean;
+	/** Fila P oculta. */
+	oculta?: boolean;
+	/** Las marcas usan relleno blanco (desmarcado) en vez de gris. */
+	marcasBlancas?: number[];
+}
+
+export interface OpcionesProgramaSintetico {
+	/** Bloques por sitio (clave de cinco dígitos); el primero se nombra solo en el encabezado. */
+	bloques: { clave: string; partidas: PartidaProgramaSintetica[] }[];
+	/** Título con el año; sin él, el libro no indica el año. */
+	titulo?: string | null;
+	/** El último mes visible no se combina. */
+	ultimoMesSinCombinar?: boolean;
+	/** Nombre de la hoja. */
+	hoja?: string;
+}
+
+const MESES_PROGRAMA = [
+	'MARZO',
+	'ABRIL',
+	'MAYO',
+	'JUNIO',
+	'JULIO',
+	'AGOSTO',
+	'SEPTIEMBRE',
+	'OCTUBRE',
+	'NOVIEMBRE',
+	'DICIEMBRE',
+	'ENERO',
+	'FEBRERO'
+];
+
+/**
+ * Programa anual sintético con el formato de Proagro: una hoja sin «PROGRAMA» en el nombre, cabecera
+ * combinada sin texto, meses sin año combinados por semanas (4 columnas), enero y febrero anteriores
+ * en columnas ocultas, título «PROGRAMA ANUAL AAAA», bloques por sitio con separadora «(ERM nnnnn)»,
+ * rellenos gris (marca), blanco (sin marca) y rojo, y filas R. Solo datos ficticios.
+ */
+export async function crearProgramaSintetico({
+	bloques,
+	titulo = 'EMPRESA FICTICIA / PROGRAMA ANUAL 2026',
+	ultimoMesSinCombinar = false,
+	hoja = 'ANUAL 2026'
+}: OpcionesProgramaSintetico): Promise<Uint8Array> {
+	type CeldaPrograma = { valor?: string | number; estilo?: number };
+	const filas = new Map<number, Map<number, CeldaPrograma>>();
+	const combinadas: string[] = [];
+	const poner2 = (fila: number, columna: number, celda: CeldaPrograma) => {
+		if (!filas.has(fila)) filas.set(fila, new Map());
+		filas.get(fila)!.set(columna, { ...filas.get(fila)!.get(columna), ...celda });
+	};
+	const PRIMERA_VISIBLE = 15;
+	const filasOcultas: number[] = [];
+	if (titulo) poner2(0, 1, { valor: titulo });
+	poner2(6, 6, {
+		valor: `SERVICIO FICTICIO ${bloques.map((b) => `(ERM ${b.clave})`).join(' Y ')}`
+	});
+	combinadas.push('B8:F9');
+	poner2(7, 8, { valor: 'ENERO' });
+	poner2(7, 12, { valor: 'FEBRERO' });
+	for (let semana = 0; semana < 9; semana++) poner2(8, 6 + semana, { valor: semana + 1 });
+	MESES_PROGRAMA.forEach((mes, i) => {
+		const columna = PRIMERA_VISIBLE + i * 4;
+		poner2(7, columna, { valor: mes });
+		if (!(ultimoMesSinCombinar && i === MESES_PROGRAMA.length - 1)) {
+			combinadas.push(`${letra(columna)}8:${letra(columna + 3)}8`);
+		}
+	});
+	let fila = 10;
+	bloques.forEach((bloque, indice) => {
+		if (indice > 0) {
+			poner2(fila, 1, { valor: `SERVICIO FICTICIO DEL SITIO (ERM ${bloque.clave})` });
+			fila++;
+		}
+		for (const p of bloque.partidas) {
+			poner2(fila, 1, { valor: p.numero, estilo: p.roja ? 3 : undefined });
+			poner2(fila, 2, { valor: p.actividad, estilo: p.roja ? 3 : undefined });
+			if (p.cantidad !== null) poner2(fila, 3, { valor: p.cantidad });
+			poner2(fila, 4, { valor: p.periodicidad });
+			poner2(fila, 5, { valor: 'P' });
+			poner2(fila + 1, 5, { valor: 'R' });
+			for (const columna of [1, 2, 3, 4]) {
+				combinadas.push(`${letra(columna)}${fila + 1}:${letra(columna)}${fila + 2}`);
+			}
+			for (let c = 0; c < 48; c++) {
+				const marcada = p.marcas.includes(c);
+				const blanca = p.marcasBlancas?.includes(c);
+				poner2(fila, PRIMERA_VISIBLE + c, { estilo: marcada ? 1 : blanca ? 2 : undefined });
+				poner2(fila + 1, PRIMERA_VISIBLE + c, {
+					estilo: p.realizados?.includes(c) ? 1 : undefined
+				});
+			}
+			for (const c of p.marcasOcultas ?? []) poner2(fila, 6 + c, { estilo: 1 });
+			for (const t of p.textosR ?? [])
+				poner2(fila + 1, PRIMERA_VISIBLE + t.columna, { valor: t.valor });
+			if (p.oculta) filasOcultas.push(fila);
+			fila += 2;
+		}
+	});
+
+	const cuerpo = [...filas.entries()]
+		.sort(([a], [b]) => a - b)
+		.map(([f, celdas]) => {
+			const contenido = [...celdas.entries()]
+				.sort(([a], [b]) => a - b)
+				.map(([columna, celda]) => {
+					const ref = `${letra(columna)}${f + 1}`;
+					const estilo = celda.estilo ? ` s="${celda.estilo}"` : '';
+					if (celda.valor === undefined) return `<c r="${ref}"${estilo}/>`;
+					if (typeof celda.valor === 'number')
+						return `<c r="${ref}"${estilo}><v>${celda.valor}</v></c>`;
+					return `<c r="${ref}"${estilo} t="inlineStr"><is><t xml:space="preserve">${escaparXml(celda.valor)}</t></is></c>`;
+				})
+				.join('');
+			const oculta = filasOcultas.includes(f) ? ' hidden="1"' : '';
+			return `<row r="${f + 1}"${oculta}>${contenido}</row>`;
+		})
+		.join('');
+	const merges = `<mergeCells count="${combinadas.length}">${combinadas.map((r) => `<mergeCell ref="${r}"/>`).join('')}</mergeCells>`;
+	const hojaXml2 = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="7" max="15" width="3" hidden="1" customWidth="1"/></cols><sheetData>${cuerpo}</sheetData>${merges}</worksheet>`;
+
+	const zip = new JSZip();
+	zip.file(
+		'[Content_Types].xml',
+		'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'
+	);
+	zip.file(
+		'_rels/.rels',
+		'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'
+	);
+	zip.file(
+		'xl/workbook.xml',
+		`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${escaparXml(hoja)}" sheetId="1" r:id="rId1"/></sheets></workbook>`
+	);
+	zip.file(
+		'xl/_rels/workbook.xml.rels',
+		'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'
+	);
+	// Estilos: 1 gris (marca), 2 blanco (sin marca), 3 rojo.
+	zip.file(
+		'xl/styles.xml',
+		'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor theme="0" tint="-0.499984740745262"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor theme="0"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFF0000"/><bgColor indexed="64"/></patternFill></fill></fills><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="0" fillId="2" borderId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="0" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="4" borderId="0" applyFill="1"/></cellXfs></styleSheet>'
+	);
+	zip.file('xl/worksheets/sheet1.xml', hojaXml2);
+	return zip.generateAsync({ type: 'uint8array' });
+}
+
+/** Columnas de un mes del programa sintético (0 = marzo, 11 = febrero siguiente). */
+export const semanasDelMes = (mes: number, semanas = [0]) => semanas.map((s) => mes * 4 + s);
+
 /** Tres partidas ficticias que cubren mensual, diaria (por días del mes) y «cuando aplique». */
 export const PARTIDAS_EJEMPLO: PartidaSintetica[] = [
 	{

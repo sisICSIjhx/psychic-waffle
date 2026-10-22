@@ -8,16 +8,16 @@ de personas ni de reportes.
 
 ## 1. Rama y punto de partida
 
-- [ ] 1.1 Crear la rama `feat/programa-anual` a partir de `feat/ux-fase-c` y comprobar con
+- [x] 1.1 Crear la rama `feat/programa-anual` a partir de `feat/ux-fase-c` y comprobar con
       `npm run test` que todo pasa antes de cambiar nada.
 
 ## 2. Lectura del libro
 
-- [ ] 2.1 Agregar `columnasOcultas` y `filasOcultas` (`Set<number>`, base 0) a `Hoja` en
+- [x] 2.1 Agregar `columnasOcultas` y `filasOcultas` (`Set<number>`, base 0) a `Hoja` en
       `src/lib/server/importacion/xlsx.ts`, leídos de `<col hidden="1">` y `<row hidden="1">` (D2).
       Verificar en `importacion.spec.ts` con un libro que tenga un rango `min`-`max` oculto y una fila
       oculta, y que las pruebas actuales del catálogo siguen pasando.
-- [ ] 2.2 Agregar `crearProgramaSintetico` a `src/lib/server/importacion/libro-sintetico.ts`, con datos
+- [x] 2.2 Agregar `crearProgramaSintetico` a `src/lib/server/importacion/libro-sintetico.ts`, con datos
       ficticios: una hoja sin «PROGRAMA» en el nombre, cabecera combinada sin texto, meses sin año
       combinados por semanas, columnas ocultas, título «PROGRAMA ANUAL AAAA», dos bloques con
       separadora «(ERM nnnnn)», rellenos gris, blanco y rojo, y filas R. Verificar que `leerLibro` lo
@@ -25,43 +25,43 @@ de personas ni de reportes.
 
 ## 3. Analizador de programa (`src/lib/server/importacion/programa.ts`)
 
-- [ ] 3.1 Implementar `tipoDeLibro(hojas)` (D1) y verificar con pruebas que el catálogo sintético
+- [x] 3.1 Implementar `tipoDeLibro(hojas)` (D1) y verificar con pruebas que el catálogo sintético
       actual es «catalogo», que el programa sintético es «programa» y que otro libro se rechaza
       describiendo las dos estructuras.
-- [ ] 3.2 Implementar la fila de meses, el año, los rangos combinados, la exclusión de meses ocultos y
+- [x] 3.2 Implementar la fila de meses, el año, los rangos combinados, la exclusión de meses ocultos y
       el periodo (D3). Verificar con pruebas: meses sin año con título, cambio de año en enero, último
       mes sin combinar con el ancho del anterior, marca en la última columna del último mes, año dado
       por opción, año desconocido y meses no consecutivos rechazados.
-- [ ] 3.3 Implementar los bloques por sitio (D4) y verificar con pruebas: segundo bloque por su
+- [x] 3.3 Implementar los bloques por sitio (D4) y verificar con pruebas: segundo bloque por su
       separadora, primer bloque por la clave del encabezado, sitio sin bloque (el mensaje nombra los
       bloques del libro), libro sin claves, filas sin sitio y número repetido dentro del bloque
       rechazados.
-- [ ] 3.4 Implementar las columnas por cabecera o por posición (D5) y verificar con pruebas: cabecera
+- [x] 3.4 Implementar las columnas por cabecera o por posición (D5) y verificar con pruebas: cabecera
       con texto, cabecera combinada sin texto, columna con valores de otro tipo y periodicidad no
       reconocida rechazadas con su hoja, fila y columna.
-- [ ] 3.5 Implementar las marcas, las cantidades por mes, la fila R y `actividadSinPeriodicidad`
+- [x] 3.5 Implementar las marcas, las cantidades por mes, la fila R y `actividadSinPeriodicidad`
       (D6). Verificar con pruebas: semanal por marcas, mensual, diaria, «Cuando aplique» sin meses,
       relleno blanco sin marca, «.» ignorado con advertencia, dos marcas en un mes de una mensual,
       realizados de la fila R y actividades con «(SEMANAL).», «(MENSUAL)», «, MENSUAL», « MENSUAL.» y
       un paréntesis interno que se conserva («TIPO "R" (PROTECCION CATODICA) MENSUAL.»).
-- [ ] 3.6 Generar las advertencias del libro (suma distinta de la cantidad anual, meses sin marca en
+- [x] 3.6 Generar las advertencias del libro (suma distinta de la cantidad anual, meses sin marca en
       una mensual, fila en rojo, R sin P, marcas en columnas ocultas y filas ocultas), con sitio,
       partida, mes y fila. Verificar con una prueba por cada tipo.
-- [ ] 3.7 Con un script fuera del repositorio, comprobar `analizarProgramaAnual` contra
+- [x] 3.7 Con un script fuera del repositorio, comprobar `analizarProgramaAnual` contra
       `insumos/PROAGROINDUSTRIAS/PROGRAMA ANUAL 2026 PROAGROS 1.xlsx`. Por sitio deben coincidir el
       periodo (2026-03-01 a 2027-02-28), el número de partidas, el total programado y las diferencias
       de la tabla de D12. Anotar el resultado para `HISTORIAL.md`.
 
 ## 4. Último mes del catálogo
 
-- [ ] 4.1 Corregir el rango del último mes en `analizarPrograma` (`catalogo.ts:262-266`) según D11.
+- [x] 4.1 Corregir el rango del último mes en `analizarPrograma` (`catalogo.ts:262-266`) según D11.
       Verificar en `importacion.spec.ts` dos casos: una mensual con la marca en la 3.ª columna de un
       último mes combinado en 4 suma 12, y un último mes sin combinar toma el ancho del anterior. Las
       pruebas actuales del catálogo deben seguir pasando.
 
 ## 5. Función SQL, repositorio y advertencias
 
-- [ ] 5.1 Crear `supabase/migrations/0015_importar_programa.sql` con `api_importar_programa` (D7) y el
+- [x] 5.1 Crear `supabase/migrations/0015_importar_programa.sql` con `api_importar_programa` (D7) y el
       bloque de permisos de 0009. Verificar en `src/lib/server/repositorios/repositorios.spec.ts`
       sobre PGlite:
   - el ensayo no escribe, el programa se crea y la reimportación queda sin cambios;
@@ -72,14 +72,14 @@ de personas ni de reportes.
   - `noIncluidas` y `tieneReportes` vienen en la respuesta;
   - el programa superpuesto y el sitio de otro contrato devuelven IC422;
   - una partida inválida no deja cambios.
-- [ ] 5.2 Agregar `importarPrograma(carga, ensayo)` a `src/lib/server/repositorios/programa.ts`, con su
+- [x] 5.2 Agregar `importarPrograma(carga, ensayo)` a `src/lib/server/repositorios/programa.ts`, con su
       esquema Zod de respuesta. Verificar con la prueba de 5.1 que la respuesta se valida, y con
       `npm run check`.
-- [ ] 5.3 Implementar `advertenciasDelEnsayo` (D8): vigencia que no contiene el periodo, con los meses
+- [x] 5.3 Implementar `advertenciasDelEnsayo` (D8): vigencia que no contiene el periodo, con los meses
       fuera, y cambio de periodicidad en partidas con reportes. Verificar con pruebas que el caso de
       Proagro (vigencia 2026-05-01 a 2027-04-30) advierte marzo y abril de 2026, y que una vigencia
       igual al periodo no advierte.
-- [ ] 5.4 Guardar en `src/lib/server/importacion/temporal.ts` el `tipo` de la carga pendiente.
+- [x] 5.4 Guardar en `src/lib/server/importacion/temporal.ts` el `tipo` de la carga pendiente.
       Verificar con una prueba que una carga de programa se recupera con su tipo y que una carga
       guardada sin `tipo` se trata como catálogo.
 
@@ -89,7 +89,7 @@ de personas ni de reportes.
       decidan por tipo de libro (D9) y que el programa use el bloque del sitio elegido. Verificar con
       `npm run check` y en el navegador dos cosas: un libro de programa sintético se ensaya y se aplica,
       y el catálogo sintético sigue usando el resumen actual.
-- [ ] 6.2 Crear `src/lib/components/catalogo/ResumenPrograma.svelte` (sintaxis heredada) y
+- [x] 6.2 Crear `src/lib/components/catalogo/ResumenPrograma.svelte` (sintaxis heredada) y
       `ResumenPrograma.svelte.spec.ts`. El componente muestra periodo, acción del programa, totales,
       «antes → después» de periodicidad y cantidad, total programado, realizados, «por confirmar»,
       advertencias generales y por partida, y partidas no incluidas; sin cambios no ofrece «Aplicar».
@@ -101,12 +101,12 @@ de personas ni de reportes.
 
 ## 7. Línea de comandos
 
-- [ ] 7.1 Implementar en `programa.ts`, como funciones puras, el análisis de `--periodicidad <n>=<valor>`
+- [x] 7.1 Implementar en `programa.ts`, como funciones puras, el análisis de `--periodicidad <n>=<valor>`
       y `--usar-actividad <n[,n…]>`, la aplicación de esos ajustes a la carga y la validación de
       `--ajustar-vigencia` (contiene el periodo, sin reportes ni programas fuera). Verificar con
       pruebas: periodicidad inválida, número fuera del bloque y vigencia que deja fuera un reporte o
       no contiene el programa.
-- [ ] 7.2 Agregar `--programa` y sus opciones a `scripts/importar-catalogo.ts` (D10): ensayo por
+- [x] 7.2 Agregar `--programa` y sus opciones a `scripts/importar-catalogo.ts` (D10): ensayo por
       omisión, incompatibilidad con `--crear` y el texto de uso de las líneas 3-8. Verificar ejecutando
       el ensayo del libro de Proagro sobre una copia temporal de la base (`STORAGE_DIR` apuntando a una
       carpeta fuera del repositorio): imprime el resumen y las advertencias y no cambia la copia.

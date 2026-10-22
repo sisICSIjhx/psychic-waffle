@@ -4,6 +4,7 @@ import {
 	esquemaAvancePrograma,
 	esquemaPrograma,
 	esquemaRealizadoManual,
+	PERIODICIDADES,
 	type AvancePrograma,
 	type Programa,
 	type RealizadoManual
@@ -18,6 +19,56 @@ export interface ProgramaEntrada {
 	periodoInicio: string;
 	periodoFin: string;
 }
+
+/** Carga de un programa anual sin catálogo (`api_importar_programa`). */
+export interface CargaPrograma {
+	contratoId: string;
+	sitioId: string;
+	confirmar?: boolean;
+	programa: { periodoInicio: string; periodoFin: string; nombre?: string | null };
+	partidas: {
+		numero: string;
+		actividad: string;
+		usarActividad?: boolean;
+		periodicidad: string;
+		cantidadAnual: number | null;
+		meses: { mes: string; cantidad: number }[];
+		realizados: { mes: string; cantidad: number }[];
+	}[];
+}
+
+const cantidadMes = z.object({ mes: z.iso.date(), cantidad: z.coerce.number() });
+
+export const esquemaResultadoPrograma = z.object({
+	ensayo: z.boolean(),
+	programa: z.object({
+		accion: z.enum(['crear', 'actualizar', 'existente']),
+		id: z.uuid().nullable(),
+		periodoInicio: z.iso.date(),
+		periodoFin: z.iso.date()
+	}),
+	resumen: z.object({ crear: z.number(), actualizar: z.number(), sinCambios: z.number() }),
+	partidas: z.array(
+		z.object({
+			numero: z.string(),
+			actividad: z.string(),
+			accion: z.enum(['crear', 'actualizar', 'sin_cambios']),
+			periodicidadAntes: z.enum(PERIODICIDADES).nullable(),
+			periodicidad: z.enum(PERIODICIDADES),
+			cantidadAntes: z.coerce.number().nullable(),
+			cantidadAnual: z.coerce.number().nullable(),
+			meses: z.array(cantidadMes),
+			totalProgramado: z.coerce.number(),
+			realizados: z.array(cantidadMes),
+			cambiaPrograma: z.boolean(),
+			estabaPorConfirmar: z.boolean(),
+			quedaPorConfirmar: z.boolean(),
+			tieneReportes: z.boolean()
+		})
+	),
+	noIncluidas: z.array(z.object({ numero: z.string(), actividad: z.string() }))
+});
+export type ResultadoPrograma = z.infer<typeof esquemaResultadoPrograma>;
 
 export interface MesProgramado {
 	partidaId: string;
@@ -57,6 +108,13 @@ export class RepositorioPrograma {
 	}): Promise<RealizadoManual> {
 		return esquemaRealizadoManual.parse(
 			await this.sql.llamar('api_registrar_realizado_manual', registro)
+		);
+	}
+
+	/** Importa un programa anual sin catálogo; con `ensayo` solo calcula lo que cambiaría. */
+	async importarPrograma(carga: CargaPrograma, ensayo: boolean): Promise<ResultadoPrograma> {
+		return esquemaResultadoPrograma.parse(
+			await this.sql.llamar('api_importar_programa', { ...carga, ensayo })
 		);
 	}
 

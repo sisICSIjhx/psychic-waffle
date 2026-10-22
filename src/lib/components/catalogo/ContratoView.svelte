@@ -14,6 +14,7 @@
 	import TextField from '$lib/components/fields/TextField.svelte';
 	import Aviso from './Aviso.svelte';
 	import ResumenImportacion from './ResumenImportacion.svelte';
+	import ResumenPrograma from './ResumenPrograma.svelte';
 
 	export let contrato: Contrato;
 	export let sitios: Sitio[] = [];
@@ -245,8 +246,10 @@
 	</section>
 
 	<section class="card" aria-labelledby="titulo-importar">
-		<h2 id="titulo-importar" class="view-heading">Importar catálogo y programa desde Excel</h2>
+		<h2 id="titulo-importar" class="view-heading">Importar catálogo o programa desde Excel</h2>
 		<p class="view-note">
+			Se aceptan dos formatos: el libro del catálogo (hojas del programa anual y del catálogo de
+			alcances) o un programa anual solo, con uno o varios sitios; de este se toma el bloque de {sitio.clave}.
 			Primero se muestra un ensayo con lo que se creará o actualizará; nada se guarda hasta
 			confirmar.
 		</p>
@@ -262,7 +265,15 @@
 			<input id="archivo" name="archivo" type="file" accept=".xlsx" required />
 			<button class="primary" type="submit">Revisar archivo</button>
 		</form>
-		{#if form?.accion === 'importar' && form?.resultado}
+		{#if form?.accion === 'importar' && form?.tipo === 'programa' && form?.resultadoPrograma}
+			<ResumenPrograma
+				resultado={form.resultadoPrograma as never}
+				token={String(form.token)}
+				nombreArchivo={String(form.nombreArchivo)}
+				sitio={String(form.sitio)}
+				advertencias={(form.advertenciasPrograma as never[]) ?? []}
+			/>
+		{:else if form?.accion === 'importar' && form?.resultado}
 			<ResumenImportacion
 				resultado={form.resultado as never}
 				token={String(form.token)}

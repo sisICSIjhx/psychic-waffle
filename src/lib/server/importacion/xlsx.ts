@@ -13,6 +13,10 @@ export interface Hoja {
 	combinadas: Rango[];
 	/** Relleno de cada celda (véase leerRellenos); vacío si no tiene. */
 	rellenos: string[][];
+	/** Columnas ocultas en base 0, leídas de `<col min max hidden="1">`. */
+	columnasOcultas: Set<number>;
+	/** Filas ocultas en base 0, leídas de `<row r hidden="1">`. */
+	filasOcultas: Set<number>;
 }
 
 export interface Rango {
@@ -125,7 +129,20 @@ function leerHoja(
 			columnaFin: fin.columna
 		};
 	});
-	return { nombre, filas, combinadas, rellenos };
+	const oculto = (etiqueta: string) => /\shidden="(?:1|true)"/.test(etiqueta);
+	const columnasOcultas = new Set<number>();
+	for (const col of xml.matchAll(/<col\s[^>]*>/g)) {
+		if (!oculto(col[0])) continue;
+		const min = Number(/\smin="(\d+)"/.exec(col[0])?.[1]);
+		const max = Number(/\smax="(\d+)"/.exec(col[0])?.[1] ?? min);
+		for (let c = min; c <= max; c++) columnasOcultas.add(c - 1);
+	}
+	const filasOcultas = new Set<number>();
+	for (const fila of datos.matchAll(/<row\s[^>]*>/g)) {
+		const numero = Number(/\sr="(\d+)"/.exec(fila[0])?.[1]);
+		if (oculto(fila[0]) && numero > 0) filasOcultas.add(numero - 1);
+	}
+	return { nombre, filas, combinadas, rellenos, columnasOcultas, filasOcultas };
 }
 
 export async function leerLibro(datos: Uint8Array | ArrayBuffer): Promise<Hoja[]> {

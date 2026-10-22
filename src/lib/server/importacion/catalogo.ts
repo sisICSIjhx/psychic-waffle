@@ -200,6 +200,32 @@ function periodoDeTexto(valor: string): { periodoInicio: string; periodoFin: str
 	return inicio && fin ? { periodoInicio: inicio, periodoFin: fin } : null;
 }
 
+/**
+ * Columnas de cada mes de la fila de meses: las de su celda combinada; sin combinar, hasta la
+ * anterior al mes siguiente, y el último mes con el ancho del anterior.
+ */
+export function rangosDeMeses<T extends { columna: number }>(
+	hoja: Hoja,
+	filaMeses: number,
+	columnasMes: T[]
+): (T & { hasta: number })[] {
+	const rangos: (T & { hasta: number })[] = [];
+	columnasMes.forEach((c, i) => {
+		const combinada = hoja.combinadas.find(
+			(r) => r.columnaInicio === c.columna && r.filaInicio <= filaMeses && r.filaFin >= filaMeses
+		);
+		const siguiente = columnasMes[i + 1]?.columna;
+		const anterior = rangos[i - 1];
+		const hasta = combinada
+			? combinada.columnaFin
+			: siguiente !== undefined
+				? siguiente - 1
+				: c.columna + (anterior ? anterior.hasta - anterior.columna : 1);
+		rangos.push({ ...c, hasta });
+	});
+	return rangos;
+}
+
 interface FilaPrograma {
 	numero: string;
 	actividad: string;
@@ -260,10 +286,7 @@ function analizarPrograma(hoja: Hoja, advertencias: string[]) {
 	}
 
 	// Cada mes puede ocupar varias columnas combinadas: se revisa todo su rango.
-	const rangoDeMes = columnasMes.map((c, i) => ({
-		...c,
-		hasta: (columnasMes[i + 1]?.columna ?? c.columna + 2) - 1
-	}));
+	const rangoDeMes = rangosDeMeses(hoja, filaMeses, columnasMes);
 	const marcado = (fila: number, desde: number, hasta: number) => {
 		for (let columna = desde; columna <= hasta; columna++) {
 			if (esRellenoMarcado(hoja.rellenos[fila]?.[columna])) return true;
