@@ -68,9 +68,10 @@ describe('SelectorBusqueda', () => {
 		await expect.element(campo).toHaveAttribute('aria-activedescendant', 'partida-opcion-p3');
 		await userEvent.keyboard('{ArrowDown}');
 		await expect.element(campo).toHaveAttribute('aria-activedescendant', 'partida-opcion-p7');
+		// La opción activa se anuncia con aria-activedescendant; aún no está elegida.
 		await expect
 			.element(page.getByRole('option', { name: /7\.- TOMA/ }))
-			.toHaveAttribute('aria-selected', 'true');
+			.toHaveAttribute('aria-selected', 'false');
 		await userEvent.keyboard('{Enter}');
 		expect(elegir).toHaveBeenCalledTimes(1);
 		expect(elegir.mock.calls[0][0].detail).toBe('p7');
@@ -80,6 +81,13 @@ describe('SelectorBusqueda', () => {
 
 		await userEvent.keyboard('{ArrowDown}');
 		await expect.element(campo).toHaveAttribute('aria-expanded', 'true');
+		// Al volver a abrir, la opción elegida se anuncia como seleccionada.
+		await expect
+			.element(page.getByRole('option', { name: /7\.- TOMA/ }))
+			.toHaveAttribute('aria-selected', 'true');
+		await expect
+			.element(page.getByRole('option', { name: /3\.- Rótulos/ }))
+			.toHaveAttribute('aria-selected', 'false');
 		await userEvent.keyboard('{Escape}');
 		await expect.element(campo).toHaveAttribute('aria-expanded', 'false');
 		expect(elegir).toHaveBeenCalledTimes(1);

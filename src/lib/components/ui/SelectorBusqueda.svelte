@@ -152,7 +152,7 @@
 						class:elegida={opcion.valor === valor}
 						role="option"
 						tabindex="-1"
-						aria-selected={opcion.valor === activa}
+						aria-selected={opcion.valor === valor}
 						on:mousedown|preventDefault={() => elegir(opcion)}
 					>
 						<span class="texto">{opcion.texto}</span>

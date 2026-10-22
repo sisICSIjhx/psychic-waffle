@@ -139,6 +139,18 @@ describe('MiTrabajoView', () => {
 		expect(document.querySelectorAll('.lista-trabajo > li')).toHaveLength(3);
 	});
 
+	it('con un filtro vacío no dice que todo está al día', async () => {
+		render(MiTrabajoView, {
+			...base,
+			trabajo: [pendiente(7, '2026-10-01', 'pendiente')],
+			ver: 'vencidos'
+		});
+		await expect
+			.element(page.getByText('No hay pendientes vencidos por ahora.'))
+			.toBeInTheDocument();
+		expect(page.getByText('El trabajo programado está al día.').elements()).toHaveLength(0);
+	});
+
 	it('sin pendientes dice que el trabajo está al día y ofrece capturar', async () => {
 		render(MiTrabajoView, { ...base, trabajo: [] });
 		await expect.element(page.getByText('El trabajo programado está al día.')).toBeInTheDocument();

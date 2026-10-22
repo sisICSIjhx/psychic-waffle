@@ -136,7 +136,10 @@
 	</div>
 
 	{#if filtrados.length === 0}
-		{#if programasVigentes > 0}
+		{#if ver && trabajo.length > 0}
+			<!-- Con un filtro vacío no se dice «al día»: puede haber trabajo de otro tipo. -->
+			<p class="view-note">No hay {TITULO_FILTRO[ver].toLowerCase()} por ahora.</p>
+		{:else if programasVigentes > 0}
 			<p class="al-dia"><span aria-hidden="true">✓</span> El trabajo programado está al día.</p>
 			<div class="acciones-vacio">
 				<a class="boton primario" href={resolve('/captura')}>Ir a Capturar</a>

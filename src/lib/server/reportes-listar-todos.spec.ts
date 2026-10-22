@@ -3,18 +3,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AlmacenamientoLocal } from './almacenamiento';
-import { crearClientePglite } from './bd/pglite';
+import { crearClientePglite, type ClientePglite } from './bd/pglite';
 import { ServicioCaptura } from './captura';
 import { crearRepositorios, type Repositorios } from './repositorios/index';
 
 let repos: Repositorios;
+let clienteSql: ClientePglite;
 let carpeta: string;
 let partidaId = '';
 const TOTAL = 105;
 
 /** Una partida ficticia con más borradores que una página del historial (100). */
 beforeAll(async () => {
-	repos = crearRepositorios(await crearClientePglite());
+	clienteSql = await crearClientePglite();
+	repos = crearRepositorios(clienteSql);
 	carpeta = await mkdtemp(join(tmpdir(), 'listar-todos-'));
 	const servicio = new ServicioCaptura(repos, new AlmacenamientoLocal(carpeta));
 	const cliente = await repos.catalogo.guardarCliente({
@@ -50,6 +52,13 @@ beforeAll(async () => {
 			equipoIds: []
 		});
 	}
+	// Empates en el orden del historial: misma fecha de actualización para todos, de modo que el
+	// límite de la página 1 cae dentro de un grupo de reportes del mismo periodo.
+	await clienteSql.bd.exec(
+		'alter table public.reportes disable trigger reportes_actualizado; ' +
+			"update public.reportes set actualizado_en = '2026-10-01T00:00:00Z'; " +
+			'alter table public.reportes enable trigger reportes_actualizado;'
+	);
 }, 120_000);
 
 afterAll(async () => {
@@ -67,5 +76,14 @@ describe('listarTodos', () => {
 		expect(todos).toHaveLength(TOTAL);
 		expect(new Set(todos.map((f) => f.id)).size).toBe(TOTAL);
 		expect(todos.every((f) => f.partidaId === partidaId)).toBe(true);
+	});
+
+	it('las páginas no se solapan aunque haya empates en el orden', async () => {
+		const filtro = { estado: 'borrador' as const, partidaId, tamano: 100 };
+		const primera = await repos.reportes.listar({ ...filtro, pagina: 1 });
+		const segunda = await repos.reportes.listar({ ...filtro, pagina: 2 });
+		const ids = [...primera.filas, ...segunda.filas].map((f) => f.id);
+		expect(ids).toHaveLength(TOTAL);
+		expect(new Set(ids).size).toBe(TOTAL);
 	});
 });
