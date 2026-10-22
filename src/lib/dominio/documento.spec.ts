@@ -4,6 +4,7 @@ import {
 	agruparAntesDuranteDespues,
 	agruparCuadricula,
 	fechaEncabezado,
+	fechasEncabezado,
 	nombreArchivo,
 	numeracionSecciones,
 	ordenDeAparicion,
@@ -185,6 +186,21 @@ describe('nombre de archivo', () => {
 describe('encabezado', () => {
 	it('formatea la fecha completa', () => {
 		expect(fechaEncabezado('2026-05-18')).toBe('18 / MAYO / 2026');
+	});
+
+	it('formatea varios días respetando la forma capturada', () => {
+		const d = (desde: string, hasta = desde) => ({
+			desde: `2026-05-${desde}`,
+			hasta: `2026-05-${hasta}`
+		});
+		expect(fechasEncabezado([d('18')])).toBe('18 / MAYO / 2026');
+		expect(fechasEncabezado([d('05', '08')])).toBe('05-08 / MAYO / 2026');
+		expect(fechasEncabezado([d('02'), d('03'), d('04')])).toBe('02, 03, 04 / MAYO / 2026');
+		expect(fechasEncabezado([d('15'), d('16'), d('20', '25')])).toBe('15, 16, 20-25 / MAYO / 2026');
+		expect(() => fechasEncabezado([])).toThrow(RangeError);
+		expect(() => fechasEncabezado([d('30'), { desde: '2026-06-01', hasta: '2026-06-01' }])).toThrow(
+			/un solo mes/
+		);
 	});
 
 	it('rechaza fechas incompletas o inexistentes', () => {

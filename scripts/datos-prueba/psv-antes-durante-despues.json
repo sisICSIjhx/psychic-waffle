@@ -19,7 +19,7 @@
 			"contrato": "OC-EJEMPLO-0001",
 			"sitio": "EM-30179 AGUA DULCE, VER.",
 			"periodicidad": "Semestral",
-			"fecha": "2026-05-20",
+			"dias": [{ "desde": "2026-05-20", "hasta": "2026-05-20" }],
 			"tipoMantenimiento": "Preventivo"
 		},
 		"firmantes": {

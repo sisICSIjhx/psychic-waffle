@@ -8,6 +8,12 @@ import EditorReporte from './EditorReporte.svelte';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
+const SIN_DIAS: Partial<Reporte> = {
+	fechaEjecucion: null,
+	fechaEjecucionFin: null,
+	diasEjecucion: []
+};
+
 function reporte(cambios: Partial<Reporte> = {}): Reporte {
 	return {
 		id: ID(1),
@@ -17,6 +23,8 @@ function reporte(cambios: Partial<Reporte> = {}): Reporte {
 		periodoMes: '2026-05-01',
 		ocurrencia: null,
 		fechaEjecucion: '2026-05-18',
+		fechaEjecucionFin: '2026-05-18',
+		diasEjecucion: [{ desde: '2026-05-18', hasta: '2026-05-18' }],
 		titulo: '07.- TOMA DE POTENCIALES TUBO-SUELO. MAYO 2026',
 		usuario: 'CLIENTE FICTICIO',
 		contratoTexto: 'OC-FICTICIA',
@@ -97,7 +105,7 @@ describe('EditorReporte', () => {
 		render(EditorReporte, {
 			conImagenes: false,
 			reporte: reporte({
-				fechaEjecucion: null,
+				...SIN_DIAS,
 				alcances: [
 					{
 						...reporte().alcances[0],
@@ -127,52 +135,110 @@ describe('EditorReporte', () => {
 			.getByRole('link', { name: 'El alcance 2.1 está «Con observación»: capture la observación.' })
 			.click();
 		await expect.element(page.getByLabelText('Observaciones')).toHaveFocus();
-		await page.getByRole('link', { name: /Capture la fecha completa/ }).click();
-		await expect.element(page.getByLabelText(/Fecha de ejecución/)).toHaveFocus();
+		await page.getByRole('link', { name: 'Capture los días de ejecución.' }).click();
+		await expect.element(page.getByLabelText(/Días de ejecución/)).toHaveFocus();
 	});
 
-	it('muestra el error de la fecha al salir del campo, con el rango permitido', async () => {
+	it('analiza los días escritos, muestra la vista previa y normaliza al salir', async () => {
+		const enviar = vi.fn<EnviarAccion>(sinRespuesta);
+		render(EditorReporte, { conImagenes: false, reporte: reporte(), espera: 60_000, enviar });
+		const dias = page.getByLabelText('Días de ejecución (mayo 2026)');
+		await expect.element(dias).toHaveValue('18');
+		await expect.element(dias).toHaveAttribute('aria-invalid', 'false');
+
+		await dias.fill('15 y 16, 20 al 25');
+		await expect
+			.element(page.getByText('En el documento: 15, 16, 20-25 / MAYO / 2026'))
+			.toBeInTheDocument();
+		await page.getByLabelText('Tipo de mantenimiento').click();
+		await expect.element(dias).toHaveValue('15, 16, 20-25');
+
+		await dias.fill('05-08/ MAYO /2026');
+		await expect
+			.element(page.getByText('En el documento: 05-08 / MAYO / 2026'))
+			.toBeInTheDocument();
+	});
+
+	it('con un texto inválido conserva los días guardados, marca el campo y cuenta el pendiente', async () => {
 		render(EditorReporte, {
 			conImagenes: false,
 			reporte: reporte(),
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
-		const fecha = page.getByLabelText('Fecha de ejecución (mayo 2026)');
-		await expect.element(fecha).toHaveAttribute('aria-invalid', 'false');
-
-		await fecha.fill('2026-06-02');
+		const dias = page.getByLabelText('Días de ejecución (mayo 2026)');
+		await dias.fill('05-08, 07');
+		await expect.element(page.getByText('El día 07 se repite.')).toBeInTheDocument();
+		await expect.element(dias).toHaveAttribute('aria-invalid', 'true');
+		await dias.fill('18, 2O');
 		await page.getByLabelText('Tipo de mantenimiento').click();
-		const error = page.getByText(/debe estar dentro del periodo del reporte \(del 1 de mayo al 31/);
-		await expect.element(error).toBeInTheDocument();
-		await expect.element(fecha).toHaveAttribute('aria-invalid', 'true');
+		await expect.element(dias).toHaveValue('18, 2O');
 		await expect
-			.element(fecha)
-			.toHaveAttribute('aria-describedby', expect.stringContaining('error-fecha'));
+			.element(page.getByRole('button', { name: 'Faltan 1', exact: true }))
+			.toBeInTheDocument();
+		const boton = page.getByRole('button', { name: 'Descargar DOCX' });
+		await expect.element(boton).toHaveAccessibleDescription('Corrija los días de ejecución');
+		await dias.fill('18, 20');
+		await expect.element(page.getByRole('link', { name: 'Descargar DOCX' })).toBeInTheDocument();
 	});
 
-	it('ofrece «Hoy» solo dentro del periodo y muestra el rango permitido', async () => {
-		const { unmount } = render(EditorReporte, {
+	it('señala los días fuera del periodo al salir del campo', async () => {
+		render(EditorReporte, {
 			conImagenes: false,
-			reporte: reporte({ fechaEjecucion: null }),
-			hoy: '2026-05-20',
+			reporte: reporte({
+				ocurrencia: { tipo: 'semana', numero: 2 },
+				diasEjecucion: [{ desde: '2026-05-04', hasta: '2026-05-04' }]
+			}),
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
-		await page.getByRole('button', { name: 'Hoy' }).click();
-		await expect.element(page.getByLabelText(/Fecha de ejecución/)).toHaveValue('2026-05-20');
+		const dias = page.getByLabelText(/Días de ejecución/);
+		await dias.fill('04-06, 11, 12');
+		await page.getByLabelText('Tipo de mantenimiento').click();
+		await expect
+			.element(
+				page.getByText('Días fuera del periodo del reporte (del 4 al 10 de mayo de 2026): 11, 12.')
+			)
+			.toBeInTheDocument();
+		await expect
+			.element(dias)
+			.toHaveAttribute('aria-describedby', expect.stringContaining('error-fecha'));
+	});
+
+	it('ofrece «Agregar hoy» dentro del periodo y «Todo el periodo» con «Deshacer»', async () => {
+		render(Notificaciones);
+		const { unmount } = render(EditorReporte, {
+			conImagenes: false,
+			reporte: reporte({
+				diasEjecucion: [
+					{ desde: '2026-05-15', hasta: '2026-05-15' },
+					{ desde: '2026-05-16', hasta: '2026-05-16' }
+				]
+			}),
+			hoy: '2026-05-21',
+			espera: 60_000,
+			enviar: sinRespuesta
+		});
+		const dias = page.getByLabelText(/Días de ejecución/);
+		await page.getByRole('button', { name: 'Agregar hoy' }).click();
+		await expect.element(dias).toHaveValue('15, 16, 21');
+		expect(page.getByRole('button', { name: 'Agregar hoy' }).elements()).toHaveLength(0);
+		await page.getByRole('button', { name: 'Todo el periodo' }).click();
+		await expect.element(dias).toHaveValue('01-31');
+		await page.getByRole('button', { name: 'Deshacer' }).click();
+		await expect.element(dias).toHaveValue('15, 16, 21');
 		unmount();
 
 		render(EditorReporte, {
 			conImagenes: false,
-			reporte: reporte({ fechaEjecucion: null }),
+			reporte: reporte(SIN_DIAS),
 			hoy: '2026-10-21',
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
-		expect(page.getByRole('button', { name: 'Hoy' }).elements()).toHaveLength(0);
+		expect(page.getByRole('button', { name: 'Agregar hoy' }).elements()).toHaveLength(0);
 		await expect
-			.element(page.getByText('Periodo: del 1 al 31 de mayo de 2026'))
+			.element(page.getByText(/Periodo: del 1 al 31 de mayo de 2026/))
 			.toBeInTheDocument();
 	});
 
@@ -328,7 +394,7 @@ describe('EditorReporte', () => {
 			.toHaveAttribute('href', `/reportes/${ID(1)}/documento`);
 		// Estado con icono y texto; el mes de la fecha en formato de oración.
 		await expect.element(page.getByText('Emitido', { exact: true })).toBeInTheDocument();
-		await expect.element(page.getByLabelText('Fecha de ejecución (mayo 2026)')).toBeDisabled();
+		await expect.element(page.getByLabelText('Días de ejecución (mayo 2026)')).toBeDisabled();
 	});
 });
 
@@ -649,16 +715,16 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 		expect(evento.defaultPrevented).toBe(true);
 	});
 
-	it('«Descargar DOCX» siempre está a la vista y sin fecha dice por qué no se puede', async () => {
+	it('«Descargar DOCX» siempre está a la vista y sin días dice por qué no se puede', async () => {
 		render(EditorReporte, {
 			conImagenes: false,
-			reporte: reporte({ fechaEjecucion: null }),
+			reporte: reporte(SIN_DIAS),
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
 		const boton = page.getByRole('button', { name: 'Descargar DOCX' });
 		await expect.element(boton).toBeDisabled();
-		await expect.element(boton).toHaveAccessibleDescription('Indique la fecha de ejecución');
+		await expect.element(boton).toHaveAccessibleDescription('Indique los días de ejecución');
 		expect(page.getByRole('link', { name: 'Descargar DOCX' }).elements()).toHaveLength(0);
 	});
 });

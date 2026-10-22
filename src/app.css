@@ -527,7 +527,8 @@ label:has(> input[type='checkbox'], > input[type='radio']) {
 	gap: 6px;
 	margin-bottom: 12px;
 }
-.form-group label {
+.form-group label,
+.form-group .etiqueta-campo {
 	font-size: 0.85rem;
 	font-weight: 500;
 	color: var(--muted);

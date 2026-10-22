@@ -14,7 +14,9 @@
 		validarParaRevision,
 		type Observacion
 	} from '$lib/dominio/captura';
+	import { agregarDia, analizarDias, mismosDias, textoDias } from '$lib/dominio/dias-ejecucion';
 	import {
+		fechasEncabezado,
 		TEXTO_ESTADO_VERIFICACION,
 		textoTags,
 		type EstadoVerificacion
@@ -45,7 +47,7 @@
 	/** Pausa del autoguardado tras el último cambio, en milisegundos. */
 	export let espera = 1500;
 	export let enviar: EnviarAccion = llamarAccion;
-	/** Fecha de hoy («AAAA-MM-DD») en la zona del negocio, para el atajo «Hoy». */
+	/** Fecha de hoy («AAAA-MM-DD») en la zona del negocio, para el atajo «Agregar hoy». */
 	export let hoy = fechaEnZona();
 	/** Tiempo para deshacer una foto o un alcance quitados, en milisegundos. */
 	export let plazoDeshacer = PLAZO_DESHACER;
@@ -127,7 +129,6 @@
 		const guardado = aGuardado(r);
 		return {
 			...guardado,
-			fechaEjecucion: guardado.fechaEjecucion || null,
 			herramientas: guardado.herramientas
 				.filter((h) => h.descripcion.trim())
 				.map((h) => ({ cantidad: h.cantidad?.trim() || null, descripcion: h.descripcion.trim() }))
@@ -159,6 +160,9 @@
 	}
 
 	reporte = normalizar(reporte);
+	let textoCampoDias = textoDias(reporte.diasEjecucion);
+	let diasConocidos = reporte.diasEjecucion;
+	let campoDiasConFoco = false;
 	let ultimaHuella = huella(reporte);
 	/** Contenido que falló al guardarse: no se reintenta solo hasta que cambie o se pida. */
 	let huellaFallida: string | null = null;
@@ -197,8 +201,22 @@
 	$: visible = conBajas(reporte, bajas);
 	$: numeroAlcance = new Map(visible.alcances.map((a, i) => [a.id, i + 1]));
 	$: totalFotos = visible.alcances.reduce((total, a) => total + a.fotos.length, 0);
-	$: puedeDescargar = !!reporte.fechaEjecucion;
-	$: pendientes = validarParaRevision(visible, { requiereTag: equiposPartida.length > 0 });
+	// Días de ejecución: el texto del campo se analiza en cada cambio; solo un texto válido llega al
+	// reporte (y al autoguardado). Con un texto inválido el reporte conserva sus días y el error cuenta
+	// como pendiente.
+	$: analisisDias = analizarDias(textoCampoDias, reporte.periodoMes);
+	$: diasValidos = analisisDias.errores.length === 0;
+	$: alCambiarDias(reporte.diasEjecucion);
+	$: puedeDescargar = diasValidos && reporte.diasEjecucion.length > 0;
+	$: motivoDescarga = diasValidos
+		? 'Indique los días de ejecución'
+		: 'Corrija los días de ejecución';
+	$: pendientes = [
+		...(diasValidos ? [] : [{ campo: 'diasEjecucion', mensaje: analisisDias.errores.join(' ') }]),
+		...validarParaRevision(visible, { requiereTag: equiposPartida.length > 0 }).filter(
+			(o) => diasValidos || o.campo !== 'diasEjecucion'
+		)
+	];
 	$: completitud = completitudPorSeccion(pendientes, visible);
 	$: errores = erroresVisibles(pendientes, visible, tocados, intentoEnvio);
 	// Las observaciones del servidor (422) se suman a las locales sin repetir campos.
@@ -209,6 +227,9 @@
 	// Días válidos: el mes o, si aplica, la semana, quincena o día elegidos.
 	$: rango = rangoDelPeriodo(reporte.periodoMes, reporte.ocurrencia);
 	$: hoyEnPeriodo = !!rango && rango.desde <= hoy && hoy <= rango.hasta;
+	$: hoyIncluido = reporte.diasEjecucion.some((s) => s.desde <= hoy && hoy <= s.hasta);
+	$: vistaPrevia =
+		diasValidos && analisisDias.segmentos.length ? fechasEncabezado(analisisDias.segmentos) : '';
 	$: idsEquipos = new Set(reporte.equipos.map((e) => e.id));
 	$: contexto = `${reporte.usuario} › Partida ${reporte.numeroPartida} › ${textoMes(
 		reporte.periodoMes,
@@ -370,6 +391,53 @@
 		if (carga.hechas + 1 >= carga.total) delete resto[alcanceId];
 		else resto[alcanceId] = { ...carga, hechas: carga.hechas + 1 };
 		cargas = resto;
+	}
+
+	/** Si los días cambian desde fuera del campo (servidor, atajos, «Deshacer»), se reescribe el texto. */
+	function alCambiarDias(dias: Reporte['diasEjecucion']) {
+		if (mismosDias(dias, diasConocidos)) return;
+		diasConocidos = dias;
+		const delCampo = analizarDias(textoCampoDias, reporte.periodoMes);
+		const vienenDelCampo = !delCampo.errores.length && mismosDias(delCampo.segmentos, dias);
+		if (!vienenDelCampo && !campoDiasConFoco) textoCampoDias = textoDias(dias);
+	}
+
+	/** Solo lo que escribe el usuario en el campo pasa al reporte, y solo si es válido. */
+	function escribirDias(evento: Event) {
+		textoCampoDias = (evento.currentTarget as HTMLInputElement).value;
+		const analisis = analizarDias(textoCampoDias, reporte.periodoMes);
+		if (
+			!editable ||
+			analisis.errores.length ||
+			mismosDias(analisis.segmentos, reporte.diasEjecucion)
+		)
+			return;
+		diasConocidos = analisis.segmentos;
+		reporte.diasEjecucion = analisis.segmentos;
+	}
+
+	function salirDeDias() {
+		campoDiasConFoco = false;
+		tocados = { ...tocados, fecha: true };
+		if (diasValidos) textoCampoDias = textoDias(analisisDias.segmentos);
+	}
+
+	function agregarHoy() {
+		reporte.diasEjecucion = agregarDia(reporte.diasEjecucion, hoy);
+	}
+
+	function todoElPeriodo() {
+		if (!rango) return;
+		const anteriores = reporte.diasEjecucion;
+		reporte.diasEjecucion = [{ desde: rango.desde, hasta: rango.hasta }];
+		if (anteriores.length && !mismosDias(anteriores, reporte.diasEjecucion)) {
+			notificaciones.mostrar({
+				mensaje: `Días reemplazados por todo el periodo (antes: ${textoDias(anteriores)}).`,
+				textoDeshacer: 'Deshacer',
+				plazo: plazoDeshacer,
+				alDeshacer: () => (reporte.diasEjecucion = anteriores)
+			});
+		}
 	}
 
 	/** Oculta el alcance o la foto y ofrece «Deshacer»; la baja se aplica al vencer el plazo. */
@@ -668,7 +736,7 @@
 				<span class="completo"><span aria-hidden="true">✓</span> Completo</span>
 			{/if}
 		{/if}
-		<!-- Siempre a la vista; sin fecha de ejecución no hay documento y se dice por qué. -->
+		<!-- Siempre a la vista; sin días de ejecución válidos no hay documento y se dice por qué. -->
 		{#if puedeDescargar}
 			<a
 				class="boton"
@@ -676,7 +744,7 @@
 				on:click={descargar}><span class="texto-largo">Descargar </span>DOCX</a
 			>
 		{:else}
-			<span id="motivo-descarga" class="motivo-descarga">Indique la fecha de ejecución</span>
+			<span id="motivo-descarga" class="motivo-descarga">{motivoDescarga}</span>
 			<button class="boton" type="button" disabled aria-describedby="motivo-descarga"
 				><span class="texto-largo">Descargar </span>DOCX</button
 			>
@@ -822,25 +890,44 @@
 						<ErrorCampo id="error-titulo" mensaje={errores.titulo} />
 					</div>
 					<div class="form-group">
-						<label for="fecha">Fecha de ejecución ({textoMes(reporte.periodoMes)})</label>
+						<label for="fecha">Días de ejecución ({textoMes(reporte.periodoMes)})</label>
 						<div class="fila-fecha">
 							<input
 								id="fecha"
-								type="date"
-								min={rango?.desde}
-								max={rango?.hasta}
-								bind:value={reporte.fechaEjecucion}
-								aria-invalid={!!errores.fecha}
-								aria-describedby={describir(errores, 'fecha', ...(rango ? ['ayuda-fecha'] : []))}
+								type="text"
+								inputmode="numeric"
+								autocomplete="off"
+								placeholder="15, 16, 20-25"
+								value={textoCampoDias}
+								on:input={escribirDias}
+								on:focus={() => (campoDiasConFoco = true)}
+								on:blur={salirDeDias}
+								aria-invalid={!diasValidos || !!errores.fecha}
+								aria-describedby={describir(
+									diasValidos ? errores : { ...errores, fecha: analisisDias.errores.join(' ') },
+									'fecha',
+									...(rango ? ['ayuda-fecha'] : []),
+									...(vistaPrevia ? ['vista-fecha'] : [])
+								)}
 							/>
-							{#if hoyEnPeriodo}
-								<button class="boton" type="button" on:click={() => (reporte.fechaEjecucion = hoy)}
-									>Hoy</button
+							{#if hoyEnPeriodo && !hoyIncluido}
+								<button class="boton" type="button" on:click={agregarHoy}>Agregar hoy</button>
+							{/if}
+							{#if rango}
+								<button class="boton" type="button" on:click={todoElPeriodo}>Todo el periodo</button
 								>
 							{/if}
 						</div>
-						{#if rango}<p id="ayuda-fecha" class="ayuda">Periodo: {textoRango(rango)}</p>{/if}
-						<ErrorCampo id="error-fecha" mensaje={errores.fecha} />
+						{#if rango}<p id="ayuda-fecha" class="ayuda">
+								Periodo: {textoRango(rango)}. Escriba días o rangos, por ejemplo 15, 16, 20-25.
+							</p>{/if}
+						{#if vistaPrevia}<p id="vista-fecha" class="ayuda">
+								En el documento: <strong>{vistaPrevia}</strong>
+							</p>{/if}
+						<ErrorCampo
+							id="error-fecha"
+							mensaje={diasValidos ? errores.fecha : analisisDias.errores.join(' ')}
+						/>
 					</div>
 					<div class="form-group">
 						<label for="tipo">Tipo de mantenimiento</label>

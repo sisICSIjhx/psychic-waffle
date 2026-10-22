@@ -48,7 +48,7 @@ beforeAll(async () => {
 		await servicio.crearReporte({
 			partidaId,
 			periodoMes: `2026-0${5 + Math.floor((dia - 1) / 31)}-01`,
-			ocurrencia: { tipo: 'dia', numero: ((dia - 1) % 28) + 1 },
+			ocurrencia: { tipo: 'semana', numero: ((dia - 1) % 4) + 1 },
 			equipoIds: []
 		});
 	}

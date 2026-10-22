@@ -19,7 +19,7 @@
 			"contrato": "PRO-AGRO-PRV-016-2026",
 			"sitio": "EM-30184 PAJARITOS",
 			"periodicidad": "Trimestral",
-			"fecha": "2026-06-01",
+			"dias": [{ "desde": "2026-06-01", "hasta": "2026-06-01" }],
 			"tipoMantenimiento": "Preventivo"
 		},
 		"firmantes": {

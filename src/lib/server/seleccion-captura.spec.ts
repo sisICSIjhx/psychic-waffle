@@ -21,7 +21,7 @@ const meses = mesesDeVigencia('2026-05-01', '2027-04-30');
 
 async function emitir(reporte: Reporte, fecha: string): Promise<Reporte> {
 	const guardado = aGuardado(reporte);
-	guardado.fechaEjecucion = fecha;
+	guardado.diasEjecucion = [{ desde: fecha, hasta: fecha }];
 	guardado.firmantes = {
 		elaboro: { nombre: 'Uno', cargo: '', empresa: '' },
 		aprobo: { nombre: 'Dos', cargo: '', empresa: '' },

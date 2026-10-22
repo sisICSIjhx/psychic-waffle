@@ -6,6 +6,7 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import InsigniaEstado from '$lib/components/reportes/InsigniaEstado.svelte';
+	import BotonesSegmentados from '$lib/components/ui/BotonesSegmentados.svelte';
 	import SelectorBusqueda, {
 		type OpcionSelector
 	} from '$lib/components/ui/SelectorBusqueda.svelte';
@@ -40,6 +41,8 @@
 	export let partidas: PartidaResumen[] = [];
 	export let partida: Partida | null = null;
 	export let tipoOcurrencia: Ocurrencia['tipo'] | null = null;
+	/** Partida diaria: se reporta por mes completo o por semana. */
+	export let mesCompletoOpcional = false;
 	export let meses: string[] = [];
 	export let mesReferencia = '';
 	export let mesSugerido: string | null = null;
@@ -55,14 +58,18 @@
 
 	let periodoMes = mesSugerido ?? '';
 	let ocurrenciaNumero = '';
+	let modoPeriodo: 'mes' | 'ocurrencia' = 'mes';
 	let enviando = false;
 	let cambiarContexto = false;
 	let partidaElegida = partida?.id ?? '';
 	let formSeleccion: HTMLFormElement | undefined;
 
 	$: if (!meses.includes(periodoMes)) periodoMes = mesSugerido ?? '';
+	$: conOcurrencia = !!tipoOcurrencia && (!mesCompletoOpcional || modoPeriodo === 'ocurrencia');
 	$: ocurrencias =
-		tipoOcurrencia && periodoMes ? ocurrenciasDelMes(tipoOcurrencia, periodoMes) : [];
+		conOcurrencia && tipoOcurrencia && periodoMes
+			? ocurrenciasDelMes(tipoOcurrencia, periodoMes)
+			: [];
 	$: if (ocurrencias.length && !ocurrencias.includes(Number(ocurrenciaNumero)))
 		ocurrenciaNumero = String(ocurrencias[0]);
 	// Contrato y sitio ya resueltos (uno solo de cada uno, o elegidos en la dirección) se muestran como
@@ -79,7 +86,9 @@
 	$: existentes = reportesPartida.filter(
 		(r) =>
 			r.periodoMes.slice(0, 7) === periodoMes.slice(0, 7) &&
-			(tipoOcurrencia ? r.ocurrencia?.numero === Number(ocurrenciaNumero) : !r.ocurrencia)
+			// En una diaria se muestran todos los reportes del mes, sean del mes completo o por semana.
+			(mesCompletoOpcional ||
+				(tipoOcurrencia ? r.ocurrencia?.numero === Number(ocurrenciaNumero) : !r.ocurrencia))
 	);
 
 	/** Estado pendiente de la partida en texto: el vencido más antiguo o el mes de referencia. */
@@ -230,11 +239,7 @@
 				}}
 			>
 				<input type="hidden" name="partidaId" value={partida.id} />
-				{#if tipoOcurrencia}<input
-						type="hidden"
-						name="ocurrenciaTipo"
-						value={tipoOcurrencia}
-					/>{/if}
+				{#if conOcurrencia}<input type="hidden" name="ocurrenciaTipo" value={tipoOcurrencia} />{/if}
 				<div class="paso">
 					<h3 class="titulo-paso"><span class="numero-paso">2</span> Periodo y TAG</h3>
 					<div class="form-grid">
@@ -246,7 +251,21 @@
 								{/each}
 							</select>
 						</div>
-						{#if tipoOcurrencia}
+						{#if mesCompletoOpcional}
+							<div class="form-group">
+								<span class="etiqueta-campo" aria-hidden="true">Periodo del reporte</span>
+								<BotonesSegmentados
+									id="modo-periodo"
+									etiqueta="Periodo del reporte"
+									opciones={[
+										{ valor: 'mes', texto: 'Mes completo' },
+										{ valor: 'ocurrencia', texto: 'Por semana' }
+									]}
+									bind:valor={modoPeriodo}
+								/>
+							</div>
+						{/if}
+						{#if conOcurrencia && tipoOcurrencia}
 							<div class="form-group">
 								<label for="ocurrenciaNumero">{ETIQUETA_OCURRENCIA[tipoOcurrencia]}</label>
 								<select

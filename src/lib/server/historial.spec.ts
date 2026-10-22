@@ -66,7 +66,7 @@ async function reporte(clave: string, mes: string, emitir: boolean) {
 	});
 	if (!emitir) return creado;
 	const guardado = aGuardado(creado);
-	guardado.fechaEjecucion = mes.replace(/01$/, '15');
+	guardado.diasEjecucion = [{ desde: mes.replace(/01$/, '15'), hasta: mes.replace(/01$/, '15') }];
 	guardado.firmantes = {
 		elaboro: { nombre: 'Uno', cargo: '', empresa: '' },
 		aprobo: { nombre: 'Dos', cargo: '', empresa: '' },

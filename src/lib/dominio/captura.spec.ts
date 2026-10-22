@@ -9,6 +9,7 @@ import {
 	rangoDelPeriodo,
 	separarAlcance,
 	tipoOcurrencia,
+	modosDePeriodo,
 	validarParaRevision,
 	type ReporteValidable
 } from './captura';
@@ -83,7 +84,10 @@ const firmantes = {
 describe('periodos de captura', () => {
 	it('pide la ocurrencia solo en periodicidades menores a mensual', () => {
 		expect(tipoOcurrencia('semanal')).toBe('semana');
-		expect(tipoOcurrencia('diaria')).toBe('dia');
+		expect(tipoOcurrencia('diaria')).toBe('semana');
+		expect(modosDePeriodo('diaria')).toEqual(['mes', 'semana']);
+		expect(modosDePeriodo('semanal')).toEqual(['semana']);
+		expect(modosDePeriodo('bimestral')).toEqual(['mes']);
 		expect(tipoOcurrencia('quincenal')).toBe('quincena');
 		expect(tipoOcurrencia('mensual')).toBeNull();
 		expect(ocurrenciasDelMes('semana', '2026-05-01')).toEqual([1, 2, 3, 4, 5]);
@@ -121,7 +125,7 @@ describe('prellenado desde el catálogo', () => {
 			introduccion: 'Descripción general de la actividad.',
 			conclusiones: 'Sistema operando.',
 			incluyeVerificacion: false,
-			fechaEjecucion: null
+			diasEjecucion: []
 		});
 		// Solo los alcances ejecutables; el primer renglón es el título.
 		expect(nuevo.alcances).toEqual([
@@ -151,6 +155,31 @@ describe('prellenado desde el catálogo', () => {
 		expect(() => prellenarReporte({ ...base, periodoMes: '2026-05-01', ocurrencia: null })).toThrow(
 			/Semana/
 		);
+	});
+
+	it('reporta una partida diaria por mes completo o por semana, no por día', () => {
+		const diaria = partida({ numero: '33', actividad: 'Recorrido', periodicidad: 'diaria' });
+		const base = {
+			partida: diaria,
+			contrato,
+			sitio,
+			firmantes,
+			equipoIds: [],
+			periodoMes: '2026-05-01'
+		};
+		expect(prellenarReporte({ ...base, ocurrencia: null }).titulo).toBe(
+			'33.- RECORRIDO. MAYO 2026'
+		);
+		expect(prellenarReporte({ ...base, ocurrencia: { tipo: 'semana', numero: 1 } }).titulo).toBe(
+			'33.- RECORRIDO. SEMANA 1 MAYO 2026'
+		);
+		expect(() => prellenarReporte({ ...base, ocurrencia: { tipo: 'dia', numero: 3 } })).toThrow(
+			'La partida 33 se reporta por mes completo o por semana'
+		);
+		expect(rangoDelPeriodo('2026-05-01', { tipo: 'semana', numero: 1 })).toEqual({
+			desde: '2026-05-01',
+			hasta: '2026-05-03'
+		});
 	});
 
 	it('exige un TAG de la partida cuando tiene equipos y rechaza los ajenos', () => {
@@ -187,7 +216,7 @@ function validable(cambios: Partial<ReporteValidable> = {}): ReporteValidable {
 	return {
 		periodoMes: '2026-05-01',
 		ocurrencia: null,
-		fechaEjecucion: '2026-05-18',
+		diasEjecucion: [{ desde: '2026-05-18', hasta: '2026-05-18' }],
 		titulo: '07.- TOMA DE POTENCIALES TUBO-SUELO. MAYO 2026',
 		usuario: 'CLIENTE FICTICIO',
 		contratoTexto: 'OC-FICTICIA',
@@ -213,13 +242,22 @@ describe('validaciones para enviar a revisión', () => {
 		expect(validarParaRevision(validable())).toEqual([]);
 	});
 
-	it('señala la fecha incompleta o fuera del mes', () => {
-		expect(validarParaRevision(validable({ fechaEjecucion: null })).map((o) => o.campo)).toEqual([
-			'fechaEjecucion'
+	it('señala los días faltantes o fuera del mes', () => {
+		expect(validarParaRevision(validable({ diasEjecucion: [] }))).toEqual([
+			{ campo: 'diasEjecucion', mensaje: 'Capture los días de ejecución.' }
 		]);
-		expect(validarParaRevision(validable({ fechaEjecucion: '2026-06-01' }))[0].mensaje).toBe(
-			'La fecha de ejecución debe estar dentro del periodo del reporte (del 1 de mayo al 31 de mayo).'
-		);
+		expect(
+			validarParaRevision(
+				validable({
+					diasEjecucion: [
+						{ desde: '2026-05-04', hasta: '2026-05-06' },
+						{ desde: '2026-05-11', hasta: '2026-05-11' },
+						{ desde: '2026-05-12', hasta: '2026-05-12' }
+					],
+					ocurrencia: { tipo: 'semana', numero: 2 }
+				})
+			)[0].mensaje
+		).toBe('Días fuera del periodo del reporte (del 4 al 10 de mayo de 2026): 11, 12.');
 	});
 
 	it('exige la fecha dentro de la semana, quincena o día del reporte', () => {
@@ -239,14 +277,16 @@ describe('validaciones para enviar a revisión', () => {
 		expect(rangoDelPeriodo('2026-02-01', { tipo: 'dia', numero: 29 })).toBeNull();
 
 		const semana2 = { ocurrencia: { tipo: 'semana' as const, numero: 2 } };
-		expect(validarParaRevision(validable({ ...semana2, fechaEjecucion: '2026-05-08' }))).toEqual(
-			[]
-		);
 		expect(
-			validarParaRevision(validable({ ...semana2, fechaEjecucion: '2026-05-31' }))[0].mensaje
-		).toBe(
-			'La fecha de ejecución debe estar dentro del periodo del reporte (del 4 de mayo al 10 de mayo).'
-		);
+			validarParaRevision(
+				validable({ ...semana2, diasEjecucion: [{ desde: '2026-05-08', hasta: '2026-05-08' }] })
+			)
+		).toEqual([]);
+		expect(
+			validarParaRevision(
+				validable({ ...semana2, diasEjecucion: [{ desde: '2026-05-31', hasta: '2026-05-31' }] })
+			)[0].mensaje
+		).toBe('Días fuera del periodo del reporte (del 4 al 10 de mayo de 2026): 31.');
 		expect(validarParaRevision(validable({ ocurrencia: { tipo: 'dia', numero: 18 } }))).toEqual([]);
 		expect(
 			validarParaRevision(validable({ ocurrencia: { tipo: 'semana', numero: 7 } })).map(
@@ -322,7 +362,7 @@ describe('destino de cada pendiente en el editor', () => {
 
 	it('lleva cada observación de un reporte vacío a su sección y campo', () => {
 		const reporte = conIds({
-			fechaEjecucion: null,
+			diasEjecucion: [],
 			titulo: '(Cambiar)',
 			usuario: '',
 			contratoTexto: 'Cambiar',
@@ -348,7 +388,7 @@ describe('destino de cada pendiente en el editor', () => {
 				destinos.map(({ campo, destino }) => [campo, `${destino?.seccion} ${destino?.campoId}`])
 			)
 		).toEqual({
-			fechaEjecucion: 'encabezado fecha',
+			diasEjecucion: 'encabezado fecha',
 			titulo: 'encabezado titulo',
 			usuario: 'encabezado dato-usuario',
 			contratoTexto: 'encabezado dato-contrato',
@@ -434,6 +474,8 @@ describe('aplicar los cambios del catálogo a un borrador', () => {
 		id: ID(70),
 		version: 3,
 		fechaEjecucion: null,
+		fechaEjecucionFin: null,
+		diasEjecucion: [],
 		titulo: 'T',
 		tipoMantenimiento: 'Preventivo',
 		objetivo: 'Objetivo anterior',

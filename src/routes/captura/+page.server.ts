@@ -1,7 +1,7 @@
 // Selección guiada para crear un reporte: contrato vigente, sitio, partida, TAG y periodo. Cada paso
 // es un parámetro de la URL; la acción «crear» genera el reporte prellenado y abre el editor.
 import { fail, redirect } from '@sveltejs/kit';
-import { mesesDeVigencia, tipoOcurrencia } from '$lib/dominio/captura';
+import { mesesDeVigencia, modosDePeriodo, tipoOcurrencia } from '$lib/dominio/captura';
 import type { Partida } from '$lib/dominio/esquemas';
 import { fechaEnZona } from '$lib/dominio/fechas';
 import { ErrorValidacion } from '$lib/server/captura';
@@ -64,6 +64,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		partidas,
 		partida,
 		tipoOcurrencia: partida ? tipoOcurrencia(partida.periodicidad) : null,
+		mesCompletoOpcional: partida ? modosDePeriodo(partida.periodicidad).length > 1 : false,
 		meses,
 		...seleccion,
 		borradores: borradores.filas

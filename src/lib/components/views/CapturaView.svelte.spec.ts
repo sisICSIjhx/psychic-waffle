@@ -180,6 +180,31 @@ describe('CapturaView', () => {
 			.not.toBeInTheDocument();
 	});
 
+	it('una partida diaria se crea por mes completo o por semana', async () => {
+		montar({
+			partida: { ...partidaElegida(), periodicidad: 'diaria' } as unknown as Partida,
+			tipoOcurrencia: 'semana',
+			mesCompletoOpcional: true
+		});
+		const grupo = page.getByRole('radiogroup', { name: 'Periodo del reporte' });
+		await expect
+			.element(grupo.getByRole('radio', { name: 'Mes completo' }))
+			.toHaveAttribute('aria-checked', 'true');
+		expect(page.getByLabelText('Semana').elements()).toHaveLength(0);
+		await page.getByRole('button', { name: 'Crear reporte' }).click();
+		await expect.poll(() => enviados.length).toBe(1);
+		expect(enviados[0].get('ocurrenciaTipo')).toBeNull();
+
+		await grupo.getByRole('radio', { name: 'Por semana' }).click();
+		await expect.element(page.getByLabelText('Semana')).toHaveValue('1');
+		await page.getByRole('button', { name: 'Crear reporte' }).click();
+		await expect.poll(() => enviados.length).toBe(2);
+		expect(Object.fromEntries(enviados[1])).toMatchObject({
+			ocurrenciaTipo: 'semana',
+			ocurrenciaNumero: '1'
+		});
+	});
+
 	it('con un reporte de otro TAG lo indica y permite crear el nuevo', async () => {
 		montar({
 			partida: partidaElegida([{ tag: 'PI-0001' }, { tag: 'PI-1001' }]),

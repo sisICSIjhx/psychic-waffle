@@ -298,6 +298,29 @@ export const esquemaDocumentoGenerado = z.object({
 });
 export type DocumentoGenerado = z.infer<typeof esquemaDocumentoGenerado>;
 
+/** Un día (desde = hasta) o un rango de días de ejecución. */
+export const esquemaSegmentoDias = z.object({ desde: fecha, hasta: fecha });
+export type SegmentoDiasEsquema = z.infer<typeof esquemaSegmentoDias>;
+
+/**
+ * Días de ejecución: a lo sumo 31 segmentos en orden, sin traslapes y de un solo mes (que sea el del
+ * periodo lo controla la base).
+ */
+export const esquemaDiasEjecucion = z
+	.array(esquemaSegmentoDias)
+	.max(31)
+	.refine(
+		(segmentos) =>
+			segmentos.every(
+				(s, i) =>
+					s.desde <= s.hasta &&
+					s.desde.slice(0, 7) === segmentos[0].desde.slice(0, 7) &&
+					s.hasta.slice(0, 7) === segmentos[0].desde.slice(0, 7) &&
+					(i === 0 || s.desde > segmentos[i - 1].hasta)
+			),
+		'Los días de ejecución deben estar en orden, sin repetirse y en un solo mes'
+	);
+
 export const esquemaReporte = z.object({
 	id,
 	contratoId: id,
@@ -305,7 +328,11 @@ export const esquemaReporte = z.object({
 	partidaId: id,
 	periodoMes: fecha,
 	ocurrencia: esquemaOcurrencia.nullable(),
+	/** Primer día de ejecución, derivado de los días (solo lectura). */
 	fechaEjecucion: fecha.nullable(),
+	/** Último día de ejecución, derivado de los días (solo lectura). */
+	fechaEjecucionFin: fecha.nullable(),
+	diasEjecucion: esquemaDiasEjecucion,
 	titulo: z.string(),
 	usuario: z.string(),
 	contratoTexto: z.string(),
@@ -343,7 +370,7 @@ export const esquemaReporteNuevo = z.object({
 	partidaId: id,
 	periodoMes: fecha,
 	ocurrencia: esquemaOcurrencia.nullable().optional(),
-	fechaEjecucion: fecha.nullable().optional(),
+	diasEjecucion: esquemaDiasEjecucion.optional(),
 	titulo: z.string().min(1),
 	usuario: z.string(),
 	contratoTexto: z.string(),
@@ -376,7 +403,7 @@ export type ReporteNuevo = z.input<typeof esquemaReporteNuevo>;
 export const esquemaReporteGuardado = z.object({
 	id,
 	version: z.number().int().positive(),
-	fechaEjecucion: fecha.nullable(),
+	diasEjecucion: esquemaDiasEjecucion,
 	titulo: z.string().min(1),
 	tipoMantenimiento: z.string(),
 	objetivo: z.string(),
