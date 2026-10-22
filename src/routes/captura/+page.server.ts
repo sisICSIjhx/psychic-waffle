@@ -6,6 +6,7 @@ import type { Partida } from '$lib/dominio/esquemas';
 import { fechaEnZona } from '$lib/dominio/fechas';
 import { ErrorValidacion } from '$lib/server/captura';
 import { captura, datos } from '$lib/server/datos';
+import { datosDeSeleccion } from '$lib/server/seleccion-captura';
 import { mensajeDeError } from '$lib/server/errores';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -38,9 +39,17 @@ export const load: PageServerLoad = async ({ url }) => {
 		partida = await repos.catalogo.obtenerPartida(idPartida);
 	}
 	const meses = contrato ? mesesDeVigencia(contrato.vigenciaInicio, contrato.vigenciaFin) : [];
-	// ?mes= llega desde una celda de la planeación; si no, se propone el mes en curso.
-	const mesPedido = url.searchParams.get('mes') ?? '';
-	const mesActual = `${hoy().slice(0, 7)}-01`;
+	const seleccion = await datosDeSeleccion(repos, {
+		contratoId: contrato?.id ?? null,
+		sitioId: sitio?.id ?? null,
+		partidas,
+		partidaId: partida?.id ?? null,
+		meses,
+		// ?mes= llega desde una celda de la planeación o de «Mi trabajo».
+		mesPedido: url.searchParams.get('mes') ?? '',
+		hoy: hoy()
+	});
+
 	const borradores = await repos.reportes.listar({
 		estado: 'borrador',
 		tamano: 10,
@@ -56,11 +65,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		partida,
 		tipoOcurrencia: partida ? tipoOcurrencia(partida.periodicidad) : null,
 		meses,
-		mesSugerido: meses.includes(mesPedido)
-			? mesPedido
-			: meses.includes(mesActual)
-				? mesActual
-				: (meses[0] ?? null),
+		...seleccion,
 		borradores: borradores.filas
 	};
 };

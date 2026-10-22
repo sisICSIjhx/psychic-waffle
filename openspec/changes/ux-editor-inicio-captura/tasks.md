@@ -104,7 +104,7 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 - [x] 7.1 Crear `src/lib/components/ui/SelectorBusqueda.svelte` (combobox con grupos y estado sin
       resultados) y verificarlo con pruebas de teclado y de lector de pantalla (roles y
       `aria-activedescendant`).
-- [ ] 7.2 Ampliar la carga de `src/routes/captura/+page.server.ts` con los vencidos y el estado del mes
+- [x] 7.2 Ampliar la carga de `src/routes/captura/+page.server.ts` con los vencidos y el estado del mes
       de referencia de cada partida, el mes sugerido, todos los borradores del sitio en el rango de
       meses y los reportes de la partida y mes elegidos, y verificarlo con una prueba sobre PGlite.
 - [ ] 7.3 Usar el selector en `CapturaView.svelte`, mostrar el contexto resuelto como resumen con
