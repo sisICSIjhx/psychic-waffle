@@ -10,7 +10,8 @@ Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 - Decisiones: la `0013` no se editó tras aplicarse (las migraciones se aplican por nombre); sin dependencias nuevas; sin cambios en el editor, el DOCX ni las reglas de captura.
 - Validación: `check` 0/0; `lint` sin observaciones; `test` 34 archivos y 213 pruebas. Auditoría en Chromium (6 vistas × 2 anchos × 2 temas y la captura con la lista abierta y con partida elegida) sin fallos de contraste, bordes, objetivos ni desborde tras corregir dos contrastes. Recorrido sobre los datos reales con las peticiones POST bloqueadas: «Continuar borrador» lleva al editor en un clic y «Capturar» en dos (con «Crear reporte»).
 - Revisión de Codex en 2 rondas (`docs/revisiones/ux-fase-C.md`): 2 hallazgos medios corregidos (orden no total al paginar el historial y `aria-selected` en la opción activa en vez de la elegida); la autorrevisión corrigió 4 más (resumen del contexto con varios contratos, envío de la prueba al servidor de Vite, dos contrastes y el mensaje de un filtro vacío). La ronda 2 no tuvo hallazgos.
-- Pendientes: reiniciar el servidor de desarrollo para aplicar la `0014`; pruebas con usuarios y medición del tiempo de un reporte; archivar el cambio cuando el usuario lo apruebe; planear las fases D y E.
+- Base de desarrollo: al reiniciar el servidor se aplicó la `0014` (registrada en `interno.migraciones` y con el desempate por `id` en `api_listar_reportes`); antes se respaldó `storage/pglite` en `storage/respaldos/`, fuera de lo versionable. Inicio, historial, captura y planeación responden sin errores.
+- Pendientes: pruebas con usuarios y medición del tiempo de un reporte; archivar el cambio cuando el usuario lo apruebe; planear las fases D y E.
 
 ## 2026-10-21 — UX, fase B: editor del reporte
 

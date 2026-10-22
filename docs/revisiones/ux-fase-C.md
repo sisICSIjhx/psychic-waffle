@@ -52,5 +52,5 @@ la elegida y corrigen el mensaje del filtro vacío.
   porque muestran datos de los reportes.
 - Hallazgos A del plan: H1 (selector con búsqueda, pendientes primero y aviso de existente) queda
   resuelto; también H8 (panel con jerarquía y acciones), de prioridad media.
-- La migración `0014` se aplica al reiniciar el servidor de desarrollo; hasta entonces la base usa el
-  orden de la `0013`, que funciona igual salvo el desempate.
+- La migración `0014` quedó aplicada en la base de desarrollo al reiniciar el servidor: figura en
+  `interno.migraciones` y `api_listar_reportes` desempata por `id`.
