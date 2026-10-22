@@ -82,17 +82,19 @@ function montar(cambios: Record<string, unknown> = {}) {
 }
 
 let enviados: FormData[] = [];
+// En la fase de captura, antes de use:enhance: ningún envío llega al servidor de Vite de las pruebas.
 const capturarEnvio = (evento: SubmitEvent) => {
 	evento.preventDefault();
+	evento.stopPropagation();
 	enviados.push(new FormData(evento.target as HTMLFormElement));
 };
 
 describe('CapturaView', () => {
 	beforeEach(() => {
 		enviados = [];
-		document.addEventListener('submit', capturarEnvio);
+		document.addEventListener('submit', capturarEnvio, true);
 	});
-	afterEach(() => document.removeEventListener('submit', capturarEnvio));
+	afterEach(() => document.removeEventListener('submit', capturarEnvio, true));
 
 	it('resume el contrato y el sitio ya resueltos y permite cambiarlos', async () => {
 		montar();
