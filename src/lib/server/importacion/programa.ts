@@ -92,6 +92,54 @@ export function cantidadesDeMarcas(
 	});
 }
 
+/**
+ * Advertencias que dependen de la periodicidad: varias marcas en un mes de una partida mensual o de
+ * mayor periodo, suma de los meses distinta de la cantidad anual y meses sin marca de una mensual.
+ * Se recalculan si el CLI cambia la periodicidad.
+ */
+export function advertenciasDePeriodicidad(
+	sitio: string,
+	p: {
+		numero: string;
+		fila: number;
+		periodicidad: Periodicidad;
+		cantidadAnual: number | null;
+		marcas: { mes: string; marcas: number }[];
+	}
+): AdvertenciaPrograma[] {
+	const lista: AdvertenciaPrograma[] = [];
+	const avisar = (mes: string | null, texto: string) =>
+		lista.push({
+			partida: p.numero,
+			mes,
+			fila: p.fila,
+			texto: `${sitio}, partida ${p.numero}: ${texto}`
+		});
+	if (!['semanal', 'quincenal', 'diaria', 'cuando_aplique'].includes(p.periodicidad)) {
+		for (const m of p.marcas.filter((x) => x.marcas > 1)) {
+			avisar(m.mes, `tiene ${m.marcas} marcas en ${m.mes.slice(0, 7)}; cuenta 1.`);
+		}
+	}
+	const total = cantidadesDeMarcas(p.periodicidad, p.marcas).reduce((s, m) => s + m.cantidad, 0);
+	if (
+		p.cantidadAnual !== null &&
+		p.periodicidad !== 'cuando_aplique' &&
+		total !== p.cantidadAnual
+	) {
+		avisar(null, `la cantidad anual es ${p.cantidadAnual} y las marcas suman ${total}.`);
+	}
+	if (p.periodicidad === 'mensual') {
+		const sinMarca = p.marcas.filter((m) => !m.marcas);
+		if (sinMarca.length && sinMarca.length < p.marcas.length) {
+			avisar(
+				null,
+				`es mensual y no tiene marca en ${sinMarca.map((m) => m.mes.slice(0, 7)).join(', ')}.`
+			);
+		}
+	}
+	return lista;
+}
+
 /** Cinco dígitos de la clave del sitio («EM-30184» → «30184»). */
 export function digitosClave(clave: string): string | null {
 	return /(\d{5})/.exec(clave)?.[1] ?? null;
@@ -407,44 +455,19 @@ export function analizarProgramaAnual(
 			});
 		const marcas = contar(fila);
 		const marcasR = filaR === -1 ? [] : contar(filaR);
-		if (periodicidad !== 'semanal' && periodicidad !== 'quincenal' && periodicidad !== 'diaria') {
-			for (const m of marcas.filter((x) => x.marcas > 1)) {
-				avisar(
-					numero,
-					m.mes,
-					fila + 1,
-					`tiene ${m.marcas} marcas en ${m.mes.slice(0, 7)}; cuenta 1.`
-				);
-			}
-		}
 		const meses = cantidadesDeMarcas(periodicidad, marcas);
 		const realizados = cantidadesDeMarcas(periodicidad, marcasR);
 
 		// Advertencias del libro.
-		const total = meses.reduce((s, m) => s + m.cantidad, 0);
-		if (
-			typeof valorCantidad === 'number' &&
-			periodicidad !== 'cuando_aplique' &&
-			total !== valorCantidad
-		) {
-			avisar(
+		advertencias.push(
+			...advertenciasDePeriodicidad(sitio, {
 				numero,
-				null,
-				fila + 1,
-				`la cantidad anual es ${valorCantidad} y las marcas suman ${total}.`
-			);
-		}
-		if (periodicidad === 'mensual') {
-			const sinMarca = visibles.filter((r) => !meses.some((m) => m.mes === r.mes));
-			if (sinMarca.length && sinMarca.length < visibles.length) {
-				avisar(
-					numero,
-					null,
-					fila + 1,
-					`es mensual y no tiene marca en ${sinMarca.map((r) => r.mes.slice(0, 7)).join(', ')}.`
-				);
-			}
-		}
+				fila: fila + 1,
+				periodicidad,
+				cantidadAnual: typeof valorCantidad === 'number' ? valorCantidad : null,
+				marcas
+			})
+		);
 		if ([columnas.numero, columnas.actividad].some((c) => esRojo(hoja.rellenos[fila]?.[c]))) {
 			avisar(numero, null, fila + 1, 'la fila está resaltada en rojo en el libro.');
 		}
@@ -591,18 +614,7 @@ export function aplicarAjustes(
 				a.partida !== p.numero ||
 				!/es mensual y no tiene marca|las marcas suman|marcas en \d/.test(a.texto)
 		);
-		const total = ajustada.meses.reduce((s, m) => s + m.cantidad, 0);
-		if (ajustada.cantidadAnual !== null && total !== ajustada.cantidadAnual) {
-			advertencias = [
-				...advertencias,
-				{
-					partida: p.numero,
-					mes: null,
-					fila: p.fila,
-					texto: `${analisis.sitio}, partida ${p.numero}: la cantidad anual es ${ajustada.cantidadAnual} y las marcas suman ${total}.`
-				}
-			];
-		}
+		advertencias = [...advertencias, ...advertenciasDePeriodicidad(analisis.sitio, ajustada)];
 		return ajustada;
 	});
 	return { ...analisis, partidas, advertencias };

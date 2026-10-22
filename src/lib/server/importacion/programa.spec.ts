@@ -347,6 +347,38 @@ describe('ajustes del CLI y vigencia', () => {
 		expect(ajustada.advertencias.some((a) => /marcas en 2026-03/.test(a.texto))).toBe(false);
 	});
 
+	it('al pasar una semanal a mensual regenera las advertencias de la nueva periodicidad', async () => {
+		const analisis = analizarProgramaAnual(
+			await hojasDe({
+				bloques: [
+					{
+						clave: '11111',
+						partidas: [
+							{
+								numero: 1,
+								actividad: 'RECORRIDO FICTICIO',
+								cantidad: 12,
+								periodicidad: 'SEMANAL',
+								marcas: [0, 1, 4, 8]
+							}
+						]
+					}
+				]
+			}),
+			{ claveSitio: 'EM-11111' }
+		);
+		const textos = aplicarAjustes(analisis, analizarAjustes(['1=mensual'], [])).advertencias.map(
+			(a) => a.texto
+		);
+		expect(textos).toEqual(
+			expect.arrayContaining([
+				'ERM 11111, partida 1: tiene 2 marcas en 2026-03; cuenta 1.',
+				'ERM 11111, partida 1: la cantidad anual es 12 y las marcas suman 3.',
+				expect.stringMatching(/es mensual y no tiene marca en 2026-06, /)
+			])
+		);
+	});
+
 	it('valida la vigencia nueva contra el programa, los reportes y otros programas', () => {
 		const programa = { periodoInicio: '2026-03-01', periodoFin: '2027-02-28' };
 		const vigencia = { vigenciaInicio: '2026-03-01', vigenciaFin: '2027-02-28' };
