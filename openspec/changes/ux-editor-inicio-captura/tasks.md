@@ -115,7 +115,7 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 
 ## 8. Cierre de la fase C
 
-- [ ] 8.1 Ejecutar los pasos de cierre de la fase C (incluye `docs/revisiones/ux-fase-C.md`) y
+- [x] 8.1 Ejecutar los pasos de cierre de la fase C (incluye `docs/revisiones/ux-fase-C.md`) y
       actualizar `docs/CONTEXTO_PROYECTO.md` con la vista «Mi trabajo» y el estado del cambio.
 
 ## Workflow follow-up

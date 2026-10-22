@@ -3,6 +3,15 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-21 — UX, fase C: inicio «Mi trabajo» y captura
+
+- Motivo: fase C del cambio OpenSpec `ux-editor-inicio-captura` (tareas 5.1 a 8.1), para llegar de un pendiente al editor en pocos clics y resolver H1 (elegir la partida) y H8 (panel sin acciones). Rama `feat/ux-fase-c`.
+- Alcance: migraciones `0013` (partida y sitio en cada fila de `api_listar_reportes`) y `0014` (desempate por `id` para paginar sin repetir ni omitir filas); `listarTodos` en el repositorio de reportes; en el dominio, `siguienteTrabajo` (`planeacion.ts`) y búsqueda normalizada, agrupación de partidas y mes sugerido (`seleccion.ts`); `src/lib/server/seleccion-captura.ts` para la carga de `/captura`. La vista de inicio pasa a «Mi trabajo» (`MiTrabajoView`, antes `DashboardView`): avance del mes con barra, tarjetas que llevan a cada lista (peligro solo con vencidos), siguiente trabajo por urgencia con «Capturar» o «Continuar borrador», «Ver todos» y estado «al día». `SelectorBusqueda` (combobox ARIA 1.2 con grupos) en la captura, que resume el contexto resuelto con «Cambiar», ordena en pasos, agrupa las partidas en «Con borrador», «Pendientes» y «Otras», propone el mes y avisa de un reporte existente de la partida y periodo (con TAG y enlace) sin impedir crear.
+- Decisiones: la `0013` no se editó tras aplicarse (las migraciones se aplican por nombre); sin dependencias nuevas; sin cambios en el editor, el DOCX ni las reglas de captura.
+- Validación: `check` 0/0; `lint` sin observaciones; `test` 34 archivos y 213 pruebas. Auditoría en Chromium (6 vistas × 2 anchos × 2 temas y la captura con la lista abierta y con partida elegida) sin fallos de contraste, bordes, objetivos ni desborde tras corregir dos contrastes. Recorrido sobre los datos reales con las peticiones POST bloqueadas: «Continuar borrador» lleva al editor en un clic y «Capturar» en dos (con «Crear reporte»).
+- Revisión de Codex en 2 rondas (`docs/revisiones/ux-fase-C.md`): 2 hallazgos medios corregidos (orden no total al paginar el historial y `aria-selected` en la opción activa en vez de la elegida); la autorrevisión corrigió 4 más (resumen del contexto con varios contratos, envío de la prueba al servidor de Vite, dos contrastes y el mensaje de un filtro vacío). La ronda 2 no tuvo hallazgos.
+- Pendientes: reiniciar el servidor de desarrollo para aplicar la `0014`; pruebas con usuarios y medición del tiempo de un reporte; archivar el cambio cuando el usuario lo apruebe; planear las fases D y E.
+
 ## 2026-10-21 — UX, fase B: editor del reporte
 
 - Motivo: fase B del cambio OpenSpec `ux-editor-inicio-captura` (tareas 1.1 a 4.1), para acortar la captura y resolver los hallazgos A del editor (H2, H11 y H12). Rama `feat/ux-fase-b`.

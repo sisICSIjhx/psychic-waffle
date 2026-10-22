@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-b`).
+Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-c`).
 
 ## Producto y arquitectura
 
@@ -18,14 +18,16 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-b`).
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, plantilla en
     `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0012`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0014`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
   - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
-    notificaciones con deshacer y botones segmentados). Tokens de
-    tema (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
-- Rutas: `/` panel; `/planeacion` matriz P/R; `/captura` (`?cliente=`, `?mes=`) selección guiada;
-  `/reportes/[id]` editor (autoguardado, fotos, estados), `/reportes/[id]/documento` DOCX y
-  `/reportes/[id]/fotos/[fotoId]`; `/historial`; `/catalogo` con contratos y partidas; `/personal` y
-  `/perfil` existen pero no están en el menú hasta que haya autenticación.
+    notificaciones con deshacer, botones segmentados y selector con búsqueda). Tokens de tema
+    (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
+- Rutas: `/` «Mi trabajo» (avance del mes, tarjetas y siguiente trabajo; `?ver=`); `/planeacion`
+  matriz P/R; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección
+  guiada con búsqueda; `/reportes/[id]` editor (autoguardado, fotos, estados),
+  `/reportes/[id]/documento` DOCX y `/reportes/[id]/fotos/[fotoId]`; `/historial`; `/catalogo` con
+  contratos y partidas; `/personal` y `/perfil` existen pero no están en el menú hasta que haya
+  autenticación.
 - Datos locales: sin `.env` se usa PGlite en `storage/pglite`; fotos y documentos en `storage/`
   (ignorado). Supabase se activa con `PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (tarea 3.8,
   pendiente del usuario). PGlite no admite dos procesos: detener el servidor antes de usar los scripts.
@@ -62,10 +64,11 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/ux-fase-b`).
 
 - Cambio `reportes-mantenimiento-for-icsi-rmt-01`: fases 0 a 6 implementadas y revisadas con Codex;
   cierre (fase 7) en curso. Todo funciona en local con PGlite.
-- Plan de diseño UX: fase A (fundamentos) en `feat/ux-fase-a` y fase B (editor: índice, resumen de
-  pendientes, deshacer, arrastre de fotos y diálogo de emisión) en `feat/ux-fase-b`, del cambio
-  OpenSpec `ux-editor-inicio-captura` (uso solo en escritorio; la misma persona envía y emite). Sigue
-  la fase C (inicio «Mi trabajo» y captura).
+- Plan de diseño UX: fase A (fundamentos) en `feat/ux-fase-a`; fases B (editor) y C (inicio «Mi
+  trabajo» y captura con selector de partida) del cambio OpenSpec `ux-editor-inicio-captura` en
+  `feat/ux-fase-b` y `feat/ux-fase-c`, con todas sus tareas hechas (uso solo en escritorio; la misma
+  persona envía y emite). Siguen las pruebas con usuarios y archivar el cambio; fases D y E por
+  planear.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas
