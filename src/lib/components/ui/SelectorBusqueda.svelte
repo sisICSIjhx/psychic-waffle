@@ -8,6 +8,8 @@
 		grupo: string;
 		/** Estado breve junto al texto (p. ej., «Vencida · junio 2026»). */
 		insignia?: string;
+		/** Símbolo de la insignia; es decorativo, el texto ya dice el estado. */
+		icono?: string;
 		/** Línea secundaria (p. ej., la periodicidad). */
 		detalle?: string;
 	}
@@ -85,12 +87,11 @@
 			evento.preventDefault();
 			mover(evento.key === 'ArrowDown' ? 1 : -1);
 		} else if (evento.key === 'Enter') {
+			// Un combobox no envía el formulario que lo contiene.
+			evento.preventDefault();
 			const opcion =
 				orden.find((o) => o.valor === activa) ?? (orden.length === 1 ? orden[0] : null);
-			if (abierto && opcion) {
-				evento.preventDefault();
-				elegir(opcion);
-			}
+			if (abierto && opcion) elegir(opcion);
 		} else if (evento.key === 'Escape' && abierto) {
 			evento.preventDefault();
 			abierto = false;
@@ -155,7 +156,10 @@
 						on:mousedown|preventDefault={() => elegir(opcion)}
 					>
 						<span class="texto">{opcion.texto}</span>
-						{#if opcion.insignia}<span class="insignia">{opcion.insignia}</span>{/if}
+						{#if opcion.insignia}<span class="insignia"
+								>{#if opcion.icono}<span class="icono" aria-hidden="true">{opcion.icono}</span>
+								{/if}{opcion.insignia}</span
+							>{/if}
 						{#if opcion.detalle}<span class="detalle">{opcion.detalle}</span>{/if}
 					</div>
 				{/each}
@@ -229,6 +233,9 @@
 	}
 	.opcion.elegida .texto {
 		font-weight: 600;
+	}
+	.icono {
+		margin-right: 4px;
 	}
 	.insignia {
 		font-size: 0.8rem;

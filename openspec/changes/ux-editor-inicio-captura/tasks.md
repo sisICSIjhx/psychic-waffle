@@ -110,7 +110,7 @@ revisión y emite; por eso no hay tareas de cámara ni de vistas o acciones por 
 - [ ] 7.3 Usar el selector en `CapturaView.svelte`, mostrar el contexto resuelto como resumen con
       «Cambiar» y los pasos numerados, conservando `?partida=` y `?mes=`; verificarlo con pruebas y con el
       enlace desde la planeación.
-- [ ] 7.4 Mostrar el aviso de reporte existente (por ocurrencia, con TAG y enlace) sin impedir crear, y
+- [x] 7.4 Mostrar el aviso de reporte existente (por ocurrencia, con TAG y enlace) sin impedir crear, y
       verificar los escenarios de borrador existente y de otro TAG.
 
 ## 8. Cierre de la fase C

@@ -1,7 +1,7 @@
 // Reglas puras para elegir la partida de un reporte nuevo: búsqueda sin acentos ni mayúsculas,
 // agrupación según el trabajo pendiente del programa y mes que se sugiere al elegirla.
 import type { Ocurrencia } from './documento.ts';
-import type { AvancePrograma } from './esquemas.ts';
+import type { AvancePrograma, ReporteResumen } from './esquemas.ts';
 import { estadoCelda, type BorradorResumen, type EstadoCelda } from './planeacion.ts';
 
 /** Texto comparable: sin acentos, en minúsculas y con los espacios normalizados. */
@@ -31,6 +31,12 @@ export function buscarPartidas<T extends { numero: string; actividad: string }>(
 		.sort((a, b) => exacta(a.p) - exacta(b.p) || a.i - b.i)
 		.map(({ p }) => p);
 }
+
+/** Reporte de la partida elegida, para avisar si ya existe uno del periodo. */
+export type ReporteDePartida = Pick<
+	ReporteResumen,
+	'id' | 'titulo' | 'estado' | 'periodoMes' | 'ocurrencia' | 'tags'
+>;
 
 export type GrupoPartida = 'con_borrador' | 'pendientes' | 'otras';
 

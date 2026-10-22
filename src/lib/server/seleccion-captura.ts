@@ -1,8 +1,12 @@
 // Datos de la captura que dependen del programa y de los reportes: mes de referencia, trabajo
 // pendiente de cada partida del sitio, mes sugerido y reportes vigentes de la partida elegida.
-import type { ReporteResumen } from '../dominio/esquemas.ts';
 import { programaVigente } from '../dominio/planeacion.ts';
-import { mesSugerido, trabajoDePartidas, type TrabajoDePartida } from '../dominio/seleccion.ts';
+import {
+	mesSugerido,
+	trabajoDePartidas,
+	type ReporteDePartida,
+	type TrabajoDePartida
+} from '../dominio/seleccion.ts';
 import type { Repositorios } from './repositorios/index.ts';
 
 export interface SeleccionCaptura {
@@ -16,11 +20,6 @@ export interface SeleccionCaptura {
 	mesPedido: string;
 	hoy: string;
 }
-
-export type ReporteDePartida = Pick<
-	ReporteResumen,
-	'id' | 'titulo' | 'estado' | 'periodoMes' | 'ocurrencia' | 'tags'
->;
 
 export async function datosDeSeleccion(
 	repos: Repositorios,
