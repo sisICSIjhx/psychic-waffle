@@ -247,6 +247,11 @@
 		color: var(--muted);
 		font-size: 0.8rem;
 	}
+	/* Sobre el fondo de la opción activa el gris atenuado no llega a 4.5:1. */
+	.opcion:hover .detalle,
+	.opcion.activa .detalle {
+		color: var(--text);
+	}
 	.resultado {
 		margin: 0;
 		color: var(--muted);

@@ -355,7 +355,8 @@
 		padding: 10px 12px;
 		border: 1px solid var(--border);
 		border-radius: 8px;
-		background: var(--surface-2);
+		/* Sobre --surface-2 el texto atenuado no llega a 4.5:1; sobre --bg sí. */
+		background: var(--bg);
 	}
 	.contexto-resumen .etiqueta {
 		flex-basis: 100%;
