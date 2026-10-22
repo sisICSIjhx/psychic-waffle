@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-21 contra los archivos locales (rama `feat/programa-anual`).
+Verificado el 2026-10-21 contra los archivos locales (rama `feat/fechas-multiples`).
 
 ## Producto y arquitectura
 
@@ -18,7 +18,7 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/programa-anual`
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, plantilla en
     `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0015`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0016`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
   - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
     notificaciones con deshacer, botones segmentados y selector con búsqueda). Tokens de tema
     (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
@@ -72,7 +72,8 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/programa-anual`
   planear.
 - Cambios de octubre de 2026 (seis cambios OpenSpec apilados, uno por rama): `importacion-programa-anual`
   terminado (Proagro con programa 2026-03 a 2027-02 en EM-30184 y EM-30185 y vigencia ajustada);
-  siguen `fechas-ejecucion-multiples`, `indice-docx-actualizado`, `editor-fotos`,
+  `fechas-ejecucion-multiples` terminado (días en segmentos `dias_ejecucion`; diarias por mes o por
+  semana, con un día cubierto = una ejecución); siguen `indice-docx-actualizado`, `editor-fotos`,
   `edicion-contratos-bitacora` y `tablero-cumplimiento`.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue

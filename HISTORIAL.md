@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-22 — Varios días de ejecución por reporte
+
+- Motivo: un reporte puede abarcar varios días («05-08», «02, 03, 04» o «15, 16, 20-25» de un mes), pedido del usuario. Cambio OpenSpec `fechas-ejecucion-multiples`, rama `feat/fechas-multiples`.
+- Alcance: migración `0016_dias_ejecucion.sql` (columna `dias_ejecucion` con segmentos {desde, hasta} validados en la base, `fecha_ejecucion` y `fecha_ejecucion_fin` derivadas por trigger, relleno de los reportes existentes, envolturas `json_reporte_0007`, `api_insertar_reporte_0003` y `api_guardar_reporte_0003` con reglas para las migraciones siguientes, `api_cambiar_estado` con «Faltan los días de ejecución» y `v_ejecuciones_reportes` que en las diarias cuenta los días distintos de los emitidos); módulo `src/lib/dominio/dias-ejecucion.ts`; `fechasEncabezado` para la fila Fecha del DOCX («15, 16, 20-25 / MAYO / 2026»; un día sale igual que antes, sin nueva versión de plantilla); campo de texto en el editor con vista previa, errores, «Agregar hoy» y «Todo el periodo» con «Deshacer»; partidas diarias por «Mes completo | Por semana» en la captura (ya no por día).
+- Decisiones: del usuario, diarias por mes o por semana con conteo por día; por omisión, respetar la forma capturada, días del mes y del periodo del reporte y formato « / MES / AAAA».
+- Validación: `check` 0/0, `lint` sin observaciones, `test` 38 archivos y 261 pruebas; `prueba:documental` con la fila Fecha de varios días; 0016 aplicada en la base de desarrollo con respaldo previo (los 3 reportes conservan versión y fecha de actualización); navegador en temas claro y oscuro sin fallos de contraste ni desborde. Codex (`docs/revisiones/fechas-ejecucion-multiples.md`) no tuvo hallazgos; la autorrevisión corrigió una sentencia reactiva que deshacía «Agregar hoy» y el ancho del campo.
+- Pendientes: los reportes Word anteriores no se importan con sus días; las fechas escritas en el cuerpo del reporte no se controlan.
+
 ## 2026-10-22 — Programa anual de Proagro: importación de solo programa
 
 - Motivo: integrar el programa anual 2026 de Proagroindustrias (pedido del usuario); primer cambio OpenSpec (`importacion-programa-anual`) de los seis planeados el 2026-10-21 (programa, fechas múltiples, índice del DOCX, fotos, edición de contratos y tablero de cumplimiento). Rama `feat/programa-anual`.

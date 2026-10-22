@@ -120,7 +120,7 @@ deja vacía).
 
 ## 7. Base de desarrollo
 
-- [ ] 7.1 Detener el servidor de desarrollo (PGlite no admite dos procesos), respaldar
+- [x] 7.1 Detener el servidor de desarrollo (PGlite no admite dos procesos), respaldar
       `storage/pglite` fuera del repositorio, leer del respaldo con un script de solo lectura fuera del
       repositorio el `id`, `version`, `estado`, `actualizado_en` y `fecha_ejecucion` de los reportes, e
       iniciar el servidor para aplicar `0016`; verificar que los 3 reportes tienen un segmento con su
@@ -129,18 +129,18 @@ deja vacía).
 ## 8. Cierre
 
 - [x] 8.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores.
-- [ ] 8.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro: el campo de días (vista previa,
+- [x] 8.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro: el campo de días (vista previa,
       errores, «Agregar hoy», «Todo el periodo» y «Deshacer»), «Descargar DOCX» con sus motivos y la
       captura «Mes completo | Por semana»; contraste AA, foco visible y sin desborde horizontal, con
       capturas antes y después fuera del repositorio.
-- [ ] 8.3 Hacer commit y revisar con `scripts/revision-codex.ps1` usando `-Cambio` (el cambio OpenSpec
+- [x] 8.3 Hacer commit y revisar con `scripts/revision-codex.ps1` usando `-Cambio` (el cambio OpenSpec
       `fechas-ejecucion-multiples`), `-Base` (último commit de `feat/programa-anual`), `-Sha` (último
       commit del cambio), `-Fase fechas-multiples`, `-Ronda` y como `-ArchivosContexto` los artefactos
       de este cambio y `0016_dias_ejecucion.sql` (como máximo 2 rondas); registrar hallazgos y
       resoluciones en `docs/revisiones/fechas-ejecucion-multiples.md`.
-- [ ] 8.4 Registrar el cambio en `HISTORIAL.md` (fecha, motivo, alcance, archivos, validación real y
+- [x] 8.4 Registrar el cambio en `HISTORIAL.md` (fecha, motivo, alcance, archivos, validación real y
       pendientes), sin datos personales.
-- [ ] 8.5 Actualizar `docs/CONTEXTO_PROYECTO.md` con las migraciones `0001…0016` y el estado del cambio
+- [x] 8.5 Actualizar `docs/CONTEXTO_PROYECTO.md` con las migraciones `0001…0016` y el estado del cambio
       (no cambian rutas) y verificar que el documento sigue breve y con enlaces válidos.
 
 ## Workflow follow-up

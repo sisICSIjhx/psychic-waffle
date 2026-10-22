@@ -889,7 +889,7 @@
 						/>
 						<ErrorCampo id="error-titulo" mensaje={errores.titulo} />
 					</div>
-					<div class="form-group">
+					<div class="form-group campo-dias">
 						<label for="fecha">Días de ejecución ({textoMes(reporte.periodoMes)})</label>
 						<div class="fila-fecha">
 							<input
@@ -1369,7 +1369,20 @@
 	}
 	.fila-fecha {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 8px;
+	}
+	.fila-fecha input {
+		flex: 1 1 160px;
+	}
+	.fila-fecha .boton {
+		white-space: nowrap;
+	}
+	/* Los días y sus atajos necesitan más ancho que un campo corto del encabezado. */
+	@media (min-width: 1000px) {
+		.campo-dias {
+			grid-column: span 2;
+		}
 	}
 	.ayuda {
 		margin: 0;
