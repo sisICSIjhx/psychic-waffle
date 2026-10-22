@@ -78,6 +78,22 @@ describe('ResumenPrograma', () => {
 			.toBeInTheDocument();
 	});
 
+	it('una partida nueva muestra los valores anteriores vacíos', async () => {
+		render(ResumenPrograma, {
+			resultado: resultado(
+				[fila('25', { accion: 'crear', periodicidadAntes: null, periodicidad: 'cuatrimestral' })],
+				{ crear: 1, actualizar: 0, sinCambios: 0 }
+			),
+			token: 'tok',
+			nombreArchivo: 'programa.xlsx',
+			sitio: 'ERM 22222'
+		});
+		const celdas = [...document.querySelectorAll('tbody tr td')].map((c) =>
+			(c as HTMLElement).innerText.replace(/\s+/g, ' ').trim()
+		);
+		expect(celdas.slice(2, 5)).toEqual(['Crear por confirmar', '— → Cuatrimestral', '— → 4']);
+	});
+
 	it('sin cambios no ofrece aplicar', async () => {
 		render(ResumenPrograma, {
 			resultado: {

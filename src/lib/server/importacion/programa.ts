@@ -31,6 +31,9 @@ export interface PartidaPrograma {
 	cantidadAnual: number | null;
 	meses: { mes: string; cantidad: number }[];
 	realizados: { mes: string; cantidad: number }[];
+	/** Columnas marcadas por mes en las filas P y R, para recalcular si cambia la periodicidad. */
+	marcas: { mes: string; marcas: number }[];
+	marcasR: { mes: string; marcas: number }[];
 	/** Fila P en Excel (base 1). */
 	fila: number;
 	/** Pedir que se use la actividad del libro también en una partida existente. */
@@ -71,6 +74,22 @@ function mesDeCelda(valor: ValorCelda | undefined): { indice: number; anio: numb
 
 function clavesEn(valor: string): string[] {
 	return [...new Set([...normalizar(valor).matchAll(PATRON_CLAVE)].map((m) => m[1]))];
+}
+
+/**
+ * Cantidad de cada mes según las columnas marcadas: semanal y quincenal cuentan las marcas; diaria,
+ * los días del mes; el resto, 1 por mes marcado; «cuando aplique», nada.
+ */
+export function cantidadesDeMarcas(
+	periodicidad: Periodicidad,
+	marcas: { mes: string; marcas: number }[]
+): { mes: string; cantidad: number }[] {
+	return marcas.flatMap(({ mes, marcas: n }) => {
+		if (!n || periodicidad === 'cuando_aplique') return [];
+		if (periodicidad === 'semanal' || periodicidad === 'quincenal') return [{ mes, cantidad: n }];
+		if (periodicidad === 'diaria') return [{ mes, cantidad: cantidadDelMes('diaria', mes)! }];
+		return [{ mes, cantidad: 1 }];
+	});
 }
 
 /** Cinco dígitos de la clave del sitio («EM-30184» → «30184»). */
@@ -386,20 +405,20 @@ export function analizarProgramaAnual(
 				}
 				return { mes: r.mes, marcas };
 			});
-		const cantidadPorMes = (lista: { mes: string; marcas: number }[], esR: boolean) =>
-			lista.flatMap(({ mes, marcas }) => {
-				if (!marcas || periodicidad === 'cuando_aplique') return [];
-				if (periodicidad === 'semanal' || periodicidad === 'quincenal') {
-					return [{ mes, cantidad: marcas }];
-				}
-				if (periodicidad === 'diaria') return [{ mes, cantidad: cantidadDelMes('diaria', mes)! }];
-				if (marcas > 1 && !esR) {
-					avisar(numero, mes, fila + 1, `tiene ${marcas} marcas en ${mes.slice(0, 7)}; cuenta 1.`);
-				}
-				return [{ mes, cantidad: 1 }];
-			});
-		const meses = cantidadPorMes(contar(fila), false);
-		const realizados = filaR === -1 ? [] : cantidadPorMes(contar(filaR), true);
+		const marcas = contar(fila);
+		const marcasR = filaR === -1 ? [] : contar(filaR);
+		if (periodicidad !== 'semanal' && periodicidad !== 'quincenal' && periodicidad !== 'diaria') {
+			for (const m of marcas.filter((x) => x.marcas > 1)) {
+				avisar(
+					numero,
+					m.mes,
+					fila + 1,
+					`tiene ${m.marcas} marcas en ${m.mes.slice(0, 7)}; cuenta 1.`
+				);
+			}
+		}
+		const meses = cantidadesDeMarcas(periodicidad, marcas);
+		const realizados = cantidadesDeMarcas(periodicidad, marcasR);
 
 		// Advertencias del libro.
 		const total = meses.reduce((s, m) => s + m.cantidad, 0);
@@ -461,6 +480,8 @@ export function analizarProgramaAnual(
 			cantidadAnual: periodicidad === 'cuando_aplique' ? null : (valorCantidad as number | null),
 			meses,
 			realizados,
+			marcas,
+			marcasR,
 			fila: fila + 1
 		});
 	}
@@ -557,23 +578,18 @@ export function aplicarAjustes(
 		const periodicidad = ajustes.periodicidades.get(n);
 		const conActividad = ajustes.usarActividad.includes(n) ? { ...p, usarActividad: true } : p;
 		if (!periodicidad || periodicidad === p.periodicidad) return conActividad;
-		const recalcular = (lista: { mes: string; cantidad: number }[]) =>
-			lista.flatMap(({ mes, cantidad }) => {
-				if (periodicidad === 'cuando_aplique') return [];
-				if (periodicidad === 'semanal' || periodicidad === 'quincenal') return [{ mes, cantidad }];
-				if (periodicidad === 'diaria') return [{ mes, cantidad: cantidadDelMes('diaria', mes)! }];
-				return [{ mes, cantidad: 1 }];
-			});
 		const ajustada = {
 			...conActividad,
 			periodicidad,
 			cantidadAnual: periodicidad === 'cuando_aplique' ? null : p.cantidadAnual,
-			meses: recalcular(p.meses),
-			realizados: recalcular(p.realizados)
+			meses: cantidadesDeMarcas(periodicidad, p.marcas),
+			realizados: cantidadesDeMarcas(periodicidad, p.marcasR)
 		};
 		// Las advertencias que dependían de la periodicidad anterior se recalculan.
 		advertencias = advertencias.filter(
-			(a) => a.partida !== p.numero || !/es mensual y no tiene marca|las marcas suman/.test(a.texto)
+			(a) =>
+				a.partida !== p.numero ||
+				!/es mensual y no tiene marca|las marcas suman|marcas en \d/.test(a.texto)
 		);
 		const total = ajustada.meses.reduce((s, m) => s + m.cantidad, 0);
 		if (ajustada.cantidadAnual !== null && total !== ajustada.cantidadAnual) {

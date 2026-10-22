@@ -325,6 +325,28 @@ describe('ajustes del CLI y vigencia', () => {
 		);
 	});
 
+	it('al pasar una mensual a semanal conserva las marcas de cada mes', async () => {
+		const analisis = analizarProgramaAnual(
+			await hojasDe({
+				bloques: [
+					{
+						clave: '11111',
+						partidas: [mensual(1, { marcas: [0, 1, 2, 4], realizados: [0, 1] })]
+					}
+				]
+			}),
+			{ claveSitio: 'EM-11111' }
+		);
+		expect(analisis.advertencias.some((a) => /3 marcas en 2026-03/.test(a.texto))).toBe(true);
+		const ajustada = aplicarAjustes(analisis, analizarAjustes(['1=semanal'], []));
+		expect(ajustada.partidas[0].meses).toEqual([
+			{ mes: '2026-03-01', cantidad: 3 },
+			{ mes: '2026-04-01', cantidad: 1 }
+		]);
+		expect(ajustada.partidas[0].realizados).toEqual([{ mes: '2026-03-01', cantidad: 2 }]);
+		expect(ajustada.advertencias.some((a) => /marcas en 2026-03/.test(a.texto))).toBe(false);
+	});
+
 	it('valida la vigencia nueva contra el programa, los reportes y otros programas', () => {
 		const programa = { periodoInicio: '2026-03-01', periodoFin: '2027-02-28' };
 		const vigencia = { vigenciaInicio: '2026-03-01', vigenciaFin: '2027-02-28' };
@@ -522,6 +544,20 @@ describe('api_importar_programa sobre la base', () => {
 		await expect(repos.programa.importarPrograma(ajeno, true)).rejects.toThrow(
 			/no pertenece al contrato/
 		);
+	});
+
+	it('acorta el periodo de un programa existente reemplazando los meses que quedan fuera', async () => {
+		const corto = await carga();
+		corto.programa = { periodoInicio: '2026-03-01', periodoFin: '2026-12-31' };
+		corto.partidas = corto.partidas.map((p) => ({
+			...p,
+			meses: p.meses.filter((m) => m.mes <= '2026-12-01'),
+			realizados: p.realizados.filter((m) => m.mes <= '2026-12-01')
+		}));
+		const resultado = await repos.programa.importarPrograma(corto, false);
+		expect(resultado.programa.accion).toBe('actualizar');
+		const programa = (await repos.programa.listarProgramas({ contratoId }))[0];
+		expect(programa.periodoFin).toBe('2026-12-31');
 	});
 
 	it('no deja cambios si una partida es inválida', async () => {

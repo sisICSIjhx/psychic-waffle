@@ -114,12 +114,12 @@
 									>{/if}
 							</td>
 							<td>
-								{#if fila.periodicidadAntes && fila.periodicidadAntes !== fila.periodicidad}
+								{#if fila.periodicidadAntes !== fila.periodicidad}
 									{periodicidad(fila.periodicidadAntes)} → {periodicidad(fila.periodicidad)}
 								{:else}{periodicidad(fila.periodicidad)}{/if}
 							</td>
 							<td>
-								{#if fila.accion !== 'crear' && fila.cantidadAntes !== fila.cantidadAnual}
+								{#if fila.cantidadAntes !== fila.cantidadAnual}
 									{cantidad(fila.cantidadAntes)} → {cantidad(fila.cantidadAnual)}
 								{:else}{cantidad(fila.cantidadAnual)}{/if}
 							</td>

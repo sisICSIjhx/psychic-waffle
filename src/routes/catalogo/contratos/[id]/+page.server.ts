@@ -161,7 +161,7 @@ export const actions: Actions = {
 		const formulario = await request.formData();
 		const archivo = formulario.get('archivo');
 		const sitioId = texto(formulario, 'sitioId');
-		if (!(archivo instanceof File) || archivo.size === 0 || !/.xlsx$/i.test(archivo.name)) {
+		if (!(archivo instanceof File) || archivo.size === 0 || !/\.xlsx$/i.test(archivo.name)) {
 			return fail(400, { accion: 'importar', error: 'Seleccione un archivo de Excel (.xlsx).' });
 		}
 		if (archivo.size > TAMANO_MAXIMO_LIBRO) {

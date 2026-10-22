@@ -76,6 +76,22 @@ begin
 		or ((p -> 'programa') ? 'nombre' and programa.nombre is distinct from nombre_programa) then
 		accion_programa := 'actualizar';
 		if not ensayo then
+			-- Los meses de las partidas del libro se reemplazan después; los que quedarían fuera de un
+			-- periodo más corto se quitan antes para que validar_programa acepte el nuevo fin. Los de
+			-- otras partidas se conservan y, si quedan fuera, el trigger rechaza el cambio.
+			delete from public.programa_meses pm
+			using public.partidas t
+			where pm.programa_id = programa.id and pm.partida_id = t.id and pm.mes > fin
+				and t.numero_normalizado in (
+					select public.normalizar_numero_partida(e ->> 'numero')
+					from jsonb_array_elements(coalesce(p -> 'partidas', '[]'::jsonb)) e);
+			delete from public.programa_realizados_manuales x
+			using public.partidas t
+			where x.programa_id = programa.id and x.partida_id = t.id and x.mes > fin
+				and x.origen = 'importacion'
+				and t.numero_normalizado in (
+					select public.normalizar_numero_partida(e ->> 'numero')
+					from jsonb_array_elements(coalesce(p -> 'partidas', '[]'::jsonb)) e);
 			update public.programas set
 				periodo_fin = fin,
 				nombre = case when (p -> 'programa') ? 'nombre' then nombre_programa else nombre end
