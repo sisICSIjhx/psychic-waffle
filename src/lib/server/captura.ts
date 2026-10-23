@@ -28,6 +28,7 @@ import {
 	type FirmanteDocumento,
 	type ReporteDocumento
 } from './documentos/generar.ts';
+import { prepararImagen } from './documentos/imagenes.ts';
 import { ErrorFoto, procesarFoto } from './fotos.ts';
 import type { RutasFoto } from './repositorios/reportes.ts';
 import type { Repositorios } from './repositorios/index.ts';
@@ -63,6 +64,14 @@ export interface DocumentoDescargable {
 type MomentoFoto = (typeof MOMENTOS_FOTO)[number];
 
 const SIN_FIRMA: FirmanteDocumento = { nombre: '', cargo: '', empresa: '' };
+
+/** Miniatura del editor: 480 px de lado mayor (≈20 KB frente a ≈180 KB de la optimizada). */
+const MINIATURA = { ladoMayor: 480, calidad: 70 };
+
+/** «fotos/<reporte>/<uuid>.jpg» → «fotos/<reporte>/<uuid>-mini.jpg»; la ruta se deriva, no se guarda. */
+export function rutaMiniatura(rutaOptimizada: string): string {
+	return `${rutaOptimizada.replace(/\.jpe?g$/i, '')}-mini.jpg`;
+}
 
 export class ServicioCaptura {
 	private readonly repos: Repositorios;
@@ -180,6 +189,10 @@ export class ServicioCaptura {
 			};
 			await this.archivos.guardar(rutas.rutaOriginal, archivo.datos);
 			await this.archivos.guardar(rutas.rutaOptimizada, procesada.optimizada.datos);
+			// Sin miniatura la foto se registra igual: se genera la primera vez que se pide.
+			await this.guardarMiniatura(rutas.rutaOptimizada, procesada.optimizada.datos).catch(
+				() => undefined
+			);
 			try {
 				const { foto, version } = await this.repos.reportes.agregarFoto({
 					reporteId: entrada.reporteId,
@@ -208,6 +221,26 @@ export class ServicioCaptura {
 		const foto = reporte.alcances.flatMap((a) => a.fotos).find((f) => f.id === fotoId);
 		if (!foto) return null;
 		return { datos: await this.archivos.leer(foto.rutaOptimizada), foto };
+	}
+
+	/** Lee la miniatura de una foto del reporte; si falta, la genera desde la optimizada y la guarda. */
+	async leerMiniatura(reporte: Reporte, fotoId: string): Promise<Buffer | null> {
+		const foto = reporte.alcances.flatMap((a) => a.fotos).find((f) => f.id === fotoId);
+		if (!foto) return null;
+		const existente = await this.archivos
+			.leer(rutaMiniatura(foto.rutaOptimizada))
+			.catch(() => null);
+		if (existente) return existente;
+		return this.guardarMiniatura(
+			foto.rutaOptimizada,
+			await this.archivos.leer(foto.rutaOptimizada)
+		);
+	}
+
+	private async guardarMiniatura(rutaOptimizada: string, optimizada: Uint8Array): Promise<Buffer> {
+		const { datos } = await prepararImagen(optimizada, MINIATURA);
+		await this.archivos.guardar(rutaMiniatura(rutaOptimizada), datos);
+		return datos;
 	}
 
 	async validar(reporte: Reporte): Promise<Observacion[]> {
@@ -353,6 +386,7 @@ export class ServicioCaptura {
 		for (const { rutaOriginal, rutaOptimizada } of rutas) {
 			await this.archivos.eliminar(rutaOriginal).catch(() => undefined);
 			await this.archivos.eliminar(rutaOptimizada).catch(() => undefined);
+			await this.archivos.eliminar(rutaMiniatura(rutaOptimizada)).catch(() => undefined);
 		}
 	}
 }

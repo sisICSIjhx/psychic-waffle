@@ -9,7 +9,7 @@ import type { Partida, Reporte } from '../dominio/esquemas';
 import { AlmacenamientoLocal } from './almacenamiento';
 import type { ClienteSql } from './bd/cliente';
 import { crearClientePglite } from './bd/pglite';
-import { ErrorValidacion, ServicioCaptura } from './captura';
+import { ErrorValidacion, rutaMiniatura, ServicioCaptura } from './captura';
 import { texto } from './documentos/ooxml';
 import { crearRepositorios, type Repositorios } from './repositorios/index';
 
@@ -276,5 +276,96 @@ describe('recorrido completo de la captura', () => {
 				})
 			)
 		).toEqual(['seleccion']);
+	});
+});
+
+describe('miniaturas de las fotos', () => {
+	const existe = (ruta: string) =>
+		new AlmacenamientoLocal(carpeta)
+			.leer(ruta)
+			.then(() => true)
+			.catch(() => false);
+
+	async function conFoto(otro: ServicioCaptura = servicio) {
+		const reporte = await crear();
+		const carga = await otro.cargarFotos({
+			reporteId: reporte.id,
+			alcanceId: reporte.alcances[0].id,
+			version: reporte.version,
+			momento: null,
+			archivos: [
+				{
+					nombre: 'grande.jpg',
+					datos: await sharp({
+						create: { width: 2000, height: 1500, channels: 3, background: '#335577' }
+					})
+						.jpeg()
+						.toBuffer()
+				}
+			]
+		});
+		return { reporte: await servicio.obtener(reporte.id), foto: carga.fotos[0] };
+	}
+
+	it('genera al cargar una miniatura de 480 px junto a la optimizada', async () => {
+		const { foto } = await conFoto();
+		expect(rutaMiniatura(foto.rutaOptimizada)).toBe(
+			foto.rutaOptimizada.replace(/\.jpg$/, '-mini.jpg')
+		);
+		const datos = await new AlmacenamientoLocal(carpeta).leer(rutaMiniatura(foto.rutaOptimizada));
+		const { width, height } = await sharp(datos).metadata();
+		expect([width, height]).toEqual([480, 360]);
+	});
+
+	it('registra la foto aunque no se pueda crear la miniatura', async () => {
+		const local = new AlmacenamientoLocal(carpeta);
+		const fallida = new ServicioCaptura(repos, {
+			guardar: (ruta, datos) =>
+				ruta.endsWith('-mini.jpg')
+					? Promise.reject(new Error('disco lleno'))
+					: local.guardar(ruta, datos),
+			leer: (ruta) => local.leer(ruta),
+			eliminar: (ruta) => local.eliminar(ruta)
+		});
+		const { reporte, foto } = await conFoto(fallida);
+		expect(reporte.alcances[0].fotos.map((f) => f.id)).toEqual([foto.id]);
+		expect(await existe(rutaMiniatura(foto.rutaOptimizada))).toBe(false);
+
+		// La primera lectura la genera y la conserva para la siguiente.
+		const generada = await servicio.leerMiniatura(reporte, foto.id);
+		expect((await sharp(generada!).metadata()).width).toBe(480);
+		expect(await existe(rutaMiniatura(foto.rutaOptimizada))).toBe(true);
+		expect(await servicio.leerMiniatura(reporte, 'otra')).toBeNull();
+	});
+
+	it('quitar una foto borra sus tres archivos salvo si los comparte una revisión', async () => {
+		const { reporte, foto } = await conFoto();
+		const rutas = [foto.rutaOriginal, foto.rutaOptimizada, rutaMiniatura(foto.rutaOptimizada)];
+		const guardado = aGuardado(reporte);
+		guardado.diasEjecucion = [{ desde: '2026-06-18', hasta: '2026-06-18' }];
+		for (const alcance of guardado.alcances) alcance.estadoVerificacion = 'ok';
+		const capturado = await servicio.guardar(guardado);
+		const enRevision = await servicio.cambiarEstado(capturado.id, capturado.version, 'en_revision');
+		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
+
+		// La revisión comparte los archivos con el emitido: quitarla ahí no borra ninguno.
+		const revision = await servicio.crearRevision(emitido.id);
+		const sinFoto = aGuardado(revision);
+		sinFoto.alcances[0].fotos = [];
+		await servicio.guardar(sinFoto);
+		for (const ruta of rutas) expect(await existe(ruta)).toBe(true);
+
+		// En un borrador que es el único dueño, se borran original, optimizada y miniatura.
+		const otro = await conFoto();
+		const propias = [
+			otro.foto.rutaOriginal,
+			otro.foto.rutaOptimizada,
+			rutaMiniatura(otro.foto.rutaOptimizada)
+		];
+		for (const ruta of propias) expect(await existe(ruta)).toBe(true);
+		const vacio = aGuardado(otro.reporte);
+		vacio.alcances[0].fotos = [];
+		await servicio.guardar(vacio);
+		for (const ruta of propias) expect(await existe(ruta)).toBe(false);
 	});
 });

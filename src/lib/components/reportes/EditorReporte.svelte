@@ -176,6 +176,8 @@
 	let cargas: Record<string, { total: number; hechas: number }> = {};
 	/** Alcances y fotos quitados que aún pueden deshacerse, con su notificación. */
 	let bajas: Record<string, number> = {};
+	/** Fotos con un reemplazo en curso. */
+	let reemplazando: Record<string, boolean> = {};
 	let dialogoEmision = false;
 	let ocupado = false;
 	let confirmarOmitirTabla = false;
@@ -384,6 +386,106 @@
 		}
 	}
 
+	/**
+	 * Reemplaza una foto conservando su posición, alcance, descripción y espacio (D7): la nueva se sube
+	 * como cualquier carga y la anterior se quita con «Deshacer», que además saca la nueva.
+	 */
+	async function reemplazarFoto(fotoId: string, archivo: File, pie: string) {
+		const buscar = () => {
+			for (const alcance of reporte.alcances) {
+				const indice = alcance.fotos.findIndex((f) => f.id === fotoId);
+				if (indice !== -1) return { alcance, indice, foto: alcance.fotos[indice] };
+			}
+			return null;
+		};
+		const inicial = buscar();
+		if (!inicial || reemplazando[fotoId]) return;
+		if (!Object.keys(cargas).length) rechazadas = [];
+		reemplazando = { ...reemplazando, [fotoId]: true };
+		await encolar(async () => {
+			try {
+				if (!(await guardar())) {
+					rechazadas = [
+						...rechazadas,
+						{
+							nombre: archivo.name,
+							motivo:
+								'No se reemplazó porque el reporte no se pudo guardar antes; vuelva a intentarlo.'
+						}
+					];
+					return;
+				}
+				const antes = buscar() ?? inicial;
+				const datos = new FormData();
+				datos.set('alcanceId', antes.alcance.id);
+				datos.set('version', String(reporte.version));
+				if (antes.foto.momento) datos.set('momento', antes.foto.momento);
+				datos.append('archivo', archivo);
+				const resultado = await enviar('fotos', datos, ruta);
+				if (!resultado.ok) {
+					manejarFallo(resultado);
+					rechazadas = [...rechazadas, { nombre: archivo.name, motivo: mensaje }];
+					return;
+				}
+				rechazadas = [
+					...rechazadas,
+					...(resultado.datos.rechazadas as { nombre: string; motivo: string }[])
+				];
+				reporte.version = resultado.datos.version as number;
+				const subida = (resultado.datos.fotos as Foto[])[0];
+				if (!subida) return;
+				const actual = buscar();
+				if (actual && !bajas[fotoId]) {
+					const nueva: Foto = {
+						...subida,
+						alcanceId: actual.alcance.id,
+						descripcion: actual.foto.descripcion,
+						momento: actual.foto.momento
+					};
+					reporte.alcances = reporte.alcances.map((a) =>
+						a.id === actual.alcance.id
+							? {
+									...a,
+									fotos: [
+										...a.fotos.slice(0, actual.indice),
+										nueva,
+										...a.fotos.slice(actual.indice)
+									]
+								}
+							: a
+					);
+					quitarConDeshacer(fotoId, `Se reemplazó la ${pie}.`, () => sacarFoto(nueva.id));
+				} else {
+					// La anterior se quitó o se movió mientras esperaba: la nueva queda al final del alcance.
+					reporte.alcances = reporte.alcances.map((a) =>
+						a.id === antes.alcance.id ? { ...a, fotos: [...a.fotos, subida] } : a
+					);
+					notificaciones.mostrar({
+						mensaje: `La ${pie} ya no estaba en su lugar; la foto nueva quedó al final del alcance.`
+					});
+				}
+			} finally {
+				const resto = { ...reemplazando };
+				delete resto[fotoId];
+				reemplazando = resto;
+			}
+		});
+	}
+
+	/** Saca la foto del reporte; el siguiente guardado la elimina en el servidor. */
+	function sacarFoto(fotoId: string) {
+		reporte.alcances = reporte.alcances.map((a) =>
+			a.fotos.some((f) => f.id === fotoId)
+				? { ...a, fotos: a.fotos.filter((f) => f.id !== fotoId) }
+				: a
+		);
+	}
+
+	/** «Deshacer» desde la vista ampliada, donde la notificación global queda inerte. */
+	function deshacerBaja(id: string) {
+		if (bajas[id] !== undefined) notificaciones.deshacer(bajas[id]);
+	}
+
 	function avanzarCarga(alcanceId: string) {
 		const carga = cargas[alcanceId];
 		if (!carga) return;
@@ -441,12 +543,15 @@
 	}
 
 	/** Oculta el alcance o la foto y ofrece «Deshacer»; la baja se aplica al vencer el plazo. */
-	function quitarConDeshacer(id: string, aviso: string) {
+	function quitarConDeshacer(id: string, aviso: string, alDeshacer?: () => void) {
 		const notificacion = notificaciones.mostrar({
 			mensaje: aviso,
 			textoDeshacer: 'Deshacer',
 			plazo: plazoDeshacer,
-			alDeshacer: () => olvidarBaja(id),
+			alDeshacer: () => {
+				olvidarBaja(id);
+				alDeshacer?.();
+			},
 			alVencer: () => aplicarBaja(id)
 		});
 		bajas = { ...bajas, [id]: notificacion };
@@ -460,11 +565,8 @@
 
 	function aplicarBaja(id: string) {
 		olvidarBaja(id);
-		reporte.alcances = reporte.alcances
-			.filter((a) => a.id !== id)
-			.map((a) =>
-				a.fotos.some((f) => f.id === id) ? { ...a, fotos: a.fotos.filter((f) => f.id !== id) } : a
-			);
+		reporte.alcances = reporte.alcances.filter((a) => a.id !== id);
+		sacarFoto(id);
 	}
 
 	/** Antes de guardar para salir, descargar o cambiar de estado, las bajas pendientes se aplican. */
@@ -1111,11 +1213,13 @@
 								<FotosAlcance
 									bind:fotos={alcance.fotos}
 									posicionAlcance={numero}
+									tituloAlcance={alcance.titulo}
 									disposicion={reporte.disposicionFotos}
 									reporteId={conImagenes ? reporte.id : ''}
 									soloLectura={!editable}
 									progreso={cargas[alcance.id] ?? null}
 									ocultas={bajas}
+									{reemplazando}
 									otrosAlcances={visible.alcances
 										.map((a, j) => ({ id: a.id, etiqueta: `2.${j + 1} ${a.titulo}` }))
 										.filter((a) => a.id !== alcance.id)}
@@ -1123,6 +1227,9 @@
 									on:mover={(e) => moverFoto(alcance.id, e.detail.fotoId, e.detail.alcanceId)}
 									on:quitar={(e) =>
 										quitarConDeshacer(e.detail.fotoId, `Se quitó la ${e.detail.pie}.`)}
+									on:reemplazar={(e) =>
+										reemplazarFoto(e.detail.fotoId, e.detail.archivo, e.detail.pie)}
+									on:deshacer={(e) => deshacerBaja(e.detail.fotoId)}
 								/>
 								{#if reporte.incluyeVerificacion}
 									{@const conObservacion = alcance.estadoVerificacion === 'con_observacion'}
