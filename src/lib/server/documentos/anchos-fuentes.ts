@@ -1,9 +1,10 @@
 // Generado por scripts/extraer-anchos-fuentes.ts; no editar a mano.
 // Solo números de métricas (unidades por em, métricas verticales, avance por carácter con -1 si la
 // fuente no lo tiene, y pares de kerning [izquierda, derecha, valor]) para el modelo de paginación.
-// Arial normal y negrita: avances iguales a Arimo y Liberation Sans (Apache 2.0 / OFL). Aptos normal y
-// cursiva: caché de Office del equipo de desarrollo, versionadas como números con la aceptación del
-// usuario (2026-10-21). Open Sans normal: fuente incrustada en la plantilla (OFL).
+// Arial normal y negrita: arial.ttf y arialbd.ttf de Windows (avances idénticos a Arimo y Liberation
+// Sans). Aptos normal y cursiva: caché de Office. Ambas del equipo de desarrollo y versionadas solo como
+// números con la aceptación del usuario (2026-10-21). Open Sans normal: fuente incrustada en la
+// plantilla (OFL).
 export interface AnchosFuente {
 	nombre: string;
 	upem: number;

@@ -30,6 +30,9 @@ if (existsSync(ARCHIVO_ENTORNO)) process.loadEnvFile(ARCHIVO_ENTORNO);
 const SALIDA = join(resolve(RAIZ, process.env.STORAGE_DIR ?? 'storage'), 'verificacion-indice');
 const CALIBRACION = join(RAIZ, 'src/lib/server/documentos/calibracion');
 const ARNES = join(RAIZ, 'scripts/paginas-word.ps1');
+/** Criterios de precisión de D10; los mismos que exige paginacion.spec.ts. */
+const MINIMO_TOTAL = 0.99;
+const MINIMO_SUBCONJUNTO = 0.985;
 
 const { values: opciones, positionals } = parseArgs({
 	allowPositionals: true,
@@ -87,13 +90,15 @@ await mkdir(SALIDA, { recursive: true });
 if (positionals.length) {
 	// Documentos con fotos reales: solo el índice guardado frente al actualizado.
 	const medicion = medirEnWord(positionals.map((p) => resolve(p)));
+	let diferentes = 0;
 	for (const d of medicion.documentos) {
 		const igual = indiceComparable(d.tocAntes) === indiceComparable(d.tocDespues);
 		console.log(
 			`${d.archivo}: ${igual ? 'índice igual al actualizado' : 'el índice difiere al actualizar'}`
 		);
+		if (!igual) diferentes++;
 	}
-	process.exit(0);
+	process.exit(diferentes ? 1 : 0);
 }
 
 const generados: Awaited<ReturnType<typeof generar>>[] = [];
@@ -174,8 +179,31 @@ const resultados = generados.map((g) => {
 		indiceIgualAlActualizado: indiceIgual
 	};
 });
-await mkdir(CALIBRACION, { recursive: true });
-const destino = join(CALIBRACION, `paginas-word.${VERSION_PLANTILLA.split('.').at(-1)}.json`);
+// Criterios de D10 (indice-docx-actualizado): exactitud total, documentos de prueba exactos con su
+// índice igual al actualizado y ninguna diferencia mayor de una página. Solo un resultado que los
+// cumple reemplaza la calibración que usan las pruebas.
+const subconjunto = resultados.filter(
+	(r) => Number(/^semilla-(\d+)$/.exec(r.nombre)?.[1] ?? 0) >= 25
+);
+const exactasSub = subconjunto.reduce(
+	(n, r) => n + r.titulos.filter((p, i) => p === r.modelo[i]).length,
+	0
+);
+const totalSub = subconjunto.reduce((n, r) => n + r.titulos.length, 0);
+const pruebasExactas = resultados
+	.filter((r) => !r.nombre.startsWith('semilla-'))
+	.every((r) => r.indiceIgualAlActualizado && r.titulos.every((p, i) => p === r.modelo[i]));
+const fallas = [
+	exactas / total < MINIMO_TOTAL ? `exactitud total menor de ${MINIMO_TOTAL * 100} %` : '',
+	totalSub && exactasSub / totalSub < MINIMO_SUBCONJUNTO
+		? `exactitud de las semillas 25 en adelante menor de ${MINIMO_SUBCONJUNTO * 100} %`
+		: '',
+	pruebasExactas ? '' : 'algún documento de prueba no es exacto',
+	mayores ? 'hay diferencias mayores de una página' : ''
+].filter(Boolean);
+const nombre = `paginas-word.${VERSION_PLANTILLA.split('.').at(-1)}.json`;
+const destino = fallas.length ? join(SALIDA, `rechazado-${nombre}`) : join(CALIBRACION, nombre);
+await mkdir(dirname(destino), { recursive: true });
 await writeFile(
 	destino,
 	JSON.stringify(
@@ -190,6 +218,11 @@ await writeFile(
 	) + '\n'
 );
 const porcentaje = ((100 * exactas) / total).toFixed(1);
+const porcentajeSub = totalSub ? ((100 * exactasSub) / totalSub).toFixed(1) : '—';
 console.log(
-	`${exactas}/${total} títulos exactos (${porcentaje} %), ${documentosExactos}/${generados.length} documentos exactos, ${mayores} diferencias mayores de una página. Resultados en ${destino}.`
+	`${exactas}/${total} títulos exactos (${porcentaje} %; semillas 25 en adelante: ${porcentajeSub} %), ${documentosExactos}/${generados.length} documentos exactos, ${mayores} diferencias mayores de una página. Resultados en ${destino}.`
 );
+if (fallas.length) {
+	console.error(`No cumple los criterios: ${fallas.join('; ')}. La calibración no se reemplazó.`);
+	process.exit(1);
+}

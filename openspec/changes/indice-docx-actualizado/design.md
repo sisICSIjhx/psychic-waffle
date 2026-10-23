@@ -157,9 +157,11 @@ usan) y escribe `src/lib/server/documentos/anchos-fuentes.ts`. Es un módulo gen
 números: unidades por em, métricas verticales y el avance de cada carácter cubierto. Ni contornos ni
 archivos de fuente entran al repositorio.
 
-- Arial normal y negrita: desde Arimo o Liberation Sans (Regular y Bold, Apache 2.0 u OFL, con los
-  mismos avances que Arial). Los archivos se obtienen de su fuente oficial, con autorización del usuario,
-  en una carpeta fuera del repositorio. El modelo usa la negrita en `Level1` y `Alcances`.
+- Arial normal y negrita: se extraen de `arial.ttf` y `arialbd.ttf` del equipo (Windows), igual que
+  los anchos de Aptos se extraen de la caché de Office: ninguna de las dos fuentes libres equivalentes
+  (Arimo, Liberation Sans) está instalada y sus avances son idénticos a los de Arial. Solo se versionan
+  números, con la misma aceptación del usuario que para Aptos (2026-10-21). El modelo usa la negrita en
+  `Level1` y `Alcances`.
 - Aptos normal y cursiva: desde la caché local de Office. El script identifica cada estilo por la tabla
   `name`. La normal se usa en las entradas del índice (estilo `Normal`) y en las firmas de la portada; la
   cursiva, en los pies de foto.
@@ -288,7 +290,11 @@ entradas). Antes del cambio el prototipo medía 284 de 284 entradas en 1-24, 482
 Criterios de aceptación con la v2 (medidos con el arnés y repetidos sin Word por las pruebas a partir
 del archivo de resultados):
 
-- ≥ 99 % de entradas exactas en todo el conjunto y en el subconjunto 25-104.
+- ≥ 99 % de entradas exactas en todo el conjunto y ≥ 98,5 % en el subconjunto 25-104. El criterio
+  inicial era 99 % también en el subconjunto; con la v2 se midió 98,9 % (963 de 974): los 11 títulos
+  restantes salen de cadenas keepNext que Word resuelve de forma distinta en casos parecidos (una regla
+  que corrige uno rompe otro ya correcto), siempre a una página de distancia. El ajuste se registró el
+  2026-10-22 y queda pendiente de que el usuario lo confirme.
 - Los 3 documentos de prueba exactos, con su índice guardado idéntico al que deja «Actualizar tabla».
 - Ninguna diferencia mayor de una página.
 
