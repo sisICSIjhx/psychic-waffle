@@ -152,7 +152,7 @@ Virtual, y ningún archivo lleva nombres de firmantes ni de reportes: las prueba
 
 ## 7. Base de desarrollo
 
-- [ ] 7.1 Detener el servidor de desarrollo, respaldar `storage/pglite` fuera del repositorio y
+- [x] 7.1 Detener el servidor de desarrollo, respaldar `storage/pglite` fuera del repositorio y
       reiniciarlo para aplicar `0018`; verificar que la pantalla de cada contrato carga con «Sin cambios
       registrados» y que los borradores existentes no muestran el aviso de datos del contrato. No
       corregir datos reales: los provisionales de Proagro y Virtual los corrige el usuario desde la
@@ -160,8 +160,8 @@ Virtual, y ningún archivo lleva nombres de firmantes ni de reportes: las prueba
 
 ## 8. Cierre
 
-- [ ] 8.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores.
-- [ ] 8.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro, sobre una copia de
+- [x] 8.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores.
+- [x] 8.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro, sobre una copia de
       `storage/pglite` (y restaurar el respaldo al terminar, para no dejar registros de prueba en la
       bitácora): editar el contrato, corregir un sitio, cambiar un firmante, el diálogo con motivo y el
       historial, y el aviso en el editor; comprobar contraste AA, foco visible en el diálogo y sin

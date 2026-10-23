@@ -22,7 +22,7 @@ export const ETIQUETA_CAMPO: Record<string, string> = {
 	vigenteHasta: 'Vigente hasta',
 	sitio: 'Sitio',
 	usuario: 'Usuario',
-	contrato: 'Contrato',
+	contrato: 'Número de contrato',
 	'firmantes.elaboro': 'Firma de Elaboró',
 	'firmantes.aprobo': 'Firma de Aprobó',
 	'firmantes.recibio': 'Firma de Recibió'

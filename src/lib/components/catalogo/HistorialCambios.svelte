@@ -92,6 +92,7 @@
 		font-weight: 600;
 	}
 	.lista {
+		min-width: 18ch;
 		margin: 0;
 		padding-left: 16px;
 		overflow-wrap: anywhere;

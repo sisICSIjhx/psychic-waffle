@@ -932,7 +932,7 @@ describe('EditorReporte: datos del contrato cambiados', () => {
 			enviar
 		});
 		await expect
-			.element(page.getByText(/Los datos del contrato cambiaron \(contrato\)/))
+			.element(page.getByText(/Los datos del contrato cambiaron \(número de contrato\)/))
 			.toBeInTheDocument();
 		await expect
 			.element(page.getByRole('link', { name: 'Ver el contrato' }))
