@@ -21,10 +21,13 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw error;
 	}
 	const { partida, cambiado } = await servicio.estadoCatalogo(reporte);
+	const contrato = await servicio.estadoContrato(reporte);
 	return {
 		reporte,
 		equiposPartida: partida.equipos,
 		catalogoCambiado: cambiado,
+		contratoCambiado: contrato.cambiado,
+		camposContrato: contrato.datos.map((d) => d.campo),
 		partidaPorConfirmar: partida.estadoCatalogo === 'por_confirmar'
 	};
 };
@@ -127,6 +130,19 @@ export const actions: Actions = {
 			const reporte = await (
 				await captura()
 			).aplicarCatalogo(params.id, numero(formulario, 'version'));
+			return { reporte };
+		} catch (error) {
+			return fallo(error);
+		}
+	},
+
+	// Lleva al borrador los datos vigentes del contrato (usuario, número, sitio y firmantes).
+	actualizarContrato: async ({ request, params }) => {
+		const formulario = await request.formData();
+		try {
+			const reporte = await (
+				await captura()
+			).actualizarContrato(params.id, numero(formulario, 'version'));
 			return { reporte };
 		} catch (error) {
 			return fallo(error);

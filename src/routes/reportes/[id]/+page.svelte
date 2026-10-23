@@ -26,6 +26,8 @@
 		reporte={data.reporte}
 		equiposPartida={data.equiposPartida}
 		catalogoCambiado={data.catalogoCambiado}
+		contratoCambiado={data.contratoCambiado}
+		camposContrato={data.camposContrato}
 		partidaPorConfirmar={data.partidaPorConfirmar}
 	/>
 {/key}

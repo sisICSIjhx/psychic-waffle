@@ -1,18 +1,29 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { resumenEfectos } from '$lib/dominio/bitacora';
 	import type {
 		Contrato,
 		Equipo,
 		Firmante,
+		PaginaCambios,
 		PartidaResumen,
 		Programa,
+		ResultadoEdicion,
+		ResumenSitio,
 		Sitio
 	} from '$lib/dominio/esquemas';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import TextField from '$lib/components/fields/TextField.svelte';
+	import { notificaciones } from '$lib/components/ui/notificaciones';
 	import Aviso from './Aviso.svelte';
+	import DatosContrato from './DatosContrato.svelte';
+	import DialogoCambioCatalogo from './DialogoCambioCatalogo.svelte';
+	import FirmantesContrato from './FirmantesContrato.svelte';
+	import HistorialCambios from './HistorialCambios.svelte';
+	import SitiosContrato from './SitiosContrato.svelte';
 	import ResumenImportacion from './ResumenImportacion.svelte';
 	import ResumenPrograma from './ResumenPrograma.svelte';
 
@@ -24,10 +35,13 @@
 	export let equipos: Equipo[] = [];
 	export let firmantes: Firmante[] = [];
 	export let programas: Programa[] = [];
+	export let resumenSitios: ResumenSitio[] = [];
+	export let cambios: PaginaCambios = { total: 0, pagina: 1, tamano: 20, filas: [] };
+	export let historialAbierto = false;
+	export let permisos = { editarCatalogo: true };
 	// Resultado de la última acción (forma flexible: cada acción devuelve campos distintos).
 	export let form: Record<string, unknown> | null = null;
 
-	const FUNCIONES = { elaboro: 'Elaboró', aprobo: 'Aprobó', recibio: 'Recibió' } as const;
 	const PERIODICIDAD: Record<string, string> = {
 		diaria: 'Diaria',
 		semanal: 'Semanal',
@@ -41,8 +55,7 @@
 		cuando_aplique: 'Cuando aplique'
 	};
 
-	// Formularios de equipo y firmante: sirven para agregar y, con «Editar», para corregir una fila
-	// (llevan su id). Los firmantes que propone el Excel prellenan el formulario para confirmarlos.
+	// Formulario de equipo: sirve para agregar y, con «Editar», para corregir una fila (lleva su id).
 	const equipoVacio = () => ({
 		id: '',
 		tag: '',
@@ -52,19 +65,10 @@
 		rango: '',
 		numeroSerie: ''
 	});
-	const firmanteVacio = () => ({
-		id: '',
-		funcion: 'elaboro',
-		nombre: '',
-		cargo: '',
-		empresa: '',
-		vigenteDesde: contrato.vigenciaInicio,
-		vigenteHasta: ''
-	});
 	let equipo = equipoVacio();
-	let firmante = firmanteVacio();
 	let equipoAbierto = false;
-	let firmanteAbierto = false;
+	/** Firmante que propone el Excel importado, para prellenar el alta. */
+	let propuesto: { nombre: string; cargo: string; empresa: string } | null = null;
 
 	async function enfocar(id: string) {
 		// Espera a que se abra el panel del formulario antes de enfocar el campo.
@@ -86,29 +90,55 @@
 		enfocar('equipo-tag');
 	}
 
-	function editarFirmante(f: Firmante) {
-		firmante = {
-			id: f.id,
-			funcion: f.funcion,
-			nombre: f.nombre,
-			cargo: f.cargo,
-			empresa: f.empresa,
-			vigenteDesde: f.vigenteDesde,
-			vigenteHasta: f.vigenteHasta ?? ''
+	// Corrección del catálogo: el ensayo abre la confirmación; la aplicación avisa sus efectos y
+	// recarga los datos. Ante un conflicto de versión también se recargan.
+	let dialogoAbierto = false;
+	let ensayo: { campos: Record<string, string>; resultado: ResultadoEdicion } | null = null;
+	let ultimoEnsayo: unknown = null;
+	$: if (form?.accion === 'ensayarCambio' && form.resultado && form !== ultimoEnsayo) {
+		ultimoEnsayo = form;
+		ensayo = {
+			campos: form.campos as Record<string, string>,
+			resultado: form.resultado as ResultadoEdicion
 		};
-		firmanteAbierto = true;
-		enfocar('firmante-nombre');
+		dialogoAbierto = true;
 	}
+	$: errorEnsayo =
+		form?.accion === 'ensayarCambio' && !form.resultado
+			? (form as {
+					tipo?: string;
+					error?: string;
+					motivo?: string | null;
+					detalle?: Record<string, unknown>;
+				})
+			: null;
+	const errorDe = (tipos: string[]) =>
+		errorEnsayo && tipos.includes(String(errorEnsayo.tipo)) ? errorEnsayo : null;
 
-	function usarPropuesto(propuesto: { nombre: string; cargo: string; empresa: string }) {
-		firmante = {
-			...firmanteVacio(),
-			nombre: propuesto.nombre,
-			cargo: propuesto.cargo,
-			empresa: propuesto.empresa
+	const alAplicar: SubmitFunction =
+		() =>
+		async ({ result, update }) => {
+			if (result.type === 'success') {
+				const efectos = resumenEfectos(
+					(result.data?.efectos as Record<string, unknown> | undefined) ?? {}
+				);
+				notificaciones.mostrar({
+					mensaje: ['Cambio guardado y registrado en el historial.', efectos.join(', ')]
+						.filter(Boolean)
+						.join(' ')
+				});
+			}
+			await update({ reset: false });
+			if (result.type === 'failure' && result.status === 409) await invalidateAll();
 		};
-		firmanteAbierto = true;
-		enfocar('firmante-nombre');
+
+	function enlacePagina(pagina: number): string {
+		const consulta = [
+			sitio ? `sitio=${sitio.id}` : '',
+			estado !== 'todas' ? `estado=${estado}` : '',
+			`cambios=${pagina}`
+		].filter(Boolean);
+		return `${resolve('/catalogo/contratos/[id]', { id: contrato.id })}?${consulta.join('&')}`;
 	}
 
 	// Tras guardar con éxito se vacía el formulario; si falla, se conserva lo capturado.
@@ -124,22 +154,18 @@
 		(evento.currentTarget as HTMLSelectElement).form?.requestSubmit();
 	}
 
-	$: aviso = form as { mensaje?: string; error?: string } | null;
+	// Los errores del ensayo se muestran junto a sus campos, no en el aviso general.
+	$: aviso = (form?.accion === 'ensayarCambio' ? null : form) as {
+		mensaje?: string;
+		error?: string;
+	} | null;
 </script>
 
 <p class="migas">
 	<a class="enlace" href={resolve('/catalogo')}>Catálogo</a> / Contrato {contrato.numero}
 </p>
 
-<section class="card" aria-labelledby="titulo-contrato">
-	<h2 id="titulo-contrato" class="view-heading">
-		{contrato.cliente?.razonSocial ?? ''} · Contrato {contrato.numero}
-	</h2>
-	<p class="view-note">
-		Vigencia del {contrato.vigenciaInicio} al {contrato.vigenciaFin}.
-		{#if contrato.vigente}<span class="status-badge vigente">Vigente</span>{/if}
-	</p>
-</section>
+<DatosContrato {contrato} puedeEditar={permisos.editarCatalogo} error={errorDe(['contrato'])} />
 
 <Aviso form={aviso} />
 
@@ -156,19 +182,27 @@
 			<input type="hidden" name="estado" value={estado} />
 			<noscript><button type="submit">Ver</button></noscript>
 		</form>
+		<SitiosContrato
+			{sitios}
+			resumen={resumenSitios}
+			puedeEditar={permisos.editarCatalogo}
+			error={errorDe(['sitio', 'quitarSitio'])}
+		/>
 	{:else}
 		<p class="view-note">El contrato aún no tiene sitios.</p>
 	{/if}
-	<details>
-		<summary>Asociar un sitio</summary>
-		<form method="POST" action="?/asociarSitio" use:enhance class="form-grid">
-			<TextField label="Clave (EM/ERM)" name="clave" placeholder="EM-30167" />
-			<TextField label="Nombre" name="nombre" placeholder="CERRITOS" />
-			<div class="form-group acciones-formulario">
-				<button class="boton primario" type="submit">Asociar</button>
-			</div>
-		</form>
-	</details>
+	{#if permisos.editarCatalogo}
+		<details>
+			<summary>Asociar un sitio</summary>
+			<form method="POST" action="?/asociarSitio" use:enhance class="form-grid">
+				<TextField label="Clave (EM/ERM)" name="clave" placeholder="EM-30167" />
+				<TextField label="Nombre" name="nombre" placeholder="CERRITOS" />
+				<div class="form-group acciones-formulario">
+					<button class="boton primario" type="submit">Asociar</button>
+				</div>
+			</form>
+		</details>
+	{/if}
 </section>
 
 {#if sitio}
@@ -281,7 +315,7 @@
 				advertencias={(form.advertencias as string[]) ?? []}
 				firmantesPropuestos={(form.firmantesPropuestos as never[]) ?? []}
 				encabezado={form.encabezado as never}
-				on:usarFirmante={(e) => usarPropuesto(e.detail)}
+				on:usarFirmante={(e) => (propuesto = { ...e.detail })}
 			/>
 		{/if}
 	</section>
@@ -377,95 +411,22 @@
 
 <section class="card" aria-labelledby="titulo-firmantes">
 	<h2 id="titulo-firmantes" class="view-heading">Firmantes del contrato</h2>
-	{#if firmantes.length}
-		<div class="tabla-desplazable">
-			<table>
-				<thead
-					><tr
-						><th>Función</th><th>Nombre</th><th>Cargo</th><th>Empresa</th><th>Vigencia</th><th
-							><span class="sr-only">Acciones</span></th
-						></tr
-					></thead
-				>
-				<tbody>
-					{#each firmantes as f (f.id)}
-						<tr>
-							<td>{FUNCIONES[f.funcion]}</td>
-							<td>{f.nombre}</td>
-							<td>{f.cargo}</td>
-							<td>{f.empresa}</td>
-							<td>{f.vigenteDesde} {f.vigenteHasta ? `a ${f.vigenteHasta}` : 'en adelante'}</td>
-							<td>
-								<button class="action-btn edit" type="button" on:click={() => editarFirmante(f)}
-									>Editar <span class="sr-only">{FUNCIONES[f.funcion]}</span></button
-								>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	{:else}
-		<p class="view-note">Sin firmantes. Los reportes nuevos copian los firmantes vigentes.</p>
-	{/if}
-	<details bind:open={firmanteAbierto}>
-		<summary>{firmante.id ? 'Editar firmante' : 'Registrar firmante'}</summary>
-		<form
-			method="POST"
-			action="?/guardarFirmante"
-			use:enhance={limpiarAlGuardar(() => (firmante = firmanteVacio()))}
-			class="form-grid"
-		>
-			<input type="hidden" name="id" value={firmante.id} />
-			<div class="form-group">
-				<label for="firmante-funcion">Función</label>
-				<select id="firmante-funcion" name="funcion" bind:value={firmante.funcion}>
-					{#each Object.entries(FUNCIONES) as [valor, etiqueta] (valor)}
-						<option value={valor}>{etiqueta}</option>
-					{/each}
-				</select>
-			</div>
-			<div class="form-group">
-				<label for="firmante-nombre">Nombre</label>
-				<input id="firmante-nombre" name="nombre" bind:value={firmante.nombre} required />
-			</div>
-			<div class="form-group">
-				<label for="firmante-cargo">Cargo</label>
-				<input id="firmante-cargo" name="cargo" bind:value={firmante.cargo} />
-			</div>
-			<div class="form-group">
-				<label for="firmante-empresa">Empresa</label>
-				<input id="firmante-empresa" name="empresa" bind:value={firmante.empresa} />
-			</div>
-			<div class="form-group">
-				<label for="firmante-desde">Vigente desde</label>
-				<input
-					id="firmante-desde"
-					name="vigenteDesde"
-					type="date"
-					bind:value={firmante.vigenteDesde}
-					required
-				/>
-			</div>
-			<div class="form-group">
-				<label for="firmante-hasta">Vigente hasta (opcional)</label>
-				<input
-					id="firmante-hasta"
-					name="vigenteHasta"
-					type="date"
-					bind:value={firmante.vigenteHasta}
-				/>
-			</div>
-			<div class="form-group acciones-formulario">
-				<button class="boton primario" type="submit"
-					>{firmante.id ? 'Guardar cambios' : 'Registrar'}</button
-				>
-				{#if firmante.id}
-					<button class="boton" type="button" on:click={() => (firmante = firmanteVacio())}
-						>Cancelar edición</button
-					>
-				{/if}
-			</div>
-		</form>
-	</details>
+	<FirmantesContrato
+		{firmantes}
+		vigenciaInicio={contrato.vigenciaInicio}
+		puedeEditar={permisos.editarCatalogo}
+		{propuesto}
+		error={errorDe(['corregirFirmante', 'cambiarFirmante'])}
+	/>
 </section>
+
+<section class="card" aria-label="Historial de cambios">
+	<HistorialCambios {cambios} abierto={historialAbierto} {enlacePagina} />
+</section>
+
+<DialogoCambioCatalogo
+	bind:abierto={dialogoAbierto}
+	campos={ensayo?.campos ?? {}}
+	resultado={ensayo?.resultado ?? null}
+	{alAplicar}
+/>

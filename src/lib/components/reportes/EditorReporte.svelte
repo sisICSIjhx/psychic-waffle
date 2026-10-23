@@ -14,6 +14,7 @@
 		validarParaRevision,
 		type Observacion
 	} from '$lib/dominio/captura';
+	import { ETIQUETA_CAMPO } from '$lib/dominio/bitacora';
 	import { agregarDia, analizarDias, mismosDias, textoDias } from '$lib/dominio/dias-ejecucion';
 	import {
 		fechasEncabezado,
@@ -43,6 +44,10 @@
 	export let reporte: Reporte;
 	export let equiposPartida: Equipo[] = [];
 	export let catalogoCambiado = false;
+	/** Los datos del contrato (usuario, número, sitio o firmantes) cambiaron desde que se copiaron. */
+	export let contratoCambiado = false;
+	/** Campos del contrato que cambiaron («contrato», «sitio», «firmantes.aprobo»…). */
+	export let camposContrato: string[] = [];
 	export let partidaPorConfirmar = false;
 	/** Pausa del autoguardado tras el último cambio, en milisegundos. */
 	export let espera = 1500;
@@ -608,6 +613,7 @@
 				}
 				reemplazar(resultado.datos.reporte as Reporte);
 				if (accion === 'aplicarCatalogo') catalogoCambiado = false;
+				if (accion === 'actualizarContrato') contratoCambiado = false;
 			});
 		} finally {
 			ocupado = false;
@@ -940,6 +946,32 @@
 					on:click={() => accionConGuardado('aplicarCatalogo', {})}
 					>Aplicar cambios del catálogo</button
 				>
+			</div>
+		{/if}
+		{#if contratoCambiado && (reporte.estado === 'borrador' || reporte.estado === 'en_revision')}
+			<div class="aviso aviso-alerta" role="status">
+				<p>
+					Los datos del contrato cambiaron ({camposContrato
+						.map((c) => (ETIQUETA_CAMPO[c] ?? c).toLowerCase())
+						.join(', ')}) después de que este reporte los recibió.
+					{reporte.estado === 'borrador'
+						? 'Puede actualizarlos; lo que escribió a mano en esos datos se reemplaza.'
+						: 'Para actualizarlos, regrese el reporte a borrador.'}
+				</p>
+				<div class="acciones-aviso">
+					{#if reporte.estado === 'borrador'}
+						<button
+							class="boton"
+							type="button"
+							disabled={ocupado}
+							on:click={() => accionConGuardado('actualizarContrato', {})}
+							>Actualizar datos del contrato</button
+						>
+					{/if}
+					<a class="enlace" href={resolve('/catalogo/contratos/[id]', { id: reporte.contratoId })}
+						>Ver el contrato</a
+					>
+				</div>
 			</div>
 		{/if}
 		{#if partidaPorConfirmar}
@@ -1630,5 +1662,11 @@
 		.verificacion :global(.error-campo) {
 			grid-column: auto;
 		}
+	}
+	.acciones-aviso {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px;
+		align-items: center;
 	}
 </style>

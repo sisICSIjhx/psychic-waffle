@@ -911,3 +911,60 @@ describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
 		).toEqual([ID(102), ID(103), ID(109)]);
 	});
 });
+
+describe('EditorReporte: datos del contrato cambiados', () => {
+	it('en un borrador ofrece actualizar y, al hacerlo, el aviso desaparece con el dato vigente', async () => {
+		const enviar = vi.fn<EnviarAccion>(async (accion) => ({
+			ok: true as const,
+			datos: {
+				reporte:
+					accion === 'actualizarContrato'
+						? { ...reporte(), contratoTexto: 'OC-CORREGIDA', version: 5 }
+						: { ...reporte(), version: 4 }
+			}
+		}));
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: reporte(),
+			contratoCambiado: true,
+			camposContrato: ['contrato'],
+			espera: 60_000,
+			enviar
+		});
+		await expect
+			.element(page.getByText(/Los datos del contrato cambiaron \(contrato\)/))
+			.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'Ver el contrato' }))
+			.toHaveAttribute('href', `/catalogo/contratos/${ID(2)}`);
+		await page.getByRole('button', { name: 'Actualizar datos del contrato' }).click();
+		await vi.waitFor(() =>
+			expect(enviar.mock.calls.some(([accion]) => accion === 'actualizarContrato')).toBe(true)
+		);
+		await expect
+			.element(page.getByText(/Los datos del contrato cambiaron/))
+			.not.toBeInTheDocument();
+		await expect.element(page.getByText('OC-CORREGIDA').first()).toBeInTheDocument();
+	});
+
+	it('en revisión solo indica regresarlo a borrador; un emitido no muestra el aviso', async () => {
+		const { rerender } = render(EditorReporte, {
+			conImagenes: false,
+			reporte: reporte({ estado: 'en_revision' }),
+			contratoCambiado: true,
+			camposContrato: ['firmantes.aprobo'],
+			espera: 60_000,
+			enviar: sinRespuesta
+		});
+		await expect
+			.element(page.getByText(/firma de aprobó.*regrese el reporte a borrador/s))
+			.toBeInTheDocument();
+		expect(
+			page.getByRole('button', { name: 'Actualizar datos del contrato' }).elements()
+		).toHaveLength(0);
+		await rerender({ reporte: reporte({ estado: 'emitido' }) });
+		await expect
+			.element(page.getByText(/Los datos del contrato cambiaron/))
+			.not.toBeInTheDocument();
+	});
+});

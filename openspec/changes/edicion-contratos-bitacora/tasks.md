@@ -109,44 +109,44 @@ Virtual, y ningún archivo lleva nombres de firmantes ni de reportes: las prueba
 
 ## 5. Pantalla del contrato
 
-- [ ] 5.1 Agregar `confirmarDeshabilitado` a `src/lib/components/ui/Dialogo.svelte` y verificar con un
+- [x] 5.1 Agregar `confirmarDeshabilitado` a `src/lib/components/ui/Dialogo.svelte` y verificar con un
       caso nuevo en `Dialogo.svelte.spec.ts` que «Confirmar» no dispara el evento mientras está
       deshabilitado, y que las pruebas del diálogo de emisión siguen pasando.
-- [ ] 5.2 Crear `src/lib/server/edicion-catalogo.ts` y agregar a
+- [x] 5.2 Crear `src/lib/server/edicion-catalogo.ts` y agregar a
       `src/routes/catalogo/contratos/[id]/+page.server.ts` las acciones `ensayarCambio`,
       `aplicarCambio` (con `validarMotivo` en el servidor) y `registrarFirmante`, el contexto de la
       bitácora en `asociarSitio`, la respuesta 403 sin permiso y en la carga el historial
       (`?cambios=N`), el resumen de sitios y los permisos; verificar con pruebas del módulo sobre PGlite
       (tipos de cambio, motivo ausente rechazado sin escribir, permiso negado sin llamar a la base) y con
       `npm run check`.
-- [ ] 5.3 Crear `src/lib/components/catalogo/DatosContrato.svelte` (lectura, «Editar», cliente fijo con
+- [x] 5.3 Crear `src/lib/components/catalogo/DatosContrato.svelte` (lectura, «Editar», cliente fijo con
       la nota de renovación, errores junto al campo y «No hay cambios que guardar») e integrarlo en
       `ContratoView.svelte`; verificar con pruebas de componente en Chromium.
-- [ ] 5.4 Crear `src/lib/components/catalogo/DialogoCambioCatalogo.svelte` (antes → después, impacto,
+- [x] 5.4 Crear `src/lib/components/catalogo/DialogoCambioCatalogo.svelte` (antes → después, impacto,
       casilla solo con borradores afectados y marcada por omisión, motivo con contador y «Confirmar»
       deshabilitado) y verificar con pruebas que Esc no envía nada y devuelve el foco, que el motivo
       «error» mantiene «Confirmar» deshabilitado y que se envían el motivo y la casilla.
-- [ ] 5.5 Agregar en Sitios «Corregir clave o nombre» con el aviso de sitio compartido y «Quitar del
+- [x] 5.5 Agregar en Sitios «Corregir clave o nombre» con el aviso de sitio compartido y «Quitar del
       contrato», deshabilitado con los conteos cuando hay datos; verificar con pruebas de componente
       ambos estados.
-- [ ] 5.6 Reemplazar «Editar» de Firmantes por «Corregir datos» y «Cambiar firmante desde…» (fecha
+- [x] 5.6 Reemplazar «Editar» de Firmantes por «Corregir datos» y «Cambiar firmante desde…» (fecha
       propuesta: primer día del mes siguiente) y conservar «Registrar firmante» para las altas;
       verificar con pruebas de componente que el diálogo muestra el mes desde el que aplica.
-- [ ] 5.7 Crear `src/lib/components/catalogo/HistorialCambios.svelte` (sección plegable, tabla con
+- [x] 5.7 Crear `src/lib/components/catalogo/HistorialCambios.svelte` (sección plegable, tabla con
       fecha local, qué cambió, antes → después, motivo, usuario «—» y efectos, paginación y «Sin cambios
       registrados»); verificar con pruebas de componente.
-- [ ] 5.8 Mostrar la notificación con los efectos al aplicar, el mensaje de conflicto (IC409) con la
+- [x] 5.8 Mostrar la notificación con los efectos al aplicar, el mensaje de conflicto (IC409) con la
       recarga de los datos y ocultar las acciones de edición cuando `permisos.editarCatalogo` es falso;
       verificar con pruebas de componente los tres casos.
 
 ## 6. Editor de reportes
 
-- [ ] 6.1 Agregar `contratoCambiado` a la carga y la acción `actualizarContrato` en
+- [x] 6.1 Agregar `contratoCambiado` a la carga y la acción `actualizarContrato` en
       `src/routes/reportes/[id]/+page.server.ts`, y el aviso en `EditorReporte.svelte` (borrador con
       «Actualizar datos del contrato», en revisión solo el texto, emitido sin aviso, enlace al
       contrato); verificar con pruebas de componente los tres estados y que tras actualizar el aviso
       desaparece y el encabezado muestra el dato vigente.
-- [ ] 6.2 Verificar con una prueba de integración sobre PGlite el recorrido completo: corregir el número
+- [x] 6.2 Verificar con una prueba de integración sobre PGlite el recorrido completo: corregir el número
       con la casilla desmarcada, ver el aviso en el borrador, actualizarlo y comprobar que el emitido y
       su documento conservan el número anterior.
 

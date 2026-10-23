@@ -149,3 +149,24 @@ export function fechaHoraLocal(instante: string): string {
 	const de = (tipo: string) => partes.find((p) => p.type === tipo)?.value ?? '';
 	return `${de('day')}/${de('month')}/${de('year')} ${de('hour')}:${de('minute')}`;
 }
+
+/** Lo que una vigencia corregida deja fuera, para mostrarlo junto a sus campos. */
+export function textoFueraDeVigencia(
+	fuera: { tipo: string; sitio: string | null; meses: string[] }[]
+): string[] {
+	return fuera.map((f) => {
+		const meses = f.meses.map((m) => textoMesAnio(m)).join(', ');
+		return f.tipo === 'programa'
+			? `Programa de ${f.sitio ?? 'un sitio'}: ${meses}`
+			: `Reportes de ${meses}`;
+	});
+}
+
+/** Nombre del dato que conservan los reportes emitidos, para «conserva el número anterior». */
+export function datoDelCambio(tipo: string, cambios: CambioCampo[]): string {
+	if (tipo === 'contrato' && cambios.length === 1 && cambios[0].campo === 'numero') return 'número';
+	if (tipo === 'contrato') return 'dato del contrato';
+	if (tipo === 'sitio') return 'sitio';
+	if (tipo === 'corregirFirmante' || tipo === 'cambiarFirmante') return 'firmante';
+	return 'dato';
+}
