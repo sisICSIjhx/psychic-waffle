@@ -1,7 +1,7 @@
 {
 	"versionPlantilla": "FOR-ICSI-RMT-01.v2",
 	"versionWord": "16.0.16.0.20430",
-	"semillas": [1, 104],
+	"semillas": [1, 120],
 	"documentos": [
 		{
 			"nombre": "manometros-cuadricula",
@@ -857,6 +857,134 @@
 			"titulos": [4, 4, 4, 5, 6, 8, 10, 10, 11, 12, 13, 15, 16, 16, 18, 18],
 			"modelo": [4, 4, 4, 5, 6, 8, 10, 10, 11, 12, 13, 15, 16, 16, 18, 18],
 			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-105",
+			"paginas": 9,
+			"titulos": [3, 3, 3, 3, 3, 5, 6, 8, 8],
+			"modelo": [3, 3, 3, 3, 3, 6, 6, 8, 8],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": false
+		},
+		{
+			"nombre": "semilla-106",
+			"paginas": 19,
+			"titulos": [4, 4, 5, 6, 8, 10, 11, 11, 11, 12, 12, 14, 15, 15, 17, 17, 18, 19],
+			"modelo": [4, 4, 5, 6, 8, 10, 11, 11, 11, 12, 12, 14, 15, 15, 17, 17, 18, 19],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-107",
+			"paginas": 11,
+			"titulos": [3, 3, 3, 4, 5, 7, 8, 9, 10, 10],
+			"modelo": [3, 3, 3, 4, 5, 7, 8, 9, 10, 10],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-108",
+			"paginas": 20,
+			"titulos": [3, 3, 3, 4, 4, 5, 7, 7, 8, 10, 10, 11, 13, 15, 15, 17, 19, 19],
+			"modelo": [3, 3, 3, 4, 4, 5, 7, 7, 8, 10, 10, 11, 13, 15, 15, 17, 19, 19],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-109",
+			"paginas": 13,
+			"titulos": [4, 4, 4, 5, 7, 8, 9, 11, 12, 12, 13],
+			"modelo": [4, 4, 4, 6, 7, 8, 9, 11, 12, 12, 13],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": false
+		},
+		{
+			"nombre": "semilla-110",
+			"paginas": 5,
+			"titulos": [3, 3, 3, 5, 5, 5],
+			"modelo": [3, 3, 3, 5, 5, 5],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-111",
+			"paginas": 14,
+			"titulos": [3, 3, 3, 4, 6, 7, 7, 9, 10, 12, 12, 13, 13],
+			"modelo": [3, 3, 3, 4, 6, 7, 7, 9, 10, 12, 12, 13, 13],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-112",
+			"paginas": 6,
+			"titulos": [3, 3, 3, 5, 5, 5],
+			"modelo": [3, 3, 3, 5, 5, 5],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-113",
+			"paginas": 13,
+			"titulos": [3, 3, 3, 4, 5, 7, 8, 9, 10, 11, 12, 12, 13],
+			"modelo": [3, 3, 3, 4, 5, 7, 8, 9, 10, 11, 12, 12, 13],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-114",
+			"paginas": 5,
+			"titulos": [3, 3, 3, 3, 5, 5, 5],
+			"modelo": [3, 3, 3, 3, 5, 5, 5],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-115",
+			"paginas": 13,
+			"titulos": [3, 3, 3, 3, 4, 5, 6, 8, 8, 9, 10, 10, 11, 11, 12],
+			"modelo": [3, 3, 3, 3, 4, 5, 6, 8, 8, 9, 10, 10, 11, 11, 12],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-116",
+			"paginas": 8,
+			"titulos": [3, 3, 3, 5, 7, 8, 8],
+			"modelo": [3, 3, 3, 5, 7, 8, 8],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-117",
+			"paginas": 17,
+			"titulos": [3, 3, 3, 3, 4, 5, 7, 7, 9, 10, 12, 14, 14, 16, 16, 17],
+			"modelo": [3, 3, 3, 3, 4, 5, 7, 7, 9, 10, 12, 14, 14, 16, 16, 17],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-118",
+			"paginas": 8,
+			"titulos": [3, 3, 3, 3, 5, 6, 8, 8],
+			"modelo": [3, 3, 3, 3, 5, 6, 8, 8],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-119",
+			"paginas": 16,
+			"titulos": [3, 3, 3, 5, 5, 6, 6, 8, 8, 10, 11, 13, 13, 15, 15, 16],
+			"modelo": [3, 3, 3, 5, 5, 6, 6, 8, 8, 10, 11, 13, 13, 15, 15, 16],
+			"saltosForzados": [],
+			"indiceIgualAlActualizado": true
+		},
+		{
+			"nombre": "semilla-120",
+			"paginas": 9,
+			"titulos": [3, 3, 3, 4, 5, 5, 7, 8, 9],
+			"modelo": [3, 3, 3, 4, 5, 5, 7, 8, 9],
+			"saltosForzados": [6],
 			"indiceIgualAlActualizado": true
 		}
 	]

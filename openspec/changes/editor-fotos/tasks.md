@@ -133,11 +133,11 @@ cambio completo. Decisiones aplicadas en `design.md` (sección «Decisiones del 
       revisión no cambia la imagen del DOCX del emitido ni sus archivos; y en `paginacion.spec.ts`, que
       `entradaPaginacion` recibe la altura de la foto girada (6 cm en lugar de 4,5 cm) y que
       `calcularIndice` la usa.
-- [ ] 9.3 Agregar `rotacion` a las fotos de ejemplo de `scripts/prueba-documental.ts` con un caso de fotos
+- [x] 9.3 Agregar `rotacion` a las fotos de ejemplo de `scripts/prueba-documental.ts` con un caso de fotos
       giradas 90°, 180° y 270°; ejecutar `npm run prueba:documental` y verificar en Microsoft Word que el
       DOCX abre sin reparación, sin aviso de actualizar el índice y con las fotos giradas completas en su
       caja.
-- [ ] 9.4 Agregar el giro a `reporteSintetico` de `src/lib/server/documentos/sinteticos.ts` (fotos
+- [x] 9.4 Agregar el giro a `reporteSintetico` de `src/lib/server/documentos/sinteticos.ts` (fotos
       giradas 90° y 270° en algunas semillas, sin cambiar el orden de sorteos de las semillas ya medidas
       salvo que se vuelvan a medir todas) y a la generación de `scripts/verificar-indice-word.ts`. Ejecutar
       `npm run verificar:indice` (Windows con Word, D9 de `indice-docx-actualizado`) y volver a guardar
@@ -148,20 +148,20 @@ cambio completo. Decisiones aplicadas en `design.md` (sección «Decisiones del 
 
 ## 10. Cierre
 
-- [ ] 10.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores.
-- [ ] 10.2 Validar en el navegador a 1366 × 800 en tema claro y oscuro: contraste AA de la barra y del
+- [x] 10.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores.
+- [x] 10.2 Validar en el navegador a 1366 × 800 en tema claro y oscuro: contraste AA de la barra y del
       foco sobre una foto muy clara y una muy oscura, sin desborde horizontal (también con «Más
       acciones» abierto en la última columna), y el recorrido solo con teclado (barra, menú, agarre y
       vista ampliada), con capturas fuera del repositorio.
-- [ ] 10.3 Hacer commit y ejecutar `scripts/revision-codex.ps1` con `-Base` (último commit de
+- [x] 10.3 Hacer commit y ejecutar `scripts/revision-codex.ps1` con `-Base` (último commit de
       `feat/indice-docx`), `-Sha` (último commit del cambio), `-Fase editor-fotos`, `-Ronda`,
       `-Cambio 'el cambio OpenSpec editor-fotos'` y `-ArchivosContexto` con `proposal.md`, `design.md`,
       `tasks.md` y las specs de este cambio, como máximo 2 rondas; corregir los hallazgos y registrar el
       resumen en `docs/revisiones/editor-fotos.md`.
-- [ ] 10.4 Agregar la entrada en `HISTORIAL.md` (fecha local, motivo, alcance, archivos, validación real
+- [x] 10.4 Agregar la entrada en `HISTORIAL.md` (fecha local, motivo, alcance, archivos, validación real
       con las cifras de 3.4 y la precisión del índice medida en 9.4, y pendientes) y verificar su formato
       con `npx prettier --check HISTORIAL.md`.
-- [ ] 10.5 Actualizar `docs/CONTEXTO_PROYECTO.md` (migraciones hasta 0017, `?tamano=mini` en
+- [x] 10.5 Actualizar `docs/CONTEXTO_PROYECTO.md` (migraciones hasta 0017, `?tamano=mini` en
       `/reportes/[id]/fotos/[fotoId]` y estado del cambio) y verificar su formato con
       `npx prettier --check docs/CONTEXTO_PROYECTO.md`.
 

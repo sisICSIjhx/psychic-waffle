@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-21 contra los archivos locales (rama `feat/indice-docx`).
+Verificado el 2026-10-21 contra los archivos locales (rama `feat/editor-fotos`).
 
 ## Producto y arquitectura
 
@@ -18,14 +18,14 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/indice-docx`).
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
     resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0016`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0017`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
   - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
     notificaciones con deshacer, botones segmentados y selector con búsqueda). Tokens de tema
     (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
 - Rutas: `/` «Mi trabajo» (avance del mes, tarjetas y siguiente trabajo; `?ver=`); `/planeacion`
   matriz P/R; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección
   guiada con búsqueda; `/reportes/[id]` editor (autoguardado, fotos, estados),
-  `/reportes/[id]/documento` DOCX y `/reportes/[id]/fotos/[fotoId]`; `/historial`; `/catalogo` con
+  `/reportes/[id]/documento` DOCX y `/reportes/[id]/fotos/[fotoId]` (`?tamano=mini` para la miniatura); `/historial`; `/catalogo` con
   contratos y partidas; `/personal` y `/perfil` existen pero no están en el menú hasta que haya
   autenticación.
 - Datos locales: sin `.env` se usa PGlite en `storage/pglite`; fotos y documentos en `storage/`
@@ -74,9 +74,9 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/indice-docx`).
   terminado (Proagro con programa 2026-03 a 2027-02 en EM-30184 y EM-30185 y vigencia ajustada);
   `fechas-ejecucion-multiples` terminado (días en segmentos `dias_ejecucion`; diarias por mes o por
   semana, con un día cubierto = una ejecución); `indice-docx-actualizado` terminado (índice con
-  páginas calculadas y sin aviso al abrir; `npm run verificar:indice` mide contra Word); siguen
-  `editor-fotos`,
-  `edicion-contratos-bitacora` y `tablero-cumplimiento`.
+  páginas calculadas y sin aviso al abrir; `npm run verificar:indice` mide contra Word); `editor-fotos`
+  terminado (barra sobre la foto, arrastre, vista ampliada, reemplazo y giro como dato con la 0017);
+  siguen `edicion-contratos-bitacora` y `tablero-cumplimiento`.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas
