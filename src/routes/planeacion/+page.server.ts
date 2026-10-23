@@ -1,7 +1,8 @@
-// Planeación anual: matriz P/R del programa de un contrato y sitio, con filtros por distribución y
-// periodicidad, pendientes vencidos y registro de realizados hechos fuera del sistema.
+// Planeación anual: matriz P/R del programa de un contrato y sitio (vista anual, mensual o semanal),
+// con filtros por distribución y periodicidad, pendientes vencidos, ajustes (reprogramado y no
+// ejecutado) y registro de realizados hechos fuera del sistema.
 import { fail } from '@sveltejs/kit';
-import { PERIODICIDADES } from '$lib/dominio/esquemas';
+import { MOTIVOS_AJUSTE, PERIODICIDADES, type MotivoAjuste } from '$lib/dominio/esquemas';
 import { fechaEnZona } from '$lib/dominio/fechas';
 import {
 	filtrarPartidas,
@@ -45,7 +46,27 @@ export const load: PageServerLoad = async ({ url }) => {
 			: null
 	};
 	const partidas = avance ? filtrarPartidas(avance.partidas, filtro) : [];
+	const meses = avance?.programa.meses ?? [];
+	const pedida = url.searchParams.get('vista');
+	const vista: 'anual' | 'mensual' | 'semanal' =
+		pedida === 'mensual' || pedida === 'semanal' ? pedida : 'anual';
+	// Mes de las vistas mensual y semanal: el pedido, el en curso si está en el periodo o el primero.
+	const mesPedido = `${(url.searchParams.get('mes') ?? '').slice(0, 7)}-01`;
+	const mesVista =
+		meses.find((m) => m === mesPedido) ??
+		meses.find((m) => m.slice(0, 7) === fecha.slice(0, 7)) ??
+		meses[0] ??
+		null;
+	const semana = Math.max(1, Number(url.searchParams.get('semana')) || 1);
+	const ejecucionesMes =
+		vista === 'semanal' && programa && mesVista
+			? await repos.programa.listarEjecucionesMes(programa.id, mesVista)
+			: [];
 	return {
+		vista,
+		mesVista,
+		semana,
+		ejecucionesMes,
 		hoy: fecha,
 		contratos,
 		contrato,
@@ -53,7 +74,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		sitio,
 		programas,
 		programa,
-		meses: avance?.programa.meses ?? [],
+		meses,
 		partidas,
 		totalPartidas: avance?.partidas.length ?? 0,
 		vencidos: pendientesVencidos(partidas, fecha),
@@ -78,6 +99,46 @@ export const actions: Actions = {
 			return { mensaje: 'Realizado registrado.' };
 		} catch (error) {
 			return fail(400, { error: mensajeDeError(error) });
+		}
+	},
+
+	// Reprograma lo que falta de una partida y mes, o lo marca como no ejecutado.
+	registrarAjuste: async ({ request }) => {
+		const formulario = await request.formData();
+		const texto = (campo: string) => String(formulario.get(campo) ?? '').trim();
+		const tipo = texto('tipo') === 'no_ejecutado' ? 'no_ejecutado' : 'reprogramado';
+		const motivo = texto('motivo') as MotivoAjuste;
+		if (!MOTIVOS_AJUSTE.includes(motivo)) {
+			return fail(400, { accion: 'registrarAjuste', error: 'Elija el motivo.' });
+		}
+		try {
+			const ajuste = await (
+				await datos()
+			).programa.registrarAjuste({
+				programaId: texto('programaId'),
+				partidaId: texto('partidaId'),
+				tipo,
+				mesOrigen: texto('mesOrigen'),
+				mesDestino: tipo === 'reprogramado' ? texto('mesDestino') || null : null,
+				cantidad: Number(texto('cantidad') || '1'),
+				motivo,
+				nota: texto('nota') || null
+			});
+			return { accion: 'registrarAjuste', ajuste };
+		} catch (error) {
+			return fail(400, { accion: 'registrarAjuste', error: mensajeDeError(error) });
+		}
+	},
+
+	anularAjuste: async ({ request }) => {
+		const formulario = await request.formData();
+		try {
+			const ajuste = await (
+				await datos()
+			).programa.anularAjuste(String(formulario.get('id') ?? ''));
+			return { accion: 'anularAjuste', ajuste, mensaje: 'Ajuste anulado.' };
+		} catch (error) {
+			return fail(400, { accion: 'anularAjuste', error: mensajeDeError(error) });
 		}
 	}
 };

@@ -224,5 +224,6 @@ describe('relleno de los reportes existentes al aplicar 0016', () => {
 		} finally {
 			await repos.cerrar();
 		}
-	});
+		// Aplica las migraciones dos veces (antes y después de 0016): más que el límite general.
+	}, 90_000);
 });

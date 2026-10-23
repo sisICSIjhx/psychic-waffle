@@ -67,6 +67,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		mesCompletoOpcional: partida ? modosDePeriodo(partida.periodicidad).length > 1 : false,
 		meses,
 		...seleccion,
+		// ?reprogramacion= llega desde la celda destino de la planeación o desde «Mi trabajo».
+		reprogramacionPedida: url.searchParams.get('reprogramacion'),
 		borradores: borradores.filas
 	};
 };
@@ -85,7 +87,8 @@ export const actions: Actions = {
 				periodoMes: String(formulario.get('periodoMes') ?? ''),
 				ocurrencia:
 					tipo === 'semana' || tipo === 'quincena' || tipo === 'dia' ? { tipo, numero } : null,
-				equipoIds: formulario.getAll('equipoIds').map(String)
+				equipoIds: formulario.getAll('equipoIds').map(String),
+				reprogramacionId: String(formulario.get('reprogramacionId') ?? '') || null
 			});
 		} catch (error) {
 			if (error instanceof ErrorValidacion) {

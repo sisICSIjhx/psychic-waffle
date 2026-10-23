@@ -241,7 +241,7 @@
 	$: contexto = `${reporte.usuario} › Partida ${reporte.numeroPartida} › ${textoMes(
 		reporte.periodoMes,
 		{ inicial: true }
-	)}${reporte.ocurrencia ? ` · ${ETIQUETA_OCURRENCIA[reporte.ocurrencia.tipo]} ${reporte.ocurrencia.numero}` : ''}`;
+	)}${reporte.ocurrencia ? ` · ${ETIQUETA_OCURRENCIA[reporte.ocurrencia.tipo]} ${reporte.ocurrencia.numero}` : ''}${reporte.reprogramadoDesde ? ` · Reprogramado desde ${textoMes(reporte.reprogramadoDesde)}` : ''}`;
 	$: entradasIndice = [
 		seccion('seccion-encabezado', 'Encabezado', completitud.porSeccion.encabezado),
 		seccion('seccion-firmas', 'Firmas', completitud.porSeccion.firmas),

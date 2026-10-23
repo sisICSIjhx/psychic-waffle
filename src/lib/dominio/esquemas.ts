@@ -289,6 +289,48 @@ export const esquemaPrograma = z.object({
 });
 export type Programa = z.infer<typeof esquemaPrograma>;
 
+// Ajustes del programa (cambio tablero-cumplimiento): el plan original no cambia; lo reprogramado y
+// lo no ejecutado se registran aparte.
+export const TIPOS_AJUSTE = ['reprogramado', 'no_ejecutado'] as const;
+export const MOTIVOS_AJUSTE = [
+	'cliente_operacion',
+	'clima',
+	'materiales_refacciones',
+	'acceso_permisos',
+	'personal',
+	'otro'
+] as const;
+export type MotivoAjuste = (typeof MOTIVOS_AJUSTE)[number];
+export const ETIQUETA_MOTIVO_AJUSTE: Record<MotivoAjuste, string> = {
+	cliente_operacion: 'Cliente u operación',
+	clima: 'Clima',
+	materiales_refacciones: 'Materiales o refacciones',
+	acceso_permisos: 'Acceso o permisos',
+	personal: 'Personal',
+	otro: 'Otro'
+};
+
+export const esquemaAjuste = z.object({
+	id,
+	programaId: id,
+	partidaId: id,
+	tipo: z.enum(TIPOS_AJUSTE),
+	mesOrigen: fecha,
+	mesDestino: fecha.nullable(),
+	cantidad: z.number().int().positive(),
+	motivo: z.enum(MOTIVOS_AJUSTE),
+	nota: z.string().nullable(),
+	registradoEn: marcaDeTiempo,
+	anuladoEn: marcaDeTiempo.nullable(),
+	/** Ejecuciones emitidas ligadas a la reprogramación. */
+	ejecuciones: z.number().int(),
+	/** Borradores ligados (se desligan al anular). */
+	borradores: z.number().int(),
+	/** Reportes en revisión o emitidos ligados: impiden anular. */
+	bloqueantes: z.number().int()
+});
+export type Ajuste = z.infer<typeof esquemaAjuste>;
+
 export const esquemaCeldaPrograma = z.object({
 	mes: fecha,
 	programado: z.number().nullable(),
@@ -297,7 +339,18 @@ export const esquemaCeldaPrograma = z.object({
 	/** Ejecuciones con reporte emitido (varios reportes por TAG del mismo periodo cuentan una). */
 	ejecucionesReportes: z.number(),
 	/** Marcas R del Excel y realizados capturados a mano. */
-	realizadoSinReporte: z.number()
+	realizadoSinReporte: z.number(),
+	/** Reprogramado desde este mes a otro (ajustes vigentes). */
+	salida: z.number().default(0),
+	/** Reprogramado hacia este mes. */
+	entrada: z.number().default(0),
+	noEjecutado: z.number().default(0),
+	/** Ajustes vigentes con origen o destino en este mes. */
+	ajustes: z.array(esquemaAjuste).default([]),
+	/** Reportes en borrador o en revisión de la partida y el mes, del más reciente al más antiguo. */
+	reportesAbiertos: z
+		.array(z.object({ id, estado: z.enum(['borrador', 'en_revision']) }))
+		.default([])
 });
 export type CeldaPrograma = z.infer<typeof esquemaCeldaPrograma>;
 
@@ -319,6 +372,27 @@ export const esquemaAvancePrograma = z.object({
 	)
 });
 export type AvancePrograma = z.infer<typeof esquemaAvancePrograma>;
+
+/** Programa que contiene el mes de corte, con su contrato, sitio y avance (tablero). */
+export const esquemaCumplimientoPrograma = z.object({
+	contrato: esquemaContrato,
+	sitio: esquemaSitio,
+	avance: esquemaAvancePrograma
+});
+export type CumplimientoPrograma = z.infer<typeof esquemaCumplimientoPrograma>;
+
+/** Reporte no sustituido de un mes, para la vista semanal. */
+export const esquemaEjecucionMes = z.object({
+	id,
+	partidaId: id,
+	estado: z.enum(['borrador', 'en_revision', 'emitido']),
+	ocurrencia: z
+		.object({ tipo: z.enum(['semana', 'quincena', 'dia']), numero: z.number().int() })
+		.nullable(),
+	reprogramacionId: id.nullable(),
+	diasEjecucion: z.array(z.object({ desde: fecha, hasta: fecha }))
+});
+export type EjecucionMes = z.infer<typeof esquemaEjecucionMes>;
 
 export const esquemaRealizadoManual = z.object({
 	id,
@@ -442,6 +516,10 @@ export const esquemaReporte = z.object({
 	version: z.number().int().positive(),
 	revision: z.number().int().nonnegative(),
 	sustituyeA: id.nullable(),
+	/** Reprogramación del programa a la que corresponde el reporte (en su mes destino). */
+	reprogramacionId: id.nullable().default(null),
+	/** Mes de origen de esa reprogramación. */
+	reprogramadoDesde: fecha.nullable().default(null),
 	emitidoEn: marcaDeTiempo.nullable(),
 	creadoEn: marcaDeTiempo,
 	actualizadoEn: marcaDeTiempo,
@@ -458,6 +536,8 @@ export type Reporte = z.infer<typeof esquemaReporte>;
 export const esquemaReporteNuevo = z.object({
 	id: id.optional(),
 	partidaId: id,
+	/** Reprogramación que se reporta en este mes (la base valida partida y mes destino). */
+	reprogramacionId: id.nullable().optional(),
 	periodoMes: fecha,
 	ocurrencia: esquemaOcurrencia.nullable().optional(),
 	diasEjecucion: esquemaDiasEjecucion.optional(),

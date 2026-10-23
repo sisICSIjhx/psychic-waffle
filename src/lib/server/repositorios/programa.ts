@@ -1,11 +1,19 @@
-// Repositorio del programa anual: periodos, cantidades programadas, realizados manuales y avance.
+// Repositorio del programa anual: periodos, cantidades programadas, realizados manuales, ajustes
+// (reprogramado y no ejecutado), avance y lectura para el tablero de cumplimiento.
 import { z } from 'zod';
 import {
+	esquemaAjuste,
 	esquemaAvancePrograma,
+	esquemaCumplimientoPrograma,
+	esquemaEjecucionMes,
 	esquemaPrograma,
 	esquemaRealizadoManual,
 	PERIODICIDADES,
+	type Ajuste,
 	type AvancePrograma,
+	type CumplimientoPrograma,
+	type EjecucionMes,
+	type MotivoAjuste,
 	type Programa,
 	type RealizadoManual
 } from '../../dominio/esquemas.ts';
@@ -116,6 +124,47 @@ export class RepositorioPrograma {
 		return esquemaResultadoPrograma.parse(
 			await this.sql.llamar('api_importar_programa', { ...carga, ensayo })
 		);
+	}
+
+	/**
+	 * Reprograma lo que falta de una partida y mes a un mes posterior del periodo, o lo marca como no
+	 * ejecutado. La base rechaza una cantidad mayor que lo que falta.
+	 */
+	async registrarAjuste(ajuste: {
+		programaId: string;
+		partidaId: string;
+		tipo: Ajuste['tipo'];
+		mesOrigen: string;
+		mesDestino?: string | null;
+		cantidad: number;
+		motivo: MotivoAjuste;
+		nota?: string | null;
+	}): Promise<Ajuste> {
+		return esquemaAjuste.parse(await this.sql.llamar('api_registrar_ajuste', ajuste));
+	}
+
+	/** Anula un ajuste; desliga sus borradores y se rechaza si tiene reportes en revisión o emitidos. */
+	async anularAjuste(id: string): Promise<Ajuste> {
+		return esquemaAjuste.parse(await this.sql.llamar('api_anular_ajuste', { id }));
+	}
+
+	/** Programas cuyo periodo contiene el mes de corte, con su contrato, sitio y avance. */
+	async obtenerCumplimiento(filtro: {
+		corte: string;
+		clienteClave?: string;
+		contratoId?: string;
+		sitioId?: string;
+	}): Promise<CumplimientoPrograma[]> {
+		return z
+			.array(esquemaCumplimientoPrograma)
+			.parse(await this.sql.llamar('api_obtener_cumplimiento', filtro));
+	}
+
+	/** Reportes no sustituidos de las partidas del programa en un mes (vista semanal). */
+	async listarEjecucionesMes(programaId: string, mes: string): Promise<EjecucionMes[]> {
+		return z
+			.array(esquemaEjecucionMes)
+			.parse(await this.sql.llamar('api_listar_ejecuciones_mes', { programaId, mes }));
 	}
 
 	/** Programado y realizado por partida y mes, con totales y diferencia frente a la cantidad anual. */

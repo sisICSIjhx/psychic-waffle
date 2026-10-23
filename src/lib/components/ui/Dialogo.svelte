@@ -11,6 +11,8 @@
 	export let textoCancelar = 'Cancelar';
 	/** Deshabilita la acción mientras falte algo (p. ej., el motivo de un cambio). */
 	export let confirmarDeshabilitado = false;
+	/** Sin acción que confirmar (solo «Cancelar»), p. ej. cuando solo se pueden anular ajustes. */
+	export let conConfirmar = true;
 
 	const dispatch = createEventDispatcher<{ confirmar: void; cancelar: void }>();
 
@@ -64,12 +66,12 @@
 		<button bind:this={botonCancelar} class="boton" type="button" on:click={cancelar}
 			>{textoCancelar}</button
 		>
-		<button
-			class="boton primario"
-			type="button"
-			disabled={confirmarDeshabilitado}
-			on:click={confirmar}>{textoConfirmar}</button
-		>
+		{#if conConfirmar}<button
+				class="boton primario"
+				type="button"
+				disabled={confirmarDeshabilitado}
+				on:click={confirmar}>{textoConfirmar}</button
+			>{/if}
 	</div>
 </dialog>
 

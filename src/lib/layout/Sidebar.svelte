@@ -110,6 +110,23 @@
 				>
 				{#if !isCollapsed}<span>Anual</span>{/if}
 			</a>
+			<a
+				href={resolve('/cumplimiento')}
+				class="nav-item {activeView === 'cumplimiento' ? 'active' : ''}"
+				aria-current={activeView === 'cumplimiento' ? 'page' : undefined}
+				title="Cumplimiento del programa"
+				on:click={() => navigate('cumplimiento')}
+			>
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></svg
+				>
+				{#if !isCollapsed}<span>Cumplimiento</span>{/if}
+			</a>
 
 			{#if !isCollapsed}<div class="nav-header">Captura</div>{/if}
 			{#each clientesCaptura as cliente (cliente.clave)}

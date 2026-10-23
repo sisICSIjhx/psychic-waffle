@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AvancePrograma } from './esquemas';
+import type { AvancePrograma, CeldaPrograma } from './esquemas';
 import type { BorradorResumen } from './planeacion';
 import { buscarPartidas, mesSugerido, normalizarBusqueda, trabajoDePartidas } from './seleccion';
 
@@ -14,7 +14,9 @@ const PARTIDAS = [
 	{ id: ID(17), numero: '17', actividad: 'Calibración de manómetros' }
 ];
 
-function avance(celdas: Record<number, [string, number | null, number][]>): AvancePrograma {
+function avance(
+	celdas: Record<number, [string, number | null, number, Partial<CeldaPrograma>?][]>
+): AvancePrograma {
 	return {
 		programa: {
 			id: ID(100),
@@ -32,13 +34,19 @@ function avance(celdas: Record<number, [string, number | null, number][]>): Avan
 			periodicidad: 'mensual',
 			distribucion: null,
 			cantidadAnual: 12,
-			celdas: lista.map(([mes, programado, realizado]) => ({
+			celdas: lista.map(([mes, programado, realizado, ajustes = {}]) => ({
 				mes,
 				programado,
 				realizado,
 				reportes: [],
 				ejecucionesReportes: realizado,
-				realizadoSinReporte: 0
+				realizadoSinReporte: 0,
+				salida: 0,
+				entrada: 0,
+				noEjecutado: 0,
+				ajustes: [],
+				reportesAbiertos: [],
+				...ajustes
 			})),
 			totalProgramado: 0,
 			totalRealizado: 0,
@@ -109,7 +117,7 @@ describe('trabajo pendiente de cada partida', () => {
 		// Cumplida: un borrador de ese mes no la vuelve pendiente.
 		expect(trabajo.get(ID(1))).toMatchObject({
 			grupo: 'otras',
-			estadoMes: 'cumplido',
+			estadoMes: 'ejecutado',
 			borradores: []
 		});
 		expect(trabajo.get(ID(17))).toMatchObject({ grupo: 'otras', estadoMes: null });
@@ -128,6 +136,21 @@ describe('trabajo pendiente de cada partida', () => {
 			vencidos: ['2026-06-01'],
 			estadoMes: null
 		});
+	});
+
+	it('un único vencido no ejecutado va a «Otras partidas»; un mes futuro programado sigue pendiente', () => {
+		const trabajo = trabajoDePartidas(
+			[{ id: ID(3) }, { id: ID(7) }],
+			avance({
+				3: [['2026-06-01', 1, 0, { noEjecutado: 1 }]],
+				7: [['2026-11-01', 1, 0]]
+			}),
+			[],
+			'2026-11-01',
+			HOY
+		);
+		expect(trabajo.get(ID(3))).toMatchObject({ grupo: 'otras', vencidos: [] });
+		expect(trabajo.get(ID(7))).toMatchObject({ grupo: 'pendientes', estadoMes: 'programado' });
 	});
 
 	it('sin programa todas las partidas van en «Otras partidas»', () => {

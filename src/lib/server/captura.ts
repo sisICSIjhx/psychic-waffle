@@ -95,6 +95,8 @@ export class ServicioCaptura {
 		periodoMes: string;
 		ocurrencia: Ocurrencia | null;
 		equipoIds: string[];
+		/** Reprogramación que se reporta en este mes; la base valida partida y mes destino. */
+		reprogramacionId?: string | null;
 	}): Promise<Reporte> {
 		const partida = await this.repos.catalogo.obtenerPartida(entrada.partidaId);
 		const contrato = (await this.repos.catalogo.listarContratos()).find(
@@ -130,7 +132,10 @@ export class ServicioCaptura {
 			}
 			throw error;
 		}
-		return this.repos.reportes.insertar(nuevo);
+		return this.repos.reportes.insertar({
+			...nuevo,
+			reprogramacionId: entrada.reprogramacionId ?? null
+		});
 	}
 
 	obtener(id: string): Promise<Reporte> {

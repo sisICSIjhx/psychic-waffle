@@ -48,6 +48,8 @@ function reporte(cambios: Partial<Reporte> = {}): Reporte {
 		version: 3,
 		revision: 0,
 		sustituyeA: null,
+		reprogramacionId: null,
+		reprogramadoDesde: null,
 		emitidoEn: null,
 		creadoEn: '2026-05-18T00:00:00Z',
 		actualizadoEn: '2026-05-18T00:00:00Z',
@@ -909,6 +911,18 @@ describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
 		expect(
 			[...document.querySelectorAll('.fotos-alcance .foto')].map((t) => t.getAttribute('data-foto'))
 		).toEqual([ID(102), ID(103), ID(109)]);
+	});
+});
+
+describe('EditorReporte: trabajo reprogramado', () => {
+	it('muestra en el contexto el mes del que viene la reprogramación', async () => {
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: reporte({ reprogramacionId: ID(80), reprogramadoDesde: '2026-06-01' }),
+			espera: 60_000,
+			enviar: sinRespuesta
+		});
+		await expect.element(page.getByText(/Reprogramado desde junio 2026/)).toBeInTheDocument();
 	});
 });
 

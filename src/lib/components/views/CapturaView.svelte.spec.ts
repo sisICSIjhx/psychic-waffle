@@ -211,6 +211,42 @@ describe('CapturaView', () => {
 		});
 	});
 
+	it('ofrece el trabajo reprogramado solo con reprogramaciones del mes y lo envía', async () => {
+		const reprogramacion = {
+			id: ID(80),
+			programaId: ID(1),
+			partidaId: ID(7),
+			tipo: 'reprogramado' as const,
+			mesOrigen: '2026-06-01',
+			mesDestino: '2026-10-01',
+			cantidad: 1,
+			motivo: 'clima' as const,
+			nota: null,
+			registradoEn: '2026-06-20T00:00:00Z',
+			anuladoEn: null,
+			ejecuciones: 0,
+			borradores: 0,
+			bloqueantes: 0
+		};
+		montar({
+			partida: partidaElegida(),
+			reprogramaciones: [reprogramacion],
+			reprogramacionPedida: ID(80)
+		});
+		const opcion = page.getByRole('radio', { name: 'Reprogramado desde junio 2026 (Clima)' });
+		await expect.element(opcion).toBeChecked();
+		await expect
+			.element(page.getByRole('radio', { name: 'Trabajo de octubre 2026' }))
+			.toBeInTheDocument();
+		await page.getByRole('button', { name: 'Crear reporte' }).click();
+		await expect.poll(() => enviados.length).toBe(1);
+		expect(enviados[0].get('reprogramacionId')).toBe(ID(80));
+
+		// En otro mes la opción no aparece.
+		await page.getByLabelText('Mes del reporte').selectOptions('2026-06-01');
+		expect(page.getByRole('radio', { name: /Reprogramado desde/ }).elements()).toHaveLength(0);
+	});
+
 	it('con un reporte de otro TAG lo indica y permite crear el nuevo', async () => {
 		montar({
 			partida: partidaElegida([{ tag: 'PI-0001' }, { tag: 'PI-1001' }]),
