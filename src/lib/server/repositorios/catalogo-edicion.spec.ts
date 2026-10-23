@@ -310,12 +310,15 @@ describe('corrección del contrato', () => {
 		});
 
 		// Programa de marzo de 2026 a febrero de 2027: la vigencia de mayo a abril deja fuera marzo y abril.
-		await repos.programa.guardarPrograma({
+		const programa = await repos.programa.guardarPrograma({
 			contratoId: base.contrato.id,
 			sitioId: base.sitio.id,
 			periodoInicio: '2026-03-01',
 			periodoFin: '2027-02-28'
 		});
+		await repos.programa.guardarMeses(programa.id, [
+			{ partidaId: base.partidaId, mes: '2026-04-01', cantidad: 1 }
+		]);
 		await expect(
 			repos.catalogo.editarContrato(
 				edicionContrato(base.contrato, { vigenciaInicio: '2026-05-01', vigenciaFin: '2027-04-30' }),
@@ -324,7 +327,10 @@ describe('corrección del contrato', () => {
 		).rejects.toMatchObject({
 			detalle: {
 				motivo: 'vigencia_con_datos_fuera',
-				fuera: [{ tipo: 'programa', sitio: base.sitio.clave, meses: ['2026-03-01', '2026-04-01'] }]
+				fuera: [
+					{ tipo: 'meses', sitio: base.sitio.clave, meses: ['2026-04-01'] },
+					{ tipo: 'programa', sitio: base.sitio.clave, meses: ['2026-03-01', '2026-04-01'] }
+				]
 			}
 		});
 		// Ampliar el fin sí se puede.

@@ -158,7 +158,11 @@ export function textoFueraDeVigencia(
 		const meses = f.meses.map((m) => textoMesAnio(m)).join(', ');
 		return f.tipo === 'programa'
 			? `Programa de ${f.sitio ?? 'un sitio'}: ${meses}`
-			: `Reportes de ${meses}`;
+			: f.tipo === 'meses'
+				? `Meses programados de ${f.sitio ?? 'un sitio'}: ${meses}`
+				: f.tipo === 'realizados'
+					? `Realizados registrados de ${f.sitio ?? 'un sitio'}: ${meses}`
+					: `Reportes de ${meses}`;
 	});
 }
 

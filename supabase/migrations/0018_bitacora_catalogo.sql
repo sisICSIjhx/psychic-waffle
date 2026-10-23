@@ -399,6 +399,22 @@ as $$
 			interval '1 month') m
 		where g.contrato_id = contrato
 			and (m::date < public.primer_dia_mes(inicio) or m::date > fin)
+		-- Los meses programados y los realizados manuales caen dentro del periodo de su programa (0002),
+		-- pero la vigencia los revisa también por sí mismos.
+		union
+		select 'meses', s.clave, pm.mes
+		from public.programa_meses pm
+		join public.programas g on g.id = pm.programa_id
+		join public.sitios s on s.id = g.sitio_id
+		where g.contrato_id = contrato and pm.cantidad > 0
+			and (pm.mes < public.primer_dia_mes(inicio) or pm.mes > fin)
+		union
+		select 'realizados', s.clave, x.mes
+		from public.programa_realizados_manuales x
+		join public.programas g on g.id = x.programa_id
+		join public.sitios s on s.id = g.sitio_id
+		where g.contrato_id = contrato
+			and (x.mes < public.primer_dia_mes(inicio) or x.mes > fin)
 	)
 	select coalesce(jsonb_agg(jsonb_build_object('tipo', tipo, 'sitio', sitio, 'meses', meses)
 		order by tipo, sitio), '[]'::jsonb)
