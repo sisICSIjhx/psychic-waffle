@@ -1,7 +1,8 @@
 // Reportes sintéticos deterministas por semilla para calibrar y probar el modelo de paginación del
 // índice contra Word. Conserva el generador congruencial y el orden de sorteos del prototipo del
 // análisis (semillas 1-64 iguales); desde la semilla 65 agrega casos de portada (varios TAG, nombres
-// largos y fechas de varios días). Solo datos ficticios; el vocabulario sale de un ejemplo versionado.
+// largos y fechas de varios días) y desde la 105, fotos giradas (sin sorteos nuevos, para no cambiar las
+// semillas ya medidas). Solo datos ficticios; el vocabulario sale de un ejemplo versionado.
 import {
 	ajustarACaja,
 	CAJA_FOTO,
@@ -27,7 +28,12 @@ export interface FotoSintetica {
 	dim: [number, number];
 	momento: MomentoFoto | null;
 	descripcion: string;
+	/** Giro elegido en el editor; con 90° o 270° se intercambian las medidas. */
+	rotacion?: 0 | 90 | 180 | 270;
 }
+
+/** Primera semilla con fotos giradas. */
+export const SEMILLA_GIROS = 105;
 
 export type ReporteSintetico = Omit<ReporteDocumento, 'alcances'> & {
 	alcances: {
@@ -75,7 +81,15 @@ export function reporteSintetico(semilla: number, base: BaseSintetica): ReporteS
 			const dim = DIMENSIONES[azar() < 0.55 ? 0 : entero(1, DIMENSIONES.length - 1)];
 			const momento =
 				disposicion === 'cuadricula' ? null : (['antes', 'durante', 'despues'] as const)[f % 3];
-			fotos.push({ dim: [...dim], momento, descripcion: azar() < 0.3 ? '' : frase(entero(1, 14)) });
+			// El giro no consume sorteos: las semillas anteriores a SEMILLA_GIROS no cambian.
+			const rotacion =
+				semilla >= SEMILLA_GIROS ? ([0, 90, 0, 270] as const)[(semilla + a + f) % 4] : 0;
+			fotos.push({
+				dim: [...dim],
+				momento,
+				descripcion: azar() < 0.3 ? '' : frase(entero(1, 14)),
+				rotacion
+			});
 		}
 		alcances.push({
 			titulo: frase(entero(2, azar() < 0.15 ? 22 : 9)),
@@ -145,7 +159,8 @@ export function preparadosSinImagen(reporte: ReporteSintetico): AlcancePreparado
 		titulo: a.titulo.trim(),
 		descripcion: parrafosDe(a.descripcion),
 		celdas: ordenDeAparicion(a.fotos, reporte.disposicionFotos).map((f, j) => {
-			const medida = ajustarACaja(f.dim[0], f.dim[1], caja);
+			const [ancho, alto] = (f.rotacion ?? 0) % 180 ? [f.dim[1], f.dim[0]] : f.dim;
+			const medida = ajustarACaja(ancho, alto, caja);
 			return {
 				imagen: {
 					width: medida.ancho,

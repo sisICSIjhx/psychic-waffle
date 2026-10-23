@@ -412,7 +412,8 @@ function foto(n: number, alcanceId = ID(10)): Foto {
 		ancho: 640,
 		alto: 480,
 		bytes: 1000,
-		tipoMime: 'image/jpeg'
+		tipoMime: 'image/jpeg',
+		rotacion: 0
 	};
 }
 
@@ -800,6 +801,25 @@ describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
 			.element(vista.getByLabelText('Descripción de la Ilustración 2.1.2'))
 			.toHaveValue('Foto 2');
 		await expect.element(vista.getByText('Se quitó la Ilustración 2.1.2.')).not.toBeInTheDocument();
+	});
+
+	it('girar desde la tarjeta o la vista se autoguarda con la rotación', async () => {
+		const enviar = guardadoCorrecto();
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: tresFotos(),
+			espera: 10,
+			enviar
+		});
+		await page.getByRole('button', { name: 'Girar a la derecha la Ilustración 2.1.1' }).click();
+		await vi.waitFor(() =>
+			expect(enviado(enviar).alcances[0].fotos.map((f: Foto) => f.rotacion)).toEqual([90, 0, 0])
+		);
+		await page.getByRole('button', { name: 'Ampliar la Ilustración 2.1.3' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Girar a la izquierda' }).click();
+		await vi.waitFor(() =>
+			expect(enviado(enviar).alcances[0].fotos.map((f: Foto) => f.rotacion)).toEqual([90, 0, 270])
+		);
 	});
 
 	it('quitar la única foto cierra la vista, enfoca «Agregar fotos» y deja la notificación', async () => {

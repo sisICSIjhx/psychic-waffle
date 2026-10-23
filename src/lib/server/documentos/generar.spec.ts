@@ -372,6 +372,62 @@ describe('índice ya resuelto', () => {
 	});
 });
 
+describe('giro de las fotos', () => {
+	const conFotos = async (fotos: ReporteDocumento['alcances'][number]['fotos']) =>
+		reporteBase({
+			alcances: [{ titulo: 'Inspección visual', descripcion: '', fotos, estado: 'ok' }]
+		});
+
+	it('aplica el giro antes de ajustar la foto a la caja', async () => {
+		const datos = await foto(640, 480);
+		const optimizada = { ancho: 640, alto: 480 };
+		const { documento } = await abrir(
+			(
+				await generarDocx(
+					await conFotos([
+						{ datos, optimizada, rotacion: 90 },
+						{ datos, optimizada, rotacion: 180 },
+						{ datos, optimizada, rotacion: 270 }
+					])
+				)
+			).docx
+		);
+		const [noventa, mediaVuelta, doscientos] = extensionesCm(documento);
+		expect([noventa.ancho, noventa.alto]).toEqual([expect.closeTo(4.5, 1), expect.closeTo(6, 1)]);
+		expect([mediaVuelta.ancho, mediaVuelta.alto]).toEqual([
+			expect.closeTo(8, 1),
+			expect.closeTo(6, 1)
+		]);
+		expect(doscientos.ancho).toBeCloseTo(4.5, 1);
+	});
+
+	it('sin giro reutiliza los bytes de la optimizada; un perfil ligero conserva las medidas giradas', async () => {
+		const datos = await foto(640, 480);
+		const optimizada = { ancho: 640, alto: 480 };
+		const [sinGiro, girada] = await prepararFotos(
+			[
+				{ datos, optimizada },
+				{ datos, optimizada, rotacion: 90 }
+			],
+			Number.MAX_SAFE_INTEGER,
+			2
+		);
+		expect(sinGiro.datos.equals(datos)).toBe(true);
+		expect([girada.ancho, girada.alto]).toEqual([480, 640]);
+
+		// Con un presupuesto mínimo se degradan todas y la girada sigue en vertical.
+		const [, ligera] = await prepararFotos(
+			[
+				{ datos, optimizada },
+				{ datos, optimizada, rotacion: 270 }
+			],
+			1,
+			2
+		);
+		expect([ligera.ancho, ligera.alto]).toEqual([480, 640]);
+	});
+});
+
 describe('presupuesto de fotografías', () => {
 	const ruido = (ancho: number, alto: number) =>
 		sharp({

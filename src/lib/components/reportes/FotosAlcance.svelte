@@ -8,6 +8,7 @@
 	import { ordenDeAparicion, pieIlustracion } from '$lib/dominio/documento';
 	import {
 		ACEPTA_FOTOS,
+		girar,
 		moverDeColumna,
 		moverPaso,
 		reordenarFoto,
@@ -183,6 +184,14 @@
 		anunciarPosicion(foto.id);
 	}
 
+	function girarFoto(fotoId: string, sentido: -1 | 1) {
+		const actual = fotos.find((f) => f.id === fotoId);
+		if (!actual) return;
+		const rotacion = girar(actual.rotacion, sentido);
+		fotos = fotos.map((f) => (f.id === fotoId ? { ...f, rotacion } : f));
+		anuncio = `${pieDe(fotoId)} girada a ${rotacion}°`;
+	}
+
 	function paso(foto: Foto, sentido: -1 | 1) {
 		fotos = moverPaso(fotos, foto.id, sentido, disposicion, ocultas);
 		anunciarPosicion(foto.id);
@@ -313,6 +322,7 @@
 								archivo: e.detail.archivo,
 								pie: pieDe(foto.id)
 							})}
+						on:girar={(e) => girarFoto(foto.id, e.detail.sentido)}
 						on:paso={(e) => paso(foto, e.detail.paso)}
 						on:momento={(e) => cambiarMomento(foto, e.detail.momento)}
 						on:moverA={(e) => dispatch('mover', { fotoId: foto.id, alcanceId: e.detail.alcanceId })}
@@ -372,6 +382,7 @@
 		on:reemplazar
 		on:moverA={(e) => dispatch('mover', e.detail)}
 		on:describir={(e) => describir(e.detail.fotoId, e.detail.descripcion)}
+		on:girar={(e) => girarFoto(e.detail.fotoId, e.detail.sentido)}
 	/>
 {/if}
 

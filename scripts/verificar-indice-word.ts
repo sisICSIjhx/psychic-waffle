@@ -1,11 +1,12 @@
 // Verificación del índice calculado contra Word (solo en desarrollo, en Windows con Word instalado).
 //
 // Uso:
-//   npm run verificar:indice [-- --desde 1 --hasta 104]
+//   npm run verificar:indice [-- --desde 1 --hasta 120]
 //   npm run verificar:indice -- <docx…>   (solo compara el índice guardado con el actualizado)
 //
 // Genera en STORAGE_DIR/verificacion-indice/ (ignorado) los 3 documentos de scripts/datos-prueba con
-// fotos de relleno (cada tercera vertical) y los reportes sintéticos del rango de semillas; los abre en
+// fotos de relleno (cada tercera vertical) y los reportes sintéticos del rango de semillas (desde la 105,
+// con fotos giradas); los abre en
 // Word con scripts/paginas-word.ps1, compara la página de cada título con el modelo y el índice
 // guardado con el que deja «Actualizar tabla», y escribe
 // src/lib/server/documentos/calibracion/paginas-word.<versión>.json para las pruebas. No abre la base
@@ -36,7 +37,7 @@ const MINIMO_SUBCONJUNTO = 0.985;
 
 const { values: opciones, positionals } = parseArgs({
 	allowPositionals: true,
-	options: { desde: { type: 'string', default: '1' }, hasta: { type: 'string', default: '104' } }
+	options: { desde: { type: 'string', default: '1' }, hasta: { type: 'string', default: '120' } }
 });
 
 if (process.platform !== 'win32') {
@@ -135,6 +136,7 @@ for (let semilla = Number(opciones.desde); semilla <= Number(opciones.hasta); se
 					a.fotos.map(async (f) => ({
 						descripcion: f.descripcion,
 						momento: f.momento,
+						rotacion: f.rotacion,
 						datos: await fotoDeRelleno(f.dim)
 					}))
 				)

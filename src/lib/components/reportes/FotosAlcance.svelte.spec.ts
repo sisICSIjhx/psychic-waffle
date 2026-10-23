@@ -20,7 +20,8 @@ function foto(n: number, descripcion: string, momento: Foto['momento'] = null): 
 		ancho: 640,
 		alto: 480,
 		bytes: 1000,
-		tipoMime: 'image/jpeg'
+		tipoMime: 'image/jpeg',
+		rotacion: 0
 	};
 }
 
@@ -95,6 +96,7 @@ describe('FotosAlcance', () => {
 			.map((b) => b.getAttribute('aria-label') ?? b.textContent?.trim());
 		expect(nombres).toEqual([
 			'Ampliar la Ilustración 2.3.2',
+			'Girar a la derecha la Ilustración 2.3.2',
 			'Reemplazar la Ilustración 2.3.2',
 			'Quitar la Ilustración 2.3.2',
 			'Más acciones de la Ilustración 2.3.2',
@@ -176,6 +178,33 @@ describe('FotosAlcance', () => {
 
 		await page.getByRole('button', { name: 'Quitar la Ilustración 2.1.2' }).click();
 		expect(quitar.mock.calls[0][0].detail).toEqual({ fotoId: idFoto(3), pie: 'Ilustración 2.1.2' });
+	});
+
+	describe('giro', () => {
+		const giro = (contenedor: HTMLElement, n: number) =>
+			(tarjeta(contenedor, n).querySelector('.giro') as HTMLElement).style.transform;
+
+		it('dos clics dejan la foto a 180° y una apaisada a 90° se reduce a 0,75', async () => {
+			const { container } = render(FotosAlcance, { fotos: [foto(1, 'Uno'), foto(2, 'Dos')] });
+			const boton = page.getByRole('button', { name: 'Girar a la derecha la Ilustración 2.1.1' });
+			await boton.click();
+			expect(giro(container, 1)).toBe('rotate(90deg) scale(0.75)');
+			await expect
+				.poll(() => container.querySelector('[aria-live]')?.textContent)
+				.toBe('Ilustración 2.1.1 girada a 90°');
+			await boton.click();
+			expect(giro(container, 1)).toBe('rotate(180deg) scale(1)');
+			expect(giro(container, 2)).toBe('rotate(0deg) scale(1)');
+		});
+
+		it('en solo lectura se ve girada, sin el botón', async () => {
+			const { container } = render(FotosAlcance, {
+				fotos: [{ ...foto(1, 'Uno'), rotacion: 270 }],
+				soloLectura: true
+			});
+			expect(giro(container, 1)).toBe('rotate(270deg) scale(0.75)');
+			expect(container.querySelector('[aria-label^="Girar"]')).toBeNull();
+		});
 	});
 
 	describe('Más acciones', () => {

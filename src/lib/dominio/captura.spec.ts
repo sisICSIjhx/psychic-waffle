@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	aGuardado,
 	aplicarCatalogo,
 	completitudPorSeccion,
 	destinoDeObservacion,
@@ -468,7 +469,8 @@ describe('aplicar los cambios del catálogo a un borrador', () => {
 		ancho: 10,
 		alto: 10,
 		bytes: 10,
-		tipoMime: 'image/jpeg'
+		tipoMime: 'image/jpeg',
+		rotacion: 0
 	};
 	const reporte = {
 		id: ID(70),
@@ -533,5 +535,47 @@ describe('aplicar los cambios del catálogo a un borrador', () => {
 			estadoVerificacion: 'ok',
 			partidaAlcanceId: ID(81)
 		});
+	});
+});
+
+describe('guardado de las fotos', () => {
+	it('envía el giro de cada foto, también cuando es 0', () => {
+		const base = {
+			alcanceId: ID(50),
+			descripcion: '',
+			momento: null,
+			rutaOriginal: 'a',
+			rutaOptimizada: 'b',
+			ancho: 10,
+			alto: 10,
+			bytes: 10,
+			tipoMime: 'image/jpeg'
+		};
+		const reporte = {
+			id: ID(70),
+			version: 3,
+			diasEjecucion: [],
+			firmantes: {},
+			alcances: [
+				{
+					id: ID(50),
+					titulo: 'Uno',
+					descripcion: '',
+					estadoVerificacion: 'ok',
+					observaciones: '',
+					partidaAlcanceId: null,
+					fotos: [
+						{ ...base, id: ID(60), orden: 1, rotacion: 90 },
+						{ ...base, id: ID(61), orden: 2, rotacion: 0 }
+					]
+				}
+			],
+			herramientas: [],
+			equipos: []
+		} as unknown as Reporte;
+		expect(aGuardado(reporte).alcances[0].fotos).toEqual([
+			{ id: ID(60), descripcion: '', momento: null, rotacion: 90 },
+			{ id: ID(61), descripcion: '', momento: null, rotacion: 0 }
+		]);
 	});
 });

@@ -337,7 +337,8 @@ export class ServicioCaptura {
 					datos: await this.archivos.leer(foto.rutaOptimizada),
 					descripcion: foto.descripcion,
 					momento: foto.momento,
-					optimizada: { ancho: foto.ancho, alto: foto.alto }
+					optimizada: { ancho: foto.ancho, alto: foto.alto },
+					rotacion: foto.rotacion
 				});
 			}
 			alcances.push({

@@ -1,10 +1,10 @@
 <!-- Tarjeta de una foto del alcance: miniatura que abre la vista ampliada y, sobre la foto, una barra con
-     Ampliar, Reemplazar, Quitar y «Más acciones» (mover antes o después, espacio y mover a otro alcance),
+     Ampliar, Girar, Reemplazar, Quitar y «Más acciones» (mover antes o después, espacio y mover a otro alcance),
      visible al pasar el puntero o con el foco. El asa reordena con el teclado; la miniatura y el asa
      se arrastran. FotosAlcance decide qué hacer con cada evento. -->
 <script lang="ts">
 	import { createEventDispatcher, tick } from 'svelte';
-	import { ACEPTA_FOTOS, type Momento } from '$lib/dominio/fotos';
+	import { ACEPTA_FOTOS, escalaGirada, type Momento } from '$lib/dominio/fotos';
 	import type { Foto } from '$lib/dominio/esquemas';
 
 	export let foto: Foto;
@@ -33,6 +33,7 @@
 		momento: { momento: Momento };
 		moverA: { alcanceId: string };
 		describir: { descripcion: string };
+		girar: { sentido: -1 | 1 };
 		teclaAsa: KeyboardEvent;
 		soltarAsa: void;
 	}>();
@@ -49,6 +50,11 @@
 	let entradaArchivo: HTMLInputElement | undefined;
 
 	$: momento = foto.momento ?? 'durante';
+	// El giro es un dato: la imagen se gira con CSS y se escala para caber completa en el marco 4:3.
+	$: escala = escalaGirada({ ancho: foto.ancho, alto: foto.alto }, foto.rotacion, {
+		ancho: 4,
+		alto: 3
+	});
 	$: src = reporteId ? `/reportes/${reporteId}/fotos/${foto.id}?tamano=mini` : '';
 
 	async function cerrarMenu(devolverFoco = true) {
@@ -115,9 +121,11 @@
 				draggable={soloLectura ? 'false' : 'true'}
 				on:click={() => dispatch('ampliar')}
 			>
-				{#if src}
-					<img {src} alt={foto.descripcion || pie} loading="lazy" draggable="false" />
-				{/if}
+				<span class="giro" style:transform={`rotate(${foto.rotacion}deg) scale(${escala})`}>
+					{#if src}
+						<img {src} alt={foto.descripcion || pie} loading="lazy" draggable="false" />
+					{/if}
+				</span>
 			</button>
 		</div>
 		{#if !soloLectura}
@@ -132,6 +140,17 @@
 				>
 					<svg viewBox="0 0 24 24" aria-hidden="true"
 						><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3M11 8v6M8 11h6" /></svg
+					>
+				</button>
+				<button
+					type="button"
+					class="icono"
+					aria-label={`Girar a la derecha la ${pie}`}
+					title="Girar a la derecha"
+					on:click={() => dispatch('girar', { sentido: 1 })}
+				>
+					<svg viewBox="0 0 24 24" aria-hidden="true"
+						><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" /></svg
 					>
 				</button>
 				<button
@@ -338,6 +357,17 @@
 		background: none;
 		cursor: zoom-in;
 	}
+	.giro {
+		display: block;
+		width: 100%;
+		height: 100%;
+		transition: transform 0.15s;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.giro {
+			transition: none;
+		}
+	}
 	.miniatura img {
 		width: 100%;
 		height: 100%;
@@ -386,6 +416,13 @@
 	.icono:hover:not(:disabled),
 	.asa:hover {
 		background: var(--hover);
+	}
+	/* Sobre la foto, el anillo de foco va entre dos bandas del color de superficie: su contraste no
+	   depende de lo clara u oscura que sea la imagen. */
+	.icono:focus-visible {
+		outline: 2px solid var(--primary);
+		outline-offset: 2px;
+		box-shadow: 0 0 0 6px var(--surface);
 	}
 	.icono:disabled {
 		opacity: 0.6;

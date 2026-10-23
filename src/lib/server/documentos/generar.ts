@@ -47,6 +47,8 @@ export interface FotoDocumento {
 	momento?: MomentoFoto | null;
 	/** Medidas de la versión optimizada (JPEG) si ya se preparó; evita reprocesarla. */
 	optimizada?: { ancho: number; alto: number } | null;
+	/** Giro elegido en el editor, en grados; se aplica antes de ajustar la foto a su caja. */
+	rotacion?: 0 | 90 | 180 | 270;
 }
 
 export interface AlcanceDocumento {
@@ -153,14 +155,16 @@ export interface CeldaFoto {
 }
 
 async function prepararSegunPerfil(foto: FotoDocumento, perfil: number): Promise<ImagenPreparada> {
-	if (perfil === 0 && foto.optimizada) {
+	const giro = foto.rotacion ?? 0;
+	// Los bytes de la optimizada solo sirven tal cual sin giro.
+	if (perfil === 0 && foto.optimizada && !giro) {
 		return {
 			datos: Buffer.from(foto.datos),
 			ancho: foto.optimizada.ancho,
 			alto: foto.optimizada.alto
 		};
 	}
-	return prepararImagen(foto.datos, PERFILES_IMAGEN[perfil]);
+	return prepararImagen(foto.datos, { ...PERFILES_IMAGEN[perfil], giro });
 }
 
 /**
@@ -194,7 +198,7 @@ export async function prepararFotos(
 	return preparadas;
 }
 
-async function prepararAlcances(
+export async function prepararAlcances(
 	reporte: ReporteDocumento,
 	presupuesto: number,
 	paralelo: number
@@ -224,7 +228,7 @@ async function prepararAlcances(
 	}));
 }
 
-/** Alcance con sus fotos ya medidas, listo para la plantilla. */
+/** Alcance con sus fotos ya medidas (y giradas), listo para la plantilla. */
 export interface AlcancePreparado {
 	titulo: string;
 	descripcion: string[];

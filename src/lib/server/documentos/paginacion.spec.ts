@@ -3,7 +3,13 @@ import { readFile, readdir } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { ANCHOS_FUENTES } from './anchos-fuentes';
 import calibracion from './calibracion/paginas-word.v2.json';
-import { datosPlantilla, VERSION_PLANTILLA, type ReporteDocumento } from './generar';
+import sharp from 'sharp';
+import {
+	datosPlantilla,
+	prepararAlcances,
+	VERSION_PLANTILLA,
+	type ReporteDocumento
+} from './generar';
 import {
 	calcularIndice,
 	entradaPaginacion,
@@ -200,5 +206,46 @@ describe('precisión frente a Word (paginas-word.v2.json)', () => {
 		// Fuera de la calibración (semillas 25-104) se midió 98,9 %: los 11 títulos restantes salen de
 		// cadenas keepNext que Word resuelve distinto según el caso; ninguno difiere más de una página.
 		if (total25) expect(exactas25 / total25).toBeGreaterThanOrEqual(0.985);
+	});
+});
+
+describe('fotos giradas', () => {
+	it('el modelo recibe la altura de la foto girada y la usa en las páginas', async () => {
+		// Una foto 16:9 mide 8 × 4,5 cm; girada 90° pasa a 3,375 × 6 cm.
+		const datos = await sharp({
+			create: { width: 1600, height: 900, channels: 3, background: '#778899' }
+		})
+			.jpeg()
+			.toBuffer();
+		const fuente = (await base()) as unknown as ReporteDocumento;
+		const reporte = (rotacion: 0 | 90): ReporteDocumento =>
+			({
+				...fuente,
+				disposicionFotos: 'cuadricula',
+				alcances: [
+					{
+						titulo: 'Inspección visual',
+						descripcion: '',
+						estado: 'ok',
+						fotos: Array.from({ length: 16 }, () => ({ datos, rotacion }))
+					}
+				]
+			}) as ReporteDocumento;
+		const entradas = await Promise.all(
+			([0, 90] as const).map(async (rotacion) => {
+				const r = reporte(rotacion);
+				return entradaPaginacion(
+					datosPlantilla(r, await prepararAlcances(r, Number.MAX_SAFE_INTEGER, 4))
+				);
+			})
+		);
+		const [recta, girada] = entradas.map((e) => e.alcances[0].cuadricula[0].izq.alto);
+		expect(recta).toBeCloseTo(4.5, 2);
+		expect(girada).toBeCloseTo(6, 2);
+		// Las filas más altas empujan los títulos que siguen al alcance.
+		const paginas = (e: EntradaPaginacion) => calcularIndice(e).titulos.map((t) => t.pagina);
+		const [antes, despues] = entradas.map(paginas);
+		expect(despues.every((pagina, i) => pagina >= antes[i])).toBe(true);
+		expect(despues).not.toEqual(antes);
 	});
 });

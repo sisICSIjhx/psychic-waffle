@@ -9,7 +9,7 @@ cambio completo. Decisiones aplicadas en `design.md` (sección «Decisiones del 
 - [x] 1.1 Crear la rama `feat/editor-fotos` a partir de `feat/indice-docx` (orden 4 de la pila
       `feat/programa-anual` → `feat/fechas-multiples` → `feat/indice-docx`) y comprobar que
       `npm run test` pasa antes de cambiar nada.
-- [ ] 1.2 Buscar en `supabase/migrations/` la última definición de `api_guardar_reporte` (la envoltura
+- [x] 1.2 Buscar en `supabase/migrations/` la última definición de `api_guardar_reporte` (la envoltura
       de `0016_dias_ejecucion.sql`), `api_crear_revision` (la de `0003_reportes.sql`, que `0016` no
       envuelve) y `json_foto` (`0003`), y comprobar que conservan `(p jsonb) returns jsonb`, la
       respuesta `{ reporte, fotosEliminadas }` y el `id` en el JSON del reporte, y que no existen todavía
@@ -100,7 +100,7 @@ cambio completo. Decisiones aplicadas en `design.md` (sección «Decisiones del 
 
 ## 8. Giro: datos (entrega 2)
 
-- [ ] 8.1 Escribir `supabase/migrations/0017_fotos_rotacion.sql` (D8: columna con `check`, `json_foto`,
+- [x] 8.1 Escribir `supabase/migrations/0017_fotos_rotacion.sql` (D8: columna con `check`, `json_foto`,
       envolturas idempotentes de `api_guardar_reporte` y `api_crear_revision`, error IC422 y bloque de
       permisos; más `api_obtener_foto` solo si 3.4 superó el umbral) y verificar en `captura.spec.ts`
       sobre PGlite en memoria que se guarda y se devuelve un giro de 90°, que un guardado sin `rotacion`
@@ -108,24 +108,24 @@ cambio completo. Decisiones aplicadas en `design.md` (sección «Decisiones del 
       conserva, que la revisión lo copia (con sus días de ejecución) y que una foto recién cargada trae
       0; y en `src/lib/server/bd/cliente.spec.ts`, que `validarFuncion` rechaza
       `api_guardar_reporte_0016` y `api_crear_revision_0003`.
-- [ ] 8.2 Agregar `ROTACIONES_FOTO` y `rotacion` a `esquemaFoto` (0 por omisión) y a las fotos de
+- [x] 8.2 Agregar `ROTACIONES_FOTO` y `rotacion` a `esquemaFoto` (0 por omisión) y a las fotos de
       `esquemaReporteGuardado` (opcional) en `src/lib/dominio/esquemas.ts`, incluirla siempre en
       `aGuardado` y actualizar los datos de ejemplo de las pruebas; verificar con `npm run check` sin
       errores y en `src/lib/dominio/captura.spec.ts` que `aGuardado` envía la `rotacion` de cada foto,
       también cuando es 0.
-- [ ] 8.3 Aplicar 0017 en la base de desarrollo: detener el servidor de desarrollo, respaldar
+- [x] 8.3 Aplicar 0017 en la base de desarrollo: detener el servidor de desarrollo, respaldar
       `storage/pglite` fuera del repositorio y reiniciarlo; verificar que arranca sin errores, que
       `interno.migraciones` registra `0017_fotos_rotacion.sql` y que un borrador existente se abre y se
       autoguarda con sus fotos en 0°.
 
 ## 9. Giro: editor y documento (entrega 2)
 
-- [ ] 9.1 Agregar Girar a la derecha en la barra de `TarjetaFoto` y girar a la izquierda y a la derecha
+- [x] 9.1 Agregar Girar a la derecha en la barra de `TarjetaFoto` y girar a la izquierda y a la derecha
       en `VisorFotos`, con `escalaGirada` y el aviso en `aria-live` (D9); verificar con pruebas que dos
       clics dejan `rotacion` en 180 y el `<img>` con `rotate(180deg)`, que una foto de 640 × 480 px a 90°
       usa escala 0,75, que el autoguardado (`enviar` simulado) envía la `rotacion` y que en solo lectura
       la foto se ve girada sin el botón.
-- [ ] 9.2 Agregar `rotacion` a `FotoDocumento`, `giro` a `prepararImagen`, el atajo del perfil 0 solo sin
+- [x] 9.2 Agregar `rotacion` a `FotoDocumento`, `giro` a `prepararImagen`, el atajo del perfil 0 solo sin
       giro en `prepararSegunPerfil` y el paso de `rotacion` en `documentoDe` (D10); verificar en
       `src/lib/server/documentos/generar.spec.ts` con `extensionesCm` que una foto de 640 × 480 px a 90°
       mide 4,5 × 6 cm, que a 180° mide 8 × 6 cm, que sin giro los bytes son los de la optimizada y que un

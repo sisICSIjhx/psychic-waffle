@@ -504,7 +504,13 @@ export function aGuardado(reporte: Reporte): ReporteGuardado {
 			estadoVerificacion: a.estadoVerificacion,
 			observaciones: a.observaciones,
 			partidaAlcanceId: a.partidaAlcanceId,
-			fotos: a.fotos.map((f) => ({ id: f.id, descripcion: f.descripcion, momento: f.momento }))
+			// El giro va siempre: omitirlo significa «conservar» y un giro de vuelta a 0 no se guardaría.
+			fotos: a.fotos.map((f) => ({
+				id: f.id,
+				descripcion: f.descripcion,
+				momento: f.momento,
+				rotacion: f.rotacion
+			}))
 		})),
 		herramientas: reporte.herramientas.map((h) => ({
 			cantidad: h.cantidad,

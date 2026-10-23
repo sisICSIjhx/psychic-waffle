@@ -20,6 +20,8 @@ export const FUNCIONES_FIRMA = ['elaboro', 'aprobo', 'recibio'] as const;
 export const ESTADOS_REPORTE = ['borrador', 'en_revision', 'emitido', 'sustituido'] as const;
 export const ESTADOS_VERIFICACION = ['pendiente', 'ok', 'no_aplica', 'con_observacion'] as const;
 export const MOMENTOS_FOTO = ['antes', 'durante', 'despues'] as const;
+/** Giro de una foto en grados, en el sentido de las agujas del reloj. */
+export const ROTACIONES_FOTO = [0, 90, 180, 270] as const;
 export const TIPOS_OCURRENCIA = ['semana', 'quincena', 'dia'] as const;
 
 const id = z.uuid();
@@ -270,7 +272,8 @@ export const esquemaFoto = z.object({
 	ancho: z.number().int().positive(),
 	alto: z.number().int().positive(),
 	bytes: z.number().int().positive(),
-	tipoMime: z.string()
+	tipoMime: z.string(),
+	rotacion: z.union(ROTACIONES_FOTO.map((r) => z.literal(r))).default(0)
 });
 export type Foto = z.infer<typeof esquemaFoto>;
 
@@ -420,7 +423,13 @@ export const esquemaReporteGuardado = z.object({
 			observaciones: z.string(),
 			partidaAlcanceId: id.nullable().optional(),
 			fotos: z.array(
-				z.object({ id, descripcion: z.string(), momento: z.enum(MOMENTOS_FOTO).nullable() })
+				z.object({
+					id,
+					descripcion: z.string(),
+					momento: z.enum(MOMENTOS_FOTO).nullable(),
+					// Sin giro la foto conserva el suyo (p. ej., un envío de una pestaña anterior).
+					rotacion: z.union(ROTACIONES_FOTO.map((r) => z.literal(r))).optional()
+				})
 			)
 		})
 	),

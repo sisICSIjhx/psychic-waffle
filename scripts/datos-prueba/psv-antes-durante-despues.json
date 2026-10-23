@@ -1,5 +1,5 @@
 {
-	"$comentario": "Datos de ejemplo para scripts/prueba-documental.ts. Firmantes ficticios; las fotos se toman de fuenteFotos solo en local.",
+	"$comentario": "Datos de ejemplo para scripts/prueba-documental.ts. Firmantes ficticios; las fotos se toman de fuenteFotos solo en local. El alcance 2.2 tiene fotos giradas 90°, 180° y 270°.",
 	"salida": "prueba-2-antes-durante-despues",
 	"fuenteFotos": {
 		"ruta": "insumos/PROAGROINDUSTRIAS/REPORTES ERM 30184/PARTIDA 15/PARTIDA 15 psv 1001.docx",
@@ -72,17 +72,20 @@
 					{
 						"foto": 4,
 						"momento": "antes",
-						"descripcion": ""
+						"descripcion": "",
+						"rotacion": 90
 					},
 					{
 						"foto": 5,
 						"momento": "durante",
-						"descripcion": ""
+						"descripcion": "",
+						"rotacion": 180
 					},
 					{
 						"foto": 6,
 						"momento": "despues",
-						"descripcion": ""
+						"descripcion": "",
+						"rotacion": 270
 					}
 				]
 			},

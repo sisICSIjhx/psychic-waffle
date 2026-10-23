@@ -369,3 +369,141 @@ describe('miniaturas de las fotos', () => {
 		for (const ruta of propias) expect(await existe(ruta)).toBe(false);
 	});
 });
+
+describe('giro de las fotos', () => {
+	const fotosDe = (r: Reporte) => r.alcances.flatMap((a) => a.fotos.map((f) => [f.id, f.rotacion]));
+
+	async function conFotos() {
+		const reporte = await crear();
+		const carga = await servicio.cargarFotos({
+			reporteId: reporte.id,
+			alcanceId: reporte.alcances[0].id,
+			version: reporte.version,
+			momento: null,
+			archivos: [
+				{ nombre: 'uno.jpg', datos: await jpeg() },
+				{ nombre: 'dos.jpg', datos: await jpeg('#998877') }
+			]
+		});
+		expect(carga.fotos.map((f) => f.rotacion)).toEqual([0, 0]);
+		return servicio.obtener(reporte.id);
+	}
+
+	it('guarda y devuelve el giro, y un guardado sin él lo conserva', async () => {
+		const reporte = await conFotos();
+		const [uno, dos] = reporte.alcances[0].fotos;
+		const guardado = aGuardado(reporte);
+		guardado.alcances[0].fotos[0].rotacion = 90;
+		const girado = await servicio.guardar(guardado);
+		expect(fotosDe(girado)).toEqual([
+			[uno.id, 90],
+			[dos.id, 0]
+		]);
+
+		const sinGiro = aGuardado(girado);
+		for (const foto of sinGiro.alcances[0].fotos) delete foto.rotacion;
+		sinGiro.alcances[0].fotos.reverse();
+		const conservado = await servicio.guardar(sinGiro);
+		expect(fotosDe(conservado)).toEqual([
+			[dos.id, 0],
+			[uno.id, 90]
+		]);
+	});
+
+	it('rechaza un giro que no es múltiplo de 90 sin cambiar la versión ni los datos', async () => {
+		const reporte = await conFotos();
+		const sql = (repos.reportes as unknown as { sql: ClienteSql }).sql;
+		const envio = aGuardado(reporte) as unknown as {
+			conclusiones: string;
+			alcances: { fotos: { rotacion: number }[] }[];
+		};
+		envio.conclusiones = 'No debe guardarse';
+		envio.alcances[0].fotos[0].rotacion = 45;
+		await expect(sql.llamar('api_guardar_reporte', envio)).rejects.toMatchObject({
+			tipo: 'invalido',
+			detalle: { motivo: 'rotacion' }
+		});
+		const actual = await servicio.obtener(reporte.id);
+		expect(actual.version).toBe(reporte.version);
+		expect(actual.conclusiones).toBe(reporte.conclusiones);
+		expect(fotosDe(actual).map(([, r]) => r)).toEqual([0, 0]);
+	});
+
+	it('aplicar el catálogo conserva el giro y la revisión lo copia con sus días', async () => {
+		const reporte = await conFotos();
+		const guardado = aGuardado(reporte);
+		guardado.alcances[0].fotos[1].rotacion = 270;
+		guardado.diasEjecucion = [
+			{ desde: '2026-06-03', hasta: '2026-06-05' },
+			{ desde: '2026-06-09', hasta: '2026-06-09' }
+		];
+		for (const alcance of guardado.alcances) alcance.estadoVerificacion = 'ok';
+		let actual = await servicio.guardar(guardado);
+		actual = await servicio.aplicarCatalogo(actual.id, actual.version);
+		expect(fotosDe(actual).map(([, r]) => r)).toEqual([0, 270]);
+
+		const enRevision = await servicio.cambiarEstado(actual.id, actual.version, 'en_revision');
+		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
+		const revision = await servicio.crearRevision(emitido.id);
+		expect(fotosDe(revision).map(([, r]) => r)).toEqual([0, 270]);
+		expect(revision.diasEjecucion).toEqual(guardado.diasEjecucion);
+	});
+});
+
+describe('giro en una revisión', () => {
+	const medios = async (docx: Buffer) => {
+		const zip = await JSZip.loadAsync(docx);
+		const nombres = Object.keys(zip.files)
+			.filter((n) => n.startsWith('word/media/') && !zip.files[n].dir)
+			.sort();
+		return Promise.all(nombres.map((n) => zip.file(n)!.async('nodebuffer')));
+	};
+
+	it('girar en la revisión no cambia el DOCX del emitido ni sus archivos', async () => {
+		const reporte = await crear();
+		await servicio.cargarFotos({
+			reporteId: reporte.id,
+			alcanceId: reporte.alcances[0].id,
+			version: reporte.version,
+			momento: null,
+			archivos: [{ nombre: 'uno.jpg', datos: await jpeg() }]
+		});
+		const guardado = aGuardado(await servicio.obtener(reporte.id));
+		guardado.diasEjecucion = [{ desde: '2026-06-18', hasta: '2026-06-18' }];
+		for (const alcance of guardado.alcances) alcance.estadoVerificacion = 'ok';
+		const capturado = await servicio.guardar(guardado);
+		const enRevision = await servicio.cambiarEstado(capturado.id, capturado.version, 'en_revision');
+		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
+		const antes = await servicio.generarDocumento(emitido.id);
+		const foto = emitido.alcances[0].fotos[0];
+		const almacen = new AlmacenamientoLocal(carpeta);
+		const optimizada = await almacen.leer(foto.rutaOptimizada);
+
+		const revision = await servicio.crearRevision(emitido.id);
+		const girada = aGuardado(revision);
+		girada.alcances[0].fotos[0].rotacion = 90;
+		await servicio.guardar(girada);
+
+		// El emitido conserva su giro y sus archivos; regenerado, su DOCX lleva la misma imagen.
+		const original = await servicio.obtener(emitido.id);
+		expect(original.alcances[0].fotos[0].rotacion).toBe(0);
+		expect((await almacen.leer(foto.rutaOptimizada)).equals(optimizada)).toBe(true);
+		await almacen.eliminar(antes.documento.ruta);
+		const despues = await servicio.generarDocumento(emitido.id);
+		expect(despues.documento.id).not.toBe(antes.documento.id);
+		expect(await medios(despues.datos)).toEqual(await medios(antes.datos));
+
+		// La revisión sí sale girada: 320 × 240 px pasa a 240 × 320.
+		const medidas = async (docx: Buffer) =>
+			Promise.all(
+				(await medios(docx)).map(async (m) => {
+					const { width, height } = await sharp(m).metadata();
+					return `${width}x${height}`;
+				})
+			);
+		expect(await medidas(antes.datos)).toContain('320x240');
+		const deRevision = await medidas((await servicio.generarDocumento(revision.id)).datos);
+		expect(deRevision).toContain('240x320');
+		expect(deRevision).not.toContain('320x240');
+	});
+});

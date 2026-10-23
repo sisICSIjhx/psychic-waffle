@@ -5,7 +5,7 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { pieIlustracion } from '$lib/dominio/documento';
-	import { ACEPTA_FOTOS } from '$lib/dominio/fotos';
+	import { ACEPTA_FOTOS, escalaGirada } from '$lib/dominio/fotos';
 	import type { Foto } from '$lib/dominio/esquemas';
 
 	/** Fotos visibles del alcance en orden de aparición. */
@@ -26,6 +26,7 @@
 		reemplazar: { fotoId: string; archivo: File; pie: string };
 		moverA: { fotoId: string; alcanceId: string };
 		describir: { fotoId: string; descripcion: string };
+		girar: { fotoId: string; sentido: -1 | 1 };
 	}>();
 
 	let dialogo: HTMLDialogElement | undefined;
@@ -33,6 +34,8 @@
 	let actualId = fotoId;
 	let indice = 0;
 	let moverAbierto = false;
+	let anchoCaja = 0;
+	let altoCaja = 0;
 	/** Última foto quitada o reemplazada desde la vista, para ofrecer «Deshacer» mientras se pueda. */
 	let pendiente: { fotoId: string; texto: string } | null = null;
 
@@ -43,6 +46,12 @@
 	else cerrar();
 	$: foto = lista.find((f) => f.id === actualId);
 	$: pie = pieIlustracion(posicionAlcance, indice + 1);
+	$: escala = foto
+		? escalaGirada({ ancho: foto.ancho, alto: foto.alto }, foto.rotacion, {
+				ancho: anchoCaja,
+				alto: altoCaja
+			})
+		: 1;
 	$: precargar(lista[indice - 1], lista[indice + 1]);
 	$: avisoDeshacer = pendiente && ocultas[pendiente.fotoId] ? pendiente : null;
 
@@ -132,9 +141,11 @@
 			disabled={indice === 0}
 			on:click={() => ir(-1)}>‹</button
 		>
-		<div class="caja">
-			{#if foto && reporteId}
-				<img src={urlDe(foto.id)} alt={foto.descripcion || pie} />
+		<div class="caja" bind:clientWidth={anchoCaja} bind:clientHeight={altoCaja}>
+			{#if foto}
+				<span class="giro" style:transform={`rotate(${foto.rotacion}deg) scale(${escala})`}>
+					{#if reporteId}<img src={urlDe(foto.id)} alt={foto.descripcion || pie} />{/if}
+				</span>
 			{/if}
 		</div>
 		<button
@@ -162,6 +173,18 @@
 			/>
 			{#if !soloLectura}
 				<div class="acciones">
+					<button
+						type="button"
+						class="boton"
+						on:click={() => foto && dispatch('girar', { fotoId: foto.id, sentido: -1 })}
+						>Girar a la izquierda</button
+					>
+					<button
+						type="button"
+						class="boton"
+						on:click={() => foto && dispatch('girar', { fotoId: foto.id, sentido: 1 })}
+						>Girar a la derecha</button
+					>
 					<button
 						type="button"
 						class="boton"
@@ -262,6 +285,19 @@
 		justify-content: center;
 		border-radius: 6px;
 		background: var(--surface-2);
+	}
+	.giro {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		transition: transform 0.15s;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.giro {
+			transition: none;
+		}
 	}
 	.caja img {
 		max-width: 100%;
