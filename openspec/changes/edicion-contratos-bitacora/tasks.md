@@ -10,10 +10,10 @@ Virtual, y ningún archivo lleva nombres de firmantes ni de reportes: las prueba
 
 ## 1. Rama y punto de partida
 
-- [ ] 1.1 Crear la rama `feat/edicion-contratos` a partir de `feat/editor-fotos`, comprobar que existen
+- [x] 1.1 Crear la rama `feat/edicion-contratos` a partir de `feat/editor-fotos`, comprobar que existen
       `0015_importar_programa.sql`, `0016_dias_ejecucion.sql` y `0017_fotos_rotacion.sql` y que
       `npm run test` pasa antes de cambiar nada.
-- [ ] 1.2 Localizar la última definición en `0001…0017` de `api_guardar_contrato`, `api_guardar_sitio`,
+- [x] 1.2 Localizar la última definición en `0001…0017` de `api_guardar_contrato`, `api_guardar_sitio`,
       `api_guardar_firmante`, `api_asociar_sitio`, `json_contrato`, `json_sitio`, `json_firmante` y
       `json_reporte`, y buscar en `src/` y `scripts/` cualquier llamada a `guardarContrato`,
       `guardarSitio` o `guardarFirmante` con `id` (incluidas las del cambio
@@ -23,45 +23,45 @@ Virtual, y ningún archivo lleva nombres de firmantes ni de reportes: las prueba
 
 ## 2. Migración 0018: bitácora, versión de los datos y copia del contrato
 
-- [ ] 2.1 Crear `supabase/migrations/0018_bitacora_catalogo.sql` con la tabla `cambios_catalogo`, sus
+- [x] 2.1 Crear `supabase/migrations/0018_bitacora_catalogo.sql` con la tabla `cambios_catalogo`, sus
       índices, el trigger que rechaza `UPDATE`, `DELETE` y `TRUNCATE`, RLS, la política
       `servicio_acceso_total`, la revocación a `anon` y `authenticated` y el bloque final de permisos de
       `0007` (D2); verificar con pruebas sobre PGlite que «habilita RLS en todas las tablas» sigue
       pasando, que actualizar o borrar un registro falla y que un motivo de menos de 10 caracteres se
       rechaza.
-- [ ] 2.2 Agregar `actualizadoEn` a `json_contrato`, `json_sitio` y `json_firmante` y a
+- [x] 2.2 Agregar `actualizadoEn` a `json_contrato`, `json_sitio` y `json_firmante` y a
       `esquemaContrato`, `esquemaSitio` y `esquemaFirmante` en `src/lib/dominio/esquemas.ts`,
       actualizando los datos de ejemplo de las pruebas; verificar con `npm run check` y con las
       pruebas actuales en verde.
-- [ ] 2.3 Agregar `reportes.contrato_copia`, la función `datos_contrato_reporte`, el trigger
+- [x] 2.3 Agregar `reportes.contrato_copia`, la función `datos_contrato_reporte`, el trigger
       `before insert` (revisión: copia del original; reporte nuevo: datos vigentes) y el llenado de los
       reportes existentes (D8); verificar con pruebas sobre PGlite que un reporte nuevo guarda en la
       copia lo mismo que `prellenarReporte` puso en su encabezado, que una revisión recibe la copia del
       original aunque el contrato haya cambiado y que tras la migración ningún reporte queda con la
       copia vacía.
-- [ ] 2.4 Agregar `reconciliar_contrato_reporte(id, forzar)` y verificar con pruebas que un campo que
+- [x] 2.4 Agregar `reconciliar_contrato_reporte(id, forzar)` y verificar con pruebas que un campo que
       cambió en el contrato y no se escribió a mano se actualiza y sube `version`, que una firma escrita
       a mano se conserva sin `forzar` y se reemplaza con `forzar`, que sin firmante vigente la firma se
       conserva y que un reporte en revisión, emitido o sustituido no cambia.
 
 ## 3. Funciones de edición, altas y consultas
 
-- [ ] 3.1 Agregar `api_editar_contrato` con ensayo por reversión (verdadero por omisión, D3), motivo de
+- [x] 3.1 Agregar `api_editar_contrato` con ensayo por reversión (verdadero por omisión, D3), motivo de
       10 a 500 caracteres, `actualizadoEn` (IC409), rechazo sin cambios, número duplicado, vigencia que
       deja datos fuera (D5), impacto, propagación opcional y registro en la bitácora; verificar con
       pruebas que el ensayo no escribe nada y da los mismos conteos que la aplicación, que el cliente no
       se puede cambiar y que el escenario del programa de Proagro de marzo de 2026 a febrero de 2027
       rechaza la vigencia 2026-05-01..2027-04-30 indicando marzo y abril de 2026.
-- [ ] 3.2 Agregar `api_editar_sitio`, `api_quitar_sitio` y `api_resumen_sitios_contrato` (D6);
+- [x] 3.2 Agregar `api_editar_sitio`, `api_quitar_sitio` y `api_resumen_sitios_contrato` (D6);
       verificar con pruebas el sitio que no es del contrato, la clave duplicada, el impacto con otro
       contrato que comparte el sitio, la propagación a los borradores del sitio en ambos contratos, el
       rechazo de quitar con partidas, programas o reportes y que quitar no borra el sitio del catálogo.
-- [ ] 3.3 Agregar `api_corregir_firmante` y `api_cambiar_firmante` (D7); verificar con pruebas el
+- [x] 3.3 Agregar `api_corregir_firmante` y `api_cambiar_firmante` (D7); verificar con pruebas el
       traslape al corregir fechas, la fecha de cambio no válida con la primera fecha permitida, el cierre
       del anterior el día previo, que el nuevo hereda el fin del anterior, que
       `api_firmantes_vigentes` devuelve a cada uno según el mes y el primer mes afectado de un cambio a
       mitad de mes.
-- [ ] 3.4 Redefinir `api_guardar_contrato`, `api_guardar_sitio` y `api_guardar_firmante` solo para
+- [x] 3.4 Redefinir `api_guardar_contrato`, `api_guardar_sitio` y `api_guardar_firmante` solo para
       altas (con `id`, IC422 `usar_edicion`), registrar en la bitácora cada alta y la asociación de
       `api_asociar_sitio` con su `origen`, quitar `id` de `ContratoEntrada`, `SitioEntrada` y
       `FirmanteEntrada`, y pasar `origen: 'script'` en `scripts/importar-catalogo.ts` y
@@ -69,36 +69,36 @@ Virtual, y ningún archivo lleva nombres de firmantes ni de reportes: las prueba
       una actualización por `id` se rechaza, que las pruebas que crean contratos, sitios y firmantes
       siguen pasando y que `npm run check` no señala llamadores con `id` salvo `--ajustar-vigencia` de
       `scripts/importar-catalogo.ts`, que pasa a la edición en la tarea 4.5.
-- [ ] 3.5 Agregar `api_listar_cambios_catalogo` {contratoId, pagina, tamano} con los registros del
+- [x] 3.5 Agregar `api_listar_cambios_catalogo` {contratoId, pagina, tamano} con los registros del
       contrato, de sus firmantes y de sus sitios asociados, del más reciente al más antiguo; verificar
       con pruebas la paginación de 20, el orden y que la corrección de un sitio hecha desde otro contrato
       aparece en ambos historiales.
-- [ ] 3.6 Agregar `api_estado_contrato_reporte` y `api_actualizar_contrato_reporte` (D13); verificar con
+- [x] 3.6 Agregar `api_estado_contrato_reporte` y `api_actualizar_contrato_reporte` (D13); verificar con
       pruebas que un borrador con la copia desactualizada devuelve los datos que cambiaron, que uno en
       revisión los devuelve pero no se puede actualizar, que la versión anterior responde IC409 y que una
       revisión creada después de corregir el sitio toma el nombre corregido al actualizarse.
 
 ## 4. Dominio, repositorios, servicio y permisos
 
-- [ ] 4.1 Agregar a `src/lib/dominio/esquemas.ts` los esquemas del cambio de bitácora, del resultado de
+- [x] 4.1 Agregar a `src/lib/dominio/esquemas.ts` los esquemas del cambio de bitácora, del resultado de
       una edición (cambios, impacto y efectos) y del estado del contrato de un reporte, y los métodos
       `editarContrato`, `editarSitio`, `quitarSitio`, `resumenSitios`, `corregirFirmante`,
       `cambiarFirmante` y `listarCambios` en `src/lib/server/repositorios/catalogo.ts`, y
       `estadoContrato` y `actualizarContrato` en `src/lib/server/repositorios/reportes.ts`; verificar
       con `npm run check` y con pruebas de repositorio sobre PGlite.
-- [ ] 4.2 Crear `src/lib/dominio/bitacora.ts` (etiquetas de campo, `describirCambio`, `resumenImpacto`,
+- [x] 4.2 Crear `src/lib/dominio/bitacora.ts` (etiquetas de campo, `describirCambio`, `resumenImpacto`,
       `validarMotivo` y el mes desde el que aplica un cambio de firmante) y verificar con
       `src/lib/dominio/bitacora.spec.ts` los textos «Número: anterior → nuevo», «2 borradores», «1
       emitido conserva el dato anterior», los límites del motivo con espacios y «desde diciembre de
       2026» para un cambio del 15 de noviembre.
-- [ ] 4.3 Declarar `Locals` en `src/app.d.ts` y crear `src/lib/server/permisos.ts` con
+- [x] 4.3 Declarar `Locals` en `src/app.d.ts` y crear `src/lib/server/permisos.ts` con
       `puedeEditarCatalogo` y `contextoBitacora` (D10); verificar con `src/lib/server/permisos.spec.ts`
       que sin autenticación se permite, que con autenticación solo el rol administrador puede editar y
       que el usuario sale de `locals` aunque el formulario traiga otro.
-- [ ] 4.4 Agregar `estadoContrato` y `actualizarContrato` a `CapturaServicio` en
+- [x] 4.4 Agregar `estadoContrato` y `actualizarContrato` a `CapturaServicio` en
       `src/lib/server/captura.ts` y verificar en `src/lib/server/captura.spec.ts` que tras actualizar un
       borrador el DOCX generado usa el número nuevo y que el de un emitido conserva el anterior.
-- [ ] 4.5 Pasar `--ajustar-vigencia` de `scripts/importar-catalogo.ts` (cambio
+- [x] 4.5 Pasar `--ajustar-vigencia` de `scripts/importar-catalogo.ts` (cambio
       `importacion-programa-anual`, D10) de `guardarContrato` con `id` a `editarContrato` con
       `origen: 'script'`, la opción nueva `--motivo` (obligatoria con `--ajustar-vigencia`, de 10 a 500
       caracteres) y el ensayo mientras no se dé `--aplicar`, y actualizar el texto de uso del comando;

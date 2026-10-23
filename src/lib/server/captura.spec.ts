@@ -507,3 +507,47 @@ describe('giro en una revisión', () => {
 		expect(deRevision).not.toContain('320x240');
 	});
 });
+
+describe('datos del contrato corregidos', () => {
+	it('el borrador actualizado lleva el número nuevo al DOCX y el emitido conserva el anterior', async () => {
+		const textoDocx = async (datos: Buffer) =>
+			texto(await (await JSZip.loadAsync(datos)).file('word/document.xml')!.async('string'));
+		const completo = (r: Reporte) => {
+			const g = aGuardado(r);
+			g.diasEjecucion = [{ desde: '2026-06-18', hasta: '2026-06-18' }];
+			for (const alcance of g.alcances) alcance.estadoVerificacion = 'ok';
+			return g;
+		};
+		const emitidoBase = await servicio.guardar(completo(await crear()));
+		const enRevision = await servicio.cambiarEstado(
+			emitidoBase.id,
+			emitidoBase.version,
+			'en_revision'
+		);
+		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
+		const borrador = await servicio.guardar(completo(await crear()));
+		const anterior = emitido.contratoTexto;
+
+		const contrato = (await repos.catalogo.listarContratos()).find(
+			(k) => k.id === emitido.contratoId
+		)!;
+		await repos.catalogo.editarContrato(
+			{ ...contrato, numero: 'OC-FICTICIA-CORREGIDA' },
+			{ ensayo: false, motivo: 'Número provisional corregido', actualizarBorradores: false }
+		);
+		const estado = await servicio.estadoContrato(await servicio.obtener(borrador.id));
+		expect(estado.datos).toEqual([
+			{ campo: 'contrato', reporte: anterior, contrato: 'OC-FICTICIA-CORREGIDA' }
+		]);
+		expect((await servicio.estadoContrato(emitido)).cambiado).toBe(false);
+
+		const actualizado = await servicio.actualizarContrato(borrador.id, borrador.version);
+		expect(actualizado.contratoTexto).toBe('OC-FICTICIA-CORREGIDA');
+		expect(await textoDocx((await servicio.generarDocumento(actualizado.id)).datos)).toContain(
+			'OC-FICTICIA-CORREGIDA'
+		);
+		const delEmitido = await textoDocx((await servicio.generarDocumento(emitido.id)).datos);
+		expect(delEmitido).toContain(anterior);
+		expect(delEmitido).not.toContain('OC-FICTICIA-CORREGIDA');
+	});
+});

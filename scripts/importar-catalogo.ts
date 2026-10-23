@@ -11,15 +11,18 @@
 // Programa anual sin catálogo (formato de Proagro, uno o varios sitios en una hoja):
 //   npm run importar -- <archivo.xlsx> --programa --contrato <número> --sitio <clave> [--aplicar]
 //     [--anio <AAAA>] [--usar-actividad <n[,n…]>] [--periodicidad <n>=<valor>]…
-//     [--ajustar-vigencia <AAAA-MM-DD>:<AAAA-MM-DD>] [--confirmar]
+//     [--ajustar-vigencia <AAAA-MM-DD>:<AAAA-MM-DD> --motivo <texto>] [--confirmar]
 // Solo cambia la periodicidad, la cantidad anual, los meses y las marcas R; el contrato y el sitio
-// deben existir. No se combina con --crear.
+// deben existir. No se combina con --crear. --ajustar-vigencia corrige la vigencia por la edición del
+// contrato (mismas validaciones que /catalogo) y exige --motivo (10 a 500 caracteres); queda en la
+// bitácora con origen script. Las altas que hace este comando también quedan con origen script.
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import type { Contrato } from '../src/lib/dominio/esquemas.ts';
 import { repositoriosDesdeEntorno } from '../src/lib/server/datos-entorno.ts';
+import { validarMotivo } from '../src/lib/dominio/bitacora.ts';
 import { normalizarParaComparar } from '../src/lib/server/documentos/auditoria.ts';
 import { analizarLibroCatalogo, ErrorImportacion } from '../src/lib/server/importacion/catalogo.ts';
 import {
@@ -55,6 +58,7 @@ const { values: opciones, positionals } = parseArgs({
 		'usar-actividad': { type: 'string', multiple: true, default: [] },
 		periodicidad: { type: 'string', multiple: true, default: [] },
 		'ajustar-vigencia': { type: 'string' },
+		motivo: { type: 'string' },
 		confirmar: { type: 'boolean', default: false }
 	}
 });
@@ -91,6 +95,13 @@ async function importarSoloPrograma(): Promise<void> {
 	} catch (error) {
 		fallar(`Importación rechazada: ${error instanceof Error ? error.message : String(error)}`);
 	}
+	// El motivo se valida antes de abrir la base: sin él no se toca nada.
+	const motivo = opciones.motivo ?? '';
+	if (opciones['ajustar-vigencia'] && !validarMotivo(motivo).valido) {
+		fallar(
+			`--ajustar-vigencia exige --motivo de 10 a 500 caracteres. ${validarMotivo(motivo).mensaje}`
+		);
+	}
 	const repos = await repositoriosDesdeEntorno(process.env);
 	try {
 		const contrato = (await repos.catalogo.listarContratos()).find((c) =>
@@ -113,6 +124,11 @@ async function importarSoloPrograma(): Promise<void> {
 				await repos.programa.listarProgramas({ contratoId: contrato.id })
 			);
 			if (errores.length) fallar(`Vigencia rechazada: ${errores.join(' ')}`);
+			// La base repite la validación en ensayo, sin escribir nada.
+			await repos.catalogo.editarContrato(
+				{ ...contrato, ...vigencia },
+				{ ensayo: true, origen: 'script' }
+			);
 			console.log(
 				`Vigencia del contrato: ${contrato.vigenciaInicio} a ${contrato.vigenciaFin} → ${vigencia.vigenciaInicio} a ${vigencia.vigenciaFin}.`
 			);
@@ -122,13 +138,10 @@ async function importarSoloPrograma(): Promise<void> {
 		let resultado = ensayo;
 		if (opciones.aplicar) {
 			if (opciones['ajustar-vigencia']) {
-				await repos.catalogo.guardarContrato({
-					id: contrato.id,
-					clienteId: contrato.clienteId,
-					numero: contrato.numero,
-					descripcion: contrato.descripcion,
-					...vigencia
-				});
+				await repos.catalogo.editarContrato(
+					{ ...contrato, ...vigencia },
+					{ ensayo: false, motivo, origen: 'script' }
+				);
 			}
 			try {
 				resultado = await repos.programa.importarPrograma(carga, false);
@@ -217,13 +230,16 @@ async function prepararDestino(repos: Repositorios, existente: Contrato | undefi
 				nombre: opciones['cliente-nombre'] ?? claveCliente,
 				razonSocial: opciones['razon-social'] ?? opciones['cliente-nombre'] ?? claveCliente
 			}));
-		contrato = await repos.catalogo.guardarContrato({
-			clienteId: cliente.id,
-			numero: numeroContrato!,
-			descripcion: null,
-			vigenciaInicio,
-			vigenciaFin
-		});
+		contrato = await repos.catalogo.guardarContrato(
+			{
+				clienteId: cliente.id,
+				numero: numeroContrato!,
+				descripcion: null,
+				vigenciaInicio,
+				vigenciaFin
+			},
+			{ origen: 'script' }
+		);
 		console.log(`Contrato ${contrato.numero} creado para ${cliente.nombre}.`);
 	}
 	let sitio = (await repos.catalogo.listarSitios(contrato.id)).find((s) =>
@@ -232,11 +248,11 @@ async function prepararDestino(repos: Repositorios, existente: Contrato | undefi
 	if (!sitio) {
 		sitio =
 			(await repos.catalogo.listarSitios()).find((s) => igual(s.clave, claveSitio!)) ??
-			(await repos.catalogo.guardarSitio({
-				clave: claveSitio!,
-				nombre: opciones['sitio-nombre'] ?? ''
-			}));
-		await repos.catalogo.asociarSitio(contrato.id, sitio.id);
+			(await repos.catalogo.guardarSitio(
+				{ clave: claveSitio!, nombre: opciones['sitio-nombre'] ?? '' },
+				{ contratoId: contrato.id, origen: 'script' }
+			));
+		await repos.catalogo.asociarSitio(contrato.id, sitio.id, { origen: 'script' });
 		console.log(`Sitio ${sitio.clave} ${sitio.nombre} asociado al contrato.`);
 	}
 	return { contrato, sitio };

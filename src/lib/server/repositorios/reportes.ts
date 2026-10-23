@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import {
 	esquemaDocumentoGenerado,
+	esquemaEstadoContratoReporte,
 	esquemaFiltroReportes,
 	esquemaFoto,
 	esquemaPaginaReportes,
@@ -10,6 +11,7 @@ import {
 	esquemaReporteGuardado,
 	esquemaReporteNuevo,
 	type DocumentoGenerado,
+	type EstadoContratoReporte,
 	type FiltroReportes,
 	type Foto,
 	type PaginaReportes,
@@ -79,6 +81,20 @@ export class RepositorioReportes {
 	): Promise<{ reporte: Reporte; fotosEliminadas: RutasFoto[] }> {
 		const entrada = { ...esquemaReporteGuardado.parse(reporte), catalogoHuella };
 		return esquemaResultadoGuardado.parse(await this.sql.llamar('api_aplicar_catalogo', entrada));
+	}
+
+	/** Datos del contrato que cambiaron desde la copia del reporte (borradores y en revisión). */
+	async estadoContrato(id: string): Promise<EstadoContratoReporte> {
+		return esquemaEstadoContratoReporte.parse(
+			await this.sql.llamar('api_estado_contrato_reporte', { id })
+		);
+	}
+
+	/** Lleva al borrador todos los datos vigentes del contrato; `version` es la que conoce quien lo pide. */
+	async actualizarContrato(id: string, version: number): Promise<Reporte> {
+		return esquemaReporte.parse(
+			await this.sql.llamar('api_actualizar_contrato_reporte', { id, version })
+		);
 	}
 
 	async agregarFoto(foto: FotoNueva): Promise<{ foto: Foto; version: number }> {

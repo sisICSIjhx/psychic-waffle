@@ -16,9 +16,15 @@ const contrato: Contrato = {
 	vigenciaInicio: '2026-05-01',
 	vigenciaFin: '2027-04-30',
 	cliente: { id: ID(5), clave: 'ficticio', nombre: 'Ficticio', razonSocial: 'FICTICIO' },
-	vigente: true
+	vigente: true,
+	actualizadoEn: '2026-05-01T00:00:00Z'
 };
-const sitio: Sitio = { id: ID(3), clave: 'EM-99999', nombre: 'SITIO FICTICIO' };
+const sitio: Sitio = {
+	id: ID(3),
+	clave: 'EM-99999',
+	nombre: 'SITIO FICTICIO',
+	actualizadoEn: '2026-05-01T00:00:00Z'
+};
 
 function partidaResumen(numero: number, actividad: string): PartidaResumen {
 	return {

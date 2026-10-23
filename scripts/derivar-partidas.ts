@@ -225,13 +225,16 @@ try {
 		razonSocial: usuario || opciones['cliente-nombre']!
 	});
 	const [vigenciaInicio, vigenciaFin] = opciones.vigencia!.split(':');
-	contrato ??= await repos.catalogo.guardarContrato({
-		clienteId: cliente.id,
-		numero: numeroFinal,
-		descripcion: 'Derivado de reportes existentes: confirmar número y vigencia.',
-		vigenciaInicio,
-		vigenciaFin
-	});
+	contrato ??= await repos.catalogo.guardarContrato(
+		{
+			clienteId: cliente.id,
+			numero: numeroFinal,
+			descripcion: 'Derivado de reportes existentes: confirmar número y vigencia.',
+			vigenciaInicio,
+			vigenciaFin
+		},
+		{ origen: 'script' }
+	);
 
 	const sitios = new Map<string, string>();
 	for (const clave of new Set(lecturas.map((l) => l.sitioClave))) {
@@ -248,8 +251,13 @@ try {
 		if (existente && !iguales(existente.clave, clave)) {
 			console.log(`Se reutiliza el sitio ${existente.clave} registrado para la estación ${clave}.`);
 		}
-		const sitio = existente ?? (await repos.catalogo.guardarSitio({ clave, nombre }));
-		await repos.catalogo.asociarSitio(contrato.id, sitio.id);
+		const sitio =
+			existente ??
+			(await repos.catalogo.guardarSitio(
+				{ clave, nombre },
+				{ contratoId: contrato.id, origen: 'script' }
+			));
+		await repos.catalogo.asociarSitio(contrato.id, sitio.id, { origen: 'script' });
 		sitios.set(clave, sitio.id);
 	}
 

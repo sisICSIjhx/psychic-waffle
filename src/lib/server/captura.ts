@@ -14,6 +14,7 @@ import {
 import type { Ocurrencia } from '../dominio/documento.ts';
 import type {
 	DocumentoGenerado,
+	EstadoContratoReporte,
 	Foto,
 	MOMENTOS_FOTO,
 	Partida,
@@ -149,6 +150,16 @@ export class ServicioCaptura {
 		const { reporte, fotosEliminadas } = await this.repos.reportes.guardar(guardado);
 		await this.limpiar(fotosEliminadas);
 		return reporte;
+	}
+
+	/** Datos del contrato (usuario, número, sitio, firmantes) que cambiaron desde que el reporte los recibió. */
+	estadoContrato(reporte: Reporte): Promise<EstadoContratoReporte> {
+		return this.repos.reportes.estadoContrato(reporte.id);
+	}
+
+	/** Lleva al borrador los datos vigentes del contrato; `version` es la que conoce quien lo pide. */
+	actualizarContrato(id: string, version: number): Promise<Reporte> {
+		return this.repos.reportes.actualizarContrato(id, version);
 	}
 
 	/** Aplica el contenido vigente de la partida; `version` es la que conoce quien lo pide. */

@@ -3,7 +3,11 @@
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		/** Sesión validada por el servidor; vacía mientras no haya autenticación (D10). */
+		interface Locals {
+			autenticacion?: boolean;
+			usuario?: { id: string; nombre: string; rol: 'administrador' | 'capturista' } | null;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

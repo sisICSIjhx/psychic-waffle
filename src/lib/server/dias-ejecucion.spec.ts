@@ -28,14 +28,20 @@ async function base(repos: Repositorios, periodicidad: 'mensual' | 'diaria', cla
 		nombre: clave,
 		razonSocial: 'CLIENTE FICTICIO'
 	});
-	const contrato = await repos.catalogo.guardarContrato({
+	// Directo a la base: la prueba del relleno de 0016 crea estos datos antes de 0018, cuyo JSON trae
+	// el actualizadoEn que el repositorio exige.
+	const sql = (repos.catalogo as unknown as { sql: ClientePglite }).sql;
+	const contrato = (await sql.llamar('api_guardar_contrato', {
 		clienteId: cliente.id,
 		numero: `OC-${clave}`,
 		descripcion: null,
 		vigenciaInicio: '2026-05-01',
 		vigenciaFin: '2027-04-30'
-	});
-	const sitio = await repos.catalogo.guardarSitio({ clave: `EM-${clave}`, nombre: 'SITIO' });
+	})) as { id: string };
+	const sitio = (await sql.llamar('api_guardar_sitio', {
+		clave: `EM-${clave}`,
+		nombre: 'SITIO'
+	})) as { id: string };
 	await repos.catalogo.asociarSitio(contrato.id, sitio.id);
 	const partida = await repos.catalogo.guardarPartida({
 		contratoId: contrato.id,

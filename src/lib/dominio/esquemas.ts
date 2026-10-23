@@ -46,14 +46,17 @@ export const esquemaContrato = z.object({
 	vigenciaInicio: fecha,
 	vigenciaFin: fecha,
 	cliente: esquemaCliente.nullable(),
-	vigente: z.boolean().optional()
+	vigente: z.boolean().optional(),
+	/** Versión del dato para la concurrencia optimista de las ediciones. */
+	actualizadoEn: marcaDeTiempo
 });
 export type Contrato = z.infer<typeof esquemaContrato>;
 
 export const esquemaSitio = z.object({
 	id,
 	clave: z.string().trim().min(1),
-	nombre: z.string()
+	nombre: z.string(),
+	actualizadoEn: marcaDeTiempo
 });
 export type Sitio = z.infer<typeof esquemaSitio>;
 
@@ -77,7 +80,8 @@ export const esquemaFirmante = z.object({
 	cargo: z.string(),
 	empresa: z.string(),
 	vigenteDesde: fecha,
-	vigenteHasta: fecha.nullable()
+	vigenteHasta: fecha.nullable(),
+	actualizadoEn: marcaDeTiempo
 });
 export type Firmante = z.infer<typeof esquemaFirmante>;
 
@@ -87,6 +91,89 @@ export const esquemaFirmantesVigentes = z.object({
 	recibio: esquemaFirmante.nullable()
 });
 export type FirmantesVigentes = z.infer<typeof esquemaFirmantesVigentes>;
+
+// Bitácora del catálogo (cambio edicion-contratos-bitacora).
+export const ENTIDADES_CATALOGO = ['contrato', 'sitio', 'firmante', 'contrato_sitio'] as const;
+export const ACCIONES_CATALOGO = ['crear', 'editar', 'reemplazar', 'asociar', 'quitar'] as const;
+export const ORIGENES_CAMBIO = ['interfaz', 'script'] as const;
+
+export const esquemaCambioCampo = z.object({
+	campo: z.string(),
+	antes: z.string().nullable(),
+	despues: z.string().nullable()
+});
+export type CambioCampo = z.infer<typeof esquemaCambioCampo>;
+
+const contratoBreve = z.object({ id, numero: z.string() });
+
+/** Reportes afectados por un cambio del catálogo, por estado. */
+export const esquemaImpactoCambio = z.object({
+	borradores: z.number().int(),
+	borradoresIds: z.array(id).default([]),
+	borradoresActualizados: z.array(id).default([]),
+	borradoresConAviso: z.array(id).default([]),
+	enRevision: z.number().int(),
+	emitidos: z.number().int(),
+	sustituidos: z.number().int(),
+	otrosContratos: z.array(contratoBreve).default([]),
+	/** Primer mes cuyos reportes toman al firmante nuevo. */
+	desdeMes: fecha.optional()
+});
+export type ImpactoCambio = z.infer<typeof esquemaImpactoCambio>;
+
+export const esquemaResultadoEdicion = z.object({
+	ensayo: z.boolean(),
+	cambios: z.array(esquemaCambioCampo),
+	impacto: esquemaImpactoCambio,
+	aplicado: z
+		.object({
+			cambioId: id,
+			borradoresActualizados: z.array(id),
+			borradoresConAviso: z.array(id)
+		})
+		.optional()
+});
+export type ResultadoEdicion = z.infer<typeof esquemaResultadoEdicion>;
+
+export const esquemaCambioCatalogo = z.object({
+	id,
+	entidad: z.enum(ENTIDADES_CATALOGO),
+	entidadId: id,
+	contratoId: id.nullable(),
+	accion: z.enum(ACCIONES_CATALOGO),
+	cambios: z.array(esquemaCambioCampo),
+	motivo: z.string().nullable(),
+	efectos: z.record(z.string(), z.unknown()),
+	usuarioId: id.nullable(),
+	usuarioTexto: z.string().nullable(),
+	origen: z.enum(ORIGENES_CAMBIO),
+	realizadoEn: marcaDeTiempo
+});
+export type CambioCatalogo = z.infer<typeof esquemaCambioCatalogo>;
+
+export const esquemaPaginaCambios = z.object({
+	total: z.number().int().nonnegative(),
+	pagina: z.number().int().positive(),
+	tamano: z.number().int().positive(),
+	filas: z.array(esquemaCambioCatalogo)
+});
+export type PaginaCambios = z.infer<typeof esquemaPaginaCambios>;
+
+export const esquemaResumenSitio = z.object({
+	sitioId: id,
+	partidas: z.number().int(),
+	programas: z.number().int(),
+	reportes: z.number().int(),
+	otrosContratos: z.array(contratoBreve)
+});
+export type ResumenSitio = z.infer<typeof esquemaResumenSitio>;
+
+/** Datos del contrato que cambiaron desde la copia que recibió el reporte. */
+export const esquemaEstadoContratoReporte = z.object({
+	cambiado: z.boolean(),
+	datos: z.array(z.object({ campo: z.string(), reporte: z.unknown(), contrato: z.unknown() }))
+});
+export type EstadoContratoReporte = z.infer<typeof esquemaEstadoContratoReporte>;
 
 export const esquemaAlcancePartida = z.object({
 	id: id.optional(),
