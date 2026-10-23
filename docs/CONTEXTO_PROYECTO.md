@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-21 contra los archivos locales (rama `feat/editor-fotos`).
+Verificado el 2026-10-21 contra los archivos locales (rama `feat/edicion-contratos`).
 
 ## Producto y arquitectura
 
@@ -18,7 +18,7 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/editor-fotos`).
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
     resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0017`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0018`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
   - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
     notificaciones con deshacer, botones segmentados y selector con búsqueda). Tokens de tema
     (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
@@ -26,7 +26,8 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/editor-fotos`).
   matriz P/R; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección
   guiada con búsqueda; `/reportes/[id]` editor (autoguardado, fotos, estados),
   `/reportes/[id]/documento` DOCX y `/reportes/[id]/fotos/[fotoId]` (`?tamano=mini` para la miniatura); `/historial`; `/catalogo` con
-  contratos y partidas; `/personal` y `/perfil` existen pero no están en el menú hasta que haya
+  contratos y partidas (en `/catalogo/contratos/[id]`, corrección del contrato, sitios y firmantes con
+  motivo e historial); `/personal` y `/perfil` existen pero no están en el menú hasta que haya
   autenticación.
 - Datos locales: sin `.env` se usa PGlite en `storage/pglite`; fotos y documentos en `storage/`
   (ignorado). Supabase se activa con `PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (tarea 3.8,
@@ -76,7 +77,8 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/editor-fotos`).
   semana, con un día cubierto = una ejecución); `indice-docx-actualizado` terminado (índice con
   páginas calculadas y sin aviso al abrir; `npm run verificar:indice` mide contra Word); `editor-fotos`
   terminado (barra sobre la foto, arrastre, vista ampliada, reemplazo y giro como dato con la 0017);
-  siguen `edicion-contratos-bitacora` y `tablero-cumplimiento`.
+  `edicion-contratos-bitacora` terminado (bitácora `cambios_catalogo`, corrección con motivo y aviso
+  en el editor; permisos en `src/lib/server/permisos.ts`); sigue `tablero-cumplimiento`.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas

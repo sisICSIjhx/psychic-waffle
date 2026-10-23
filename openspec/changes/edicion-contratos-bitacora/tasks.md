@@ -166,12 +166,12 @@ Virtual, y ningún archivo lleva nombres de firmantes ni de reportes: las prueba
       bitácora): editar el contrato, corregir un sitio, cambiar un firmante, el diálogo con motivo y el
       historial, y el aviso en el editor; comprobar contraste AA, foco visible en el diálogo y sin
       desborde horizontal, con capturas antes y después fuera del repositorio.
-- [ ] 8.3 Hacer commit y ejecutar `scripts/revision-codex.ps1` con `-Cambio` («el cambio OpenSpec
+- [x] 8.3 Hacer commit y ejecutar `scripts/revision-codex.ps1` con `-Cambio` («el cambio OpenSpec
       edicion-contratos-bitacora»), `-Base` (último commit de `feat/editor-fotos`), `-Sha` (último commit
       del cambio), `-Fase edicion-contratos`, `-Ronda` y como `-ArchivosContexto` los artefactos de este
       cambio y `0018_bitacora_catalogo.sql` (máximo 2 rondas); verificar que el resumen queda en
       `docs/revisiones/edicion-contratos-bitacora.md` con los hallazgos y su resolución.
-- [ ] 8.4 Agregar la entrada en `HISTORIAL.md` (fecha local, motivo, alcance, archivos, validación real
+- [x] 8.4 Agregar la entrada en `HISTORIAL.md` (fecha local, motivo, alcance, archivos, validación real
       y pendientes, sin datos personales) y actualizar `docs/CONTEXTO_PROYECTO.md` con la migración 0018,
       la bitácora del catálogo, las acciones nuevas de `/catalogo/contratos/[id]` y el estado del cambio;
       verificar que los enlaces y el formato pasan `npx prettier --check`.
