@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-21 contra los archivos locales (rama `feat/fechas-multiples`).
+Verificado el 2026-10-21 contra los archivos locales (rama `feat/indice-docx`).
 
 ## Producto y arquitectura
 
@@ -16,8 +16,8 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/fechas-multiple
   - `src/lib/dominio/`: reglas puras compartidas (esquemas Zod, documento, captura, planeación,
     fechas en la zona America/Mexico_City, textos de la interfaz).
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
-    captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, plantilla en
-    `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
+    captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
+    resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
   - `supabase/migrations/0001…0016`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
   - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
     notificaciones con deshacer, botones segmentados y selector con búsqueda). Tokens de tema
@@ -73,7 +73,9 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/fechas-multiple
 - Cambios de octubre de 2026 (seis cambios OpenSpec apilados, uno por rama): `importacion-programa-anual`
   terminado (Proagro con programa 2026-03 a 2027-02 en EM-30184 y EM-30185 y vigencia ajustada);
   `fechas-ejecucion-multiples` terminado (días en segmentos `dias_ejecucion`; diarias por mes o por
-  semana, con un día cubierto = una ejecución); siguen `indice-docx-actualizado`, `editor-fotos`,
+  semana, con un día cubierto = una ejecución); `indice-docx-actualizado` terminado (índice con
+  páginas calculadas y sin aviso al abrir; `npm run verificar:indice` mide contra Word); siguen
+  `editor-fotos`,
   `edicion-contratos-bitacora` y `tablero-cumplimiento`.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue

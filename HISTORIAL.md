@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-22 — Índice del DOCX ya resuelto, sin aviso al abrir
+
+- Motivo: al descargar el reporte, Word pedía actualizar la tabla de contenido (pedido del usuario). Revierte la decisión de la fase 2 («índice con aviso de actualización al abrir»). Cambio OpenSpec `indice-docx-actualizado`, rama `feat/indice-docx`.
+- Alcance: modelo de paginación `src/lib/server/documentos/paginacion.ts` (reglas de Word calibradas, portada e índice de una o dos páginas, salto forzado del título en la franja dudosa del pie); posproceso `indice.ts` (marcadores \_Toc, entradas con hipervínculo y PAGEREF con su página, campo TOC vivo); plantilla `FOR-ICSI-RMT-01.v2.docx` sin `w:updateFields` (la v1 sale del árbol; la caché no reutiliza DOCX v1); anchos de Arial, Aptos y Open Sans versionados solo como números (`anchos-fuentes.ts`, generado por `npm run anchos:extraer`); `datosPlantilla` separado de `generarDocx`; reportes sintéticos y arnés con Word solo en desarrollo (`npm run verificar:indice`).
+- Decisiones del usuario: páginas calculadas en lugar de un índice sin números; anchos de Aptos versionados como números (2026-10-21); criterio de precisión del subconjunto no calibrado en 98,5 % (2026-10-22). Por omisión: anchos de Arial tomados de Windows (idénticos a Arimo/Liberation, que no están instaladas).
+- Validación: `check` 0/0, `lint` sin observaciones, `test` 40 archivos y 273 pruebas; Word 365 sobre 107 documentos: 99,2 % de títulos exactos (98,9 % en las semillas no calibradas), los 3 de prueba exactos y ninguna diferencia de más de una página; el DOCX real del reporte emitido abre con el índice igual al actualizado. Codex en 2 rondas (`docs/revisiones/indice-docx-actualizado.md`): 6 hallazgos resueltos.
+- Pendientes: los casos límite se corrigen con «Actualizar tabla»; un cambio de plantilla, estilos o `CAJA_FOTO` exige una nueva versión de plantilla y recalibrar; queda abierta una instancia oculta de Word del análisis (PID 10760) que se puede cerrar desde el Administrador de tareas.
+
 ## 2026-10-22 — Varios días de ejecución por reporte
 
 - Motivo: un reporte puede abarcar varios días («05-08», «02, 03, 04» o «15, 16, 20-25» de un mes), pedido del usuario. Cambio OpenSpec `fechas-ejecucion-multiples`, rama `feat/fechas-multiples`.

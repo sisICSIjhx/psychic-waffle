@@ -293,8 +293,8 @@ del archivo de resultados):
 - ≥ 99 % de entradas exactas en todo el conjunto y ≥ 98,5 % en el subconjunto 25-104. El criterio
   inicial era 99 % también en el subconjunto; con la v2 se midió 98,9 % (963 de 974): los 11 títulos
   restantes salen de cadenas keepNext que Word resuelve de forma distinta en casos parecidos (una regla
-  que corrige uno rompe otro ya correcto), siempre a una página de distancia. El ajuste se registró el
-  2026-10-22 y queda pendiente de que el usuario lo confirme.
+  que corrige uno rompe otro ya correcto), siempre a una página de distancia. El usuario aceptó el
+  ajuste el 2026-10-22.
 - Los 3 documentos de prueba exactos, con su índice guardado idéntico al que deja «Actualizar tabla».
 - Ninguna diferencia mayor de una página.
 

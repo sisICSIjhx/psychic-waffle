@@ -182,8 +182,11 @@ const resultados = generados.map((g) => {
 // Criterios de D10 (indice-docx-actualizado): exactitud total, documentos de prueba exactos con su
 // índice igual al actualizado y ninguna diferencia mayor de una página. Solo un resultado que los
 // cumple reemplaza la calibración que usan las pruebas.
-const subconjunto = resultados.filter(
-	(r) => Number(/^semilla-(\d+)$/.exec(r.nombre)?.[1] ?? 0) >= 25
+const semilla = (r: { nombre: string }) => Number(/^semilla-(\d+)$/.exec(r.nombre)?.[1] ?? 0);
+const subconjunto = resultados.filter((r) => semilla(r) >= 25 && semilla(r) <= 104);
+// Solo una corrida con todas las semillas 1-104 puede reemplazar la calibración.
+const completas = Array.from({ length: 104 }, (_, i) => i + 1).every((n) =>
+	resultados.some((r) => semilla(r) === n)
 );
 const exactasSub = subconjunto.reduce(
 	(n, r) => n + r.titulos.filter((p, i) => p === r.modelo[i]).length,
@@ -199,7 +202,8 @@ const fallas = [
 		? `exactitud de las semillas 25 en adelante menor de ${MINIMO_SUBCONJUNTO * 100} %`
 		: '',
 	pruebasExactas ? '' : 'algún documento de prueba no es exacto',
-	mayores ? 'hay diferencias mayores de una página' : ''
+	mayores ? 'hay diferencias mayores de una página' : '',
+	completas ? '' : 'la corrida no incluye todas las semillas 1-104'
 ].filter(Boolean);
 const nombre = `paginas-word.${VERSION_PLANTILLA.split('.').at(-1)}.json`;
 const destino = fallas.length ? join(SALIDA, `rechazado-${nombre}`) : join(CALIBRACION, nombre);

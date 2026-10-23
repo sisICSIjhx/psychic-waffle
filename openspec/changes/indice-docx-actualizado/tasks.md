@@ -115,20 +115,20 @@ repositorio, y no se escriben datos personales en las pruebas, los resultados de
 ## 8. Cierre
 
 - [x] 8.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores.
-- [ ] 8.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro, con el servidor de desarrollo
+- [x] 8.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro, con el servidor de desarrollo
       (sin migración que aplicar): «Descargar DOCX» del editor entrega un documento v2 que abre en Word
       sin aviso; el editor no cambia, mantiene el contraste AA y no tiene desborde horizontal. Guardar
       las capturas fuera del repositorio.
-- [ ] 8.3 Hacer commit y ejecutar `scripts/revision-codex.ps1` con `-Cambio` (el cambio OpenSpec
+- [x] 8.3 Hacer commit y ejecutar `scripts/revision-codex.ps1` con `-Cambio` (el cambio OpenSpec
       `indice-docx-actualizado`), `-Base` (último commit de `feat/fechas-multiples`), `-Sha` (último
       commit del cambio), `-Fase indice-docx`, `-Ronda` y como `-ArchivosContexto` los
       artefactos de este cambio, como máximo en 2 rondas. Registrar los hallazgos y su resolución en
       `docs/revisiones/indice-docx-actualizado.md`.
-- [ ] 8.4 Agregar la entrada en `HISTORIAL.md`, sin datos personales: la decisión de la fase 2 que se
+- [x] 8.4 Agregar la entrada en `HISTORIAL.md`, sin datos personales: la decisión de la fase 2 que se
       revierte, la precisión medida (calibración, validación, semillas nuevas y documentos de prueba),
       `ε`, la versión de Word usada y los pendientes. Verificar los enlaces y el formato con
       `npm run lint`.
-- [ ] 8.5 Actualizar `docs/CONTEXTO_PROYECTO.md`: plantilla v2, `paginacion.ts` e `indice.ts` en la fila
+- [x] 8.5 Actualizar `docs/CONTEXTO_PROYECTO.md`: plantilla v2, `paginacion.ts` e `indice.ts` en la fila
       «Documento DOCX», `npm run verificar:indice` (solo Windows con Word) en los scripts y el estado
       del cambio. Verificar el formato con `npm run lint`.
 
