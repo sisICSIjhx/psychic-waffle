@@ -45,7 +45,7 @@ semanal), el grupo 10.
       `reprogramacionId` del reporte y lectura de cumplimiento) y `src/lib/server/repositorios/programa.ts`
       (`registrarAjuste`, `anularAjuste`, `obtenerCumplimiento` y `listarEjecucionesMes`); verificar que
       las pruebas de 2.1 a 2.5 pasan por el repositorio y que `npm run check` no da errores.
-- [ ] 2.7 Aplicar `0019` en la base de desarrollo: detener el servidor de desarrollo, respaldar
+- [x] 2.7 Aplicar `0019` en la base de desarrollo: detener el servidor de desarrollo, respaldar
       `storage/pglite` fuera del repositorio, reiniciarlo y comprobar con GET a `/planeacion` de
       Cerritos y de Proagro que la matriz carga con los campos nuevos.
 
@@ -135,7 +135,7 @@ semanal), el grupo 10.
 
 ## 9. Punto de control de la fase 1
 
-- [ ] 9.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores, revisar en el
+- [x] 9.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores, revisar en el
       navegador `/planeacion` (anual y mensual) y `/cumplimiento` con los datos de Cerritos y Proagro, y
       hacer el commit de la fase 1.
 
@@ -150,9 +150,9 @@ semanal), el grupo 10.
 
 ## 11. Cierre
 
-- [ ] 11.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores y anotar los números
+- [x] 11.1 Ejecutar `npm run check`, `npm run lint` y `npm run test` sin errores y anotar los números
       reales.
-- [ ] 11.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro, `/planeacion` (anual, mensual,
+- [x] 11.2 Validar en el navegador a 1366 × 800, en tema claro y oscuro, `/planeacion` (anual, mensual,
       semanal y diálogo de ajuste), `/captura` con una reprogramación y `/cumplimiento`: contraste AA
       (incluidos colores de estado y semáforos), foco visible y sin desborde horizontal, con capturas
       fuera del repositorio.
