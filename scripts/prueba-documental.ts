@@ -1,4 +1,4 @@
-// Prueba documental: genera los reportes de ejemplo de scripts/datos-prueba/ con la plantilla v1.
+// Prueba documental: genera los reportes de ejemplo de scripts/datos-prueba/ con la plantilla vigente.
 //
 // Uso: node scripts/prueba-documental.ts [--pdf] [archivo.json ...]
 //

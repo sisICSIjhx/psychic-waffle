@@ -23,7 +23,9 @@
 		"plantilla:construir": "node scripts/construir-plantilla.ts",
 		"prueba:documental": "node scripts/prueba-documental.ts",
 		"verificar:datos": "node scripts/verificar-datos-personales.ts",
-		"importar": "node scripts/importar-catalogo.ts"
+		"importar": "node scripts/importar-catalogo.ts",
+		"verificar:indice": "node scripts/verificar-indice-word.ts",
+		"anchos:extraer": "node scripts/extraer-anchos-fuentes.ts"
 	},
 	"devDependencies": {
 		"@colbymchenry/codegraph": "1.6.2",

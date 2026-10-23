@@ -21,10 +21,12 @@ import {
 	type MomentoFoto
 } from '../../dominio/documento.ts';
 import { enParalelo, prepararImagen, type ImagenPreparada } from './imagenes.ts';
+import { escribirIndice } from './indice.ts';
+import { calcularIndice, entradaPaginacion, type CalculoIndice } from './paginacion.ts';
 
-export const VERSION_PLANTILLA = 'FOR-ICSI-RMT-01.v1';
+export const VERSION_PLANTILLA = 'FOR-ICSI-RMT-01.v2';
 const RUTA_PLANTILLA = fileURLToPath(
-	new URL('../plantillas/FOR-ICSI-RMT-01.v1.docx', import.meta.url)
+	new URL('../plantillas/FOR-ICSI-RMT-01.v2.docx', import.meta.url)
 );
 
 /** Límite de tamaño del DOCX generado; las fotos optimizadas lo mantienen por debajo. */
@@ -93,6 +95,8 @@ export interface ResultadoDocumento {
 	versionPlantilla: string;
 	bytes: number;
 	fotos: number;
+	/** Páginas calculadas del índice escrito en el documento. */
+	indice: CalculoIndice;
 }
 
 let plantillaEnCache: Uint8Array | null = null;
@@ -142,7 +146,7 @@ export const PERFILES_IMAGEN = [
 /** Margen para el XML, las relaciones y la compresión del paquete. */
 const RESERVA_BYTES = 1024 * 1024;
 
-interface CeldaFoto {
+export interface CeldaFoto {
 	imagen: { width: number; height: number; data: Buffer; extension: '.jpg' };
 	pie: string;
 	momento: MomentoFoto | null;
@@ -194,7 +198,7 @@ async function prepararAlcances(
 	reporte: ReporteDocumento,
 	presupuesto: number,
 	paralelo: number
-): Promise<{ titulo: string; descripcion: string[]; celdas: CeldaFoto[] }[]> {
+): Promise<AlcancePreparado[]> {
 	const disposicion = reporte.disposicionFotos;
 	const ordenadas = reporte.alcances.map((alcance) => ordenDeAparicion(alcance.fotos, disposicion));
 	const preparadas = await prepararFotos(ordenadas.flat(), presupuesto, paralelo);
@@ -220,10 +224,15 @@ async function prepararAlcances(
 	}));
 }
 
-export async function generarDocx(
-	reporte: ReporteDocumento,
-	{ plantilla, limiteBytes = LIMITE_BYTES_PREDETERMINADO, paralelo = 4 }: OpcionesGeneracion = {}
-): Promise<ResultadoDocumento> {
+/** Alcance con sus fotos ya medidas, listo para la plantilla. */
+export interface AlcancePreparado {
+	titulo: string;
+	descripcion: string[];
+	celdas: CeldaFoto[];
+}
+
+/** Datos que recibe la plantilla (y el modelo del índice), con todos los textos saneados. */
+export function datosPlantilla(reporte: ReporteDocumento, preparados: AlcancePreparado[]) {
 	const disposicion = reporte.disposicionFotos;
 	const secciones = numeracionSecciones(reporte.incluyeVerificacion);
 	const firmante = (f: FirmanteDocumento | undefined) => ({
@@ -231,20 +240,14 @@ export async function generarDocx(
 		cargo: limpiarTexto(f?.cargo),
 		empresa: limpiarTexto(f?.empresa)
 	});
-
-	const plantillaUsada = plantilla ?? (await plantillaPredeterminada());
-	const presupuesto = limiteBytes - plantillaUsada.length - RESERVA_BYTES;
-	const preparados = await prepararAlcances(reporte, presupuesto, paralelo);
-	const totalFotos = preparados.reduce((suma, a) => suma + a.celdas.length, 0);
 	const alcances = preparados.map(({ celdas, ...alcance }) => ({
 		...alcance,
 		cuadricula: disposicion === 'cuadricula' ? agruparCuadricula(celdas) : [],
 		antesDuranteDespues:
 			disposicion === 'antes_durante_despues' ? agruparAntesDuranteDespues(celdas) : []
 	}));
-
-	// Todo texto, incluidos los derivados (portada, TAG, índice), pasa por limpiarTexto.
-	const datos = sanear({
+	// Todo texto, incluidos los derivados (portada y TAG), pasa por limpiarTexto.
+	return sanear({
 		portada: tituloPortada(reporte),
 		encabezado: {
 			usuario: limpiarTexto(reporte.encabezado.usuario),
@@ -262,7 +265,6 @@ export async function generarDocx(
 		},
 		objetivo: parrafos(reporte.objetivo),
 		introduccion: parrafos(reporte.introduccion),
-		indice: { alcances: alcances.map((a, i) => `2.${i + 1} ${a.titulo}`) },
 		alcances,
 		herramientas: reporte.herramientas.map((h, i) => ({
 			numero: `${i + 1}.`,
@@ -281,7 +283,20 @@ export async function generarDocx(
 		secciones: { conclusiones: String(secciones.conclusiones) },
 		conclusiones: parrafos(reporte.conclusiones)
 	});
+}
 
+export async function generarDocx(
+	reporte: ReporteDocumento,
+	{ plantilla, limiteBytes = LIMITE_BYTES_PREDETERMINADO, paralelo = 4 }: OpcionesGeneracion = {}
+): Promise<ResultadoDocumento> {
+	const plantillaUsada = plantilla ?? (await plantillaPredeterminada());
+	const presupuesto = limiteBytes - plantillaUsada.length - RESERVA_BYTES;
+	const preparados = await prepararAlcances(reporte, presupuesto, paralelo);
+	const totalFotos = preparados.reduce((suma, a) => suma + a.celdas.length, 0);
+	const datos = datosPlantilla(reporte, preparados);
+
+	// El índice se calcula con los mismos datos que recibe la plantilla y se escribe ya resuelto.
+	const indice = calcularIndice(entradaPaginacion(datos));
 	const resultado = await createReport({
 		template: plantillaUsada,
 		data: datos,
@@ -290,7 +305,7 @@ export async function generarDocx(
 		processLineBreaks: true,
 		rejectNullish: true
 	});
-	const docx = Buffer.from(resultado);
+	const docx = await escribirIndice(resultado, indice.titulos);
 	if (docx.length > limiteBytes) {
 		throw new Error(
 			`El documento generado pesa ${(docx.length / 1048576).toFixed(1)} MB y excede el límite de ${(limiteBytes / 1048576).toFixed(0)} MB`
@@ -301,6 +316,7 @@ export async function generarDocx(
 		nombreArchivo: nombreArchivo(reporte),
 		versionPlantilla: VERSION_PLANTILLA,
 		bytes: docx.length,
-		fotos: totalFotos
+		fotos: totalFotos,
+		indice
 	};
 }

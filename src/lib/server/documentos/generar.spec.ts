@@ -14,7 +14,7 @@ import { prepararImagen } from './imagenes';
 import { bloquesCuerpo, elementos, texto } from './ooxml';
 import { convertirPdf } from './pdf';
 
-const PLANTILLA = new URL('../plantillas/FOR-ICSI-RMT-01.v1.docx', import.meta.url);
+const PLANTILLA = new URL('../plantillas/FOR-ICSI-RMT-01.v2.docx', import.meta.url);
 const EMU_POR_CM = 360000;
 
 async function foto(ancho: number, alto: number, color = '#7a8b99') {
@@ -118,7 +118,7 @@ describe('generación del DOCX FOR-ICSI-RMT-01', () => {
 			'4. DOCUMENTOS DE VERIFICACIÓN',
 			'5. CONCLUSIONES Y/O RECOMENDACIONES'
 		]);
-		expect(indice).toContain('2.1 Inspección visual');
+		expect(indice).toMatch(/2\.1\s*Inspección visual/);
 		expect(indice).toContain('5. CONCLUSIONES Y/O RECOMENDACIONES');
 		expect(textoCompleto).toContain(
 			'13.- MANTENIMIENTO Y VERIFICACIÓN DE INDICADORES DE PRESIÓN (MANÓMETROS).'
@@ -127,7 +127,7 @@ describe('generación del DOCX FOR-ICSI-RMT-01', () => {
 		expect(textoCompleto).toContain('PI-0001');
 		expect(textoCompleto).toContain('Persona Ficticia Tres');
 		expect(resultado.nombreArchivo).toBe('P13_MANOMETROS_PI-0001_2026-06.docx');
-		expect(resultado.versionPlantilla).toBe('FOR-ICSI-RMT-01.v1');
+		expect(resultado.versionPlantilla).toBe('FOR-ICSI-RMT-01.v2');
 	});
 
 	it('numera las ilustraciones y no deja tabla vacía en un alcance sin fotos', async () => {
@@ -328,14 +328,47 @@ describe('generación del DOCX FOR-ICSI-RMT-01', () => {
 	});
 });
 
-describe('plantilla FOR-ICSI-RMT-01.v1', () => {
+describe('plantilla FOR-ICSI-RMT-01.v2', () => {
 	it('está saneada: sin autor, comentarios, revisiones, customXml ni plantilla adjunta', async () => {
 		const plantilla = await readFile(PLANTILLA);
 		expect(await auditarPaquete(plantilla)).toEqual([]);
 		const zip = await JSZip.loadAsync(plantilla);
 		const ajustes = await zip.file('word/settings.xml')!.async('string');
 		expect(ajustes).toContain('<w:removePersonalInformation/>');
-		expect(ajustes).toContain('<w:updateFields w:val="true"/>');
+		expect(ajustes).not.toContain('updateFields');
+		const documento = await zip.file('word/document.xml')!.async('string');
+		expect(documento).not.toMatch(/w:dirty=/);
+		// El índice de la plantilla es un campo TOC vacío que el generador sustituye.
+		expect(documento).toContain(' TOC \\o "1-3" \\h \\z \\u ');
+	});
+});
+
+describe('índice ya resuelto', () => {
+	it('abre sin pedir actualizar: marcadores, hipervínculos y páginas del modelo', async () => {
+		const resultado = await generarDocx(await reporteBase());
+		const zip = await JSZip.loadAsync(resultado.docx);
+		const documento = await zip.file('word/document.xml')!.async('string');
+		const ajustes = await zip.file('word/settings.xml')!.async('string');
+		expect(ajustes).not.toContain('updateFields');
+		expect(documento).not.toMatch(/w:dirty=/);
+		const marcadores = [
+			...documento.matchAll(/<w:bookmarkStart w:id="\d+" w:name="(_Toc\d+)"\/>/g)
+		].map((m) => m[1]);
+		const anclas = [...documento.matchAll(/<w:hyperlink w:anchor="(_Toc\d+)"/g)].map((m) => m[1]);
+		const referencias = [...documento.matchAll(/PAGEREF (_Toc\d+) \\h/g)].map((m) => m[1]);
+		expect(marcadores).toHaveLength(resultado.indice.titulos.length);
+		expect(anclas).toEqual(marcadores);
+		expect(referencias).toEqual(marcadores);
+		const inicios = documento.match(/w:fldCharType="begin"/g)!.length;
+		expect(documento.match(/w:fldCharType="separate"/g)!.length).toBe(inicios);
+		expect(documento.match(/w:fldCharType="end"/g)!.length).toBe(inicios);
+		// Cada PAGEREF muestra la página calculada.
+		const paginas = [
+			...documento.matchAll(/PAGEREF _Toc\d+ \\h <\/w:instrText>[\s\S]*?<w:t>(\d+)<\/w:t>/g)
+		].map((m) => Number(m[1]));
+		expect(paginas).toEqual(resultado.indice.titulos.map((t) => t.pagina));
+		expect(resultado.indice.paginaInicialCuerpo).toBe(3);
+		expect(await auditarPaquete(resultado.docx)).toEqual([]);
 	});
 });
 

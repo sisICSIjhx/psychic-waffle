@@ -150,7 +150,17 @@ describe('recorrido completo de la captura', () => {
 		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
 		expect(emitido.estado).toBe('emitido');
 
+		// Un DOCX registrado con la plantilla v1 (índice con aviso al abrir) ya no se reutiliza.
+		const anterior = await repos.reportes.registrarDocumento({
+			reporteId: emitido.id,
+			reporteVersion: emitido.version,
+			versionPlantilla: 'FOR-ICSI-RMT-01.v1',
+			ruta: 'documentos/plantilla-anterior.docx',
+			nombreArchivo: 'plantilla-anterior.docx',
+			bytes: 10
+		});
 		const descarga = await servicio.generarDocumento(emitido.id);
+		expect(descarga.documento.id).not.toBe(anterior.id);
 		expect(descarga.nombreArchivo).toBe('P13_MANTENIMIENTO-MANOMETROS_PI-0001_2026-06.docx');
 		const documento = await (await JSZip.loadAsync(descarga.datos))
 			.file('word/document.xml')!
@@ -162,7 +172,8 @@ describe('recorrido completo de la captura', () => {
 		// La segunda descarga de la misma versión reutiliza el documento registrado.
 		const otraVez = await servicio.generarDocumento(emitido.id);
 		expect(otraVez.documento.id).toBe(descarga.documento.id);
-		expect((await servicio.obtener(emitido.id)).documentos).toHaveLength(1);
+		expect(otraVez.documento.versionPlantilla).toBe('FOR-ICSI-RMT-01.v2');
+		expect((await servicio.obtener(emitido.id)).documentos).toHaveLength(2);
 
 		// Un documento generado con una versión que ya cambió no se registra.
 		await expect(
