@@ -16,9 +16,15 @@ const contrato: Contrato = {
 	vigenciaInicio: '2026-05-01',
 	vigenciaFin: '2027-04-30',
 	cliente: { id: ID(5), clave: 'ficticio', nombre: 'Ficticio', razonSocial: 'FICTICIO' },
-	vigente: true
+	vigente: true,
+	actualizadoEn: '2026-05-01T00:00:00Z'
 };
-const sitio: Sitio = { id: ID(3), clave: 'EM-99999', nombre: 'SITIO FICTICIO' };
+const sitio: Sitio = {
+	id: ID(3),
+	clave: 'EM-99999',
+	nombre: 'SITIO FICTICIO',
+	actualizadoEn: '2026-05-01T00:00:00Z'
+};
 
 function partidaResumen(numero: number, actividad: string): PartidaResumen {
 	return {
@@ -203,6 +209,42 @@ describe('CapturaView', () => {
 			ocurrenciaTipo: 'semana',
 			ocurrenciaNumero: '1'
 		});
+	});
+
+	it('ofrece el trabajo reprogramado solo con reprogramaciones del mes y lo envía', async () => {
+		const reprogramacion = {
+			id: ID(80),
+			programaId: ID(1),
+			partidaId: ID(7),
+			tipo: 'reprogramado' as const,
+			mesOrigen: '2026-06-01',
+			mesDestino: '2026-10-01',
+			cantidad: 1,
+			motivo: 'clima' as const,
+			nota: null,
+			registradoEn: '2026-06-20T00:00:00Z',
+			anuladoEn: null,
+			ejecuciones: 0,
+			borradores: 0,
+			bloqueantes: 0
+		};
+		montar({
+			partida: partidaElegida(),
+			reprogramaciones: [reprogramacion],
+			reprogramacionPedida: ID(80)
+		});
+		const opcion = page.getByRole('radio', { name: 'Reprogramado desde junio 2026 (Clima)' });
+		await expect.element(opcion).toBeChecked();
+		await expect
+			.element(page.getByRole('radio', { name: 'Trabajo de octubre 2026' }))
+			.toBeInTheDocument();
+		await page.getByRole('button', { name: 'Crear reporte' }).click();
+		await expect.poll(() => enviados.length).toBe(1);
+		expect(enviados[0].get('reprogramacionId')).toBe(ID(80));
+
+		// En otro mes la opción no aparece.
+		await page.getByLabelText('Mes del reporte').selectOptions('2026-06-01');
+		expect(page.getByRole('radio', { name: /Reprogramado desde/ }).elements()).toHaveLength(0);
 	});
 
 	it('con un reporte de otro TAG lo indica y permite crear el nuevo', async () => {

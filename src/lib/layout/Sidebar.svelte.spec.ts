@@ -16,6 +16,7 @@ describe('Sidebar', () => {
 		const esperados: [string, string][] = [
 			['Mi trabajo', '/'],
 			['Anual', '/planeacion'],
+			['Cumplimiento', '/cumplimiento'],
 			['Cerritos', '/captura?cliente=cerritos'],
 			['Proagro', '/captura?cliente=proagro'],
 			['Virtual', '/captura?cliente=virtual'],

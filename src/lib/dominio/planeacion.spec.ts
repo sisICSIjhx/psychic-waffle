@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AvancePrograma } from './esquemas';
+import type { AvancePrograma, CeldaPrograma } from './esquemas';
 import {
-	estadoCelda,
 	filtrarPartidas,
 	pendientesVencidos,
 	programaVigente,
@@ -15,7 +14,7 @@ const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')
 
 function partida(
 	n: number,
-	celdas: [string, number | null, number][],
+	celdas: [string, number | null, number, Partial<CeldaPrograma>?][],
 	cambios: Partial<AvancePrograma['partidas'][number]> = {}
 ): AvancePrograma['partidas'][number] {
 	return {
@@ -25,13 +24,19 @@ function partida(
 		periodicidad: 'mensual',
 		distribucion: 'produccion',
 		cantidadAnual: 12,
-		celdas: celdas.map(([mes, programado, realizado]) => ({
+		celdas: celdas.map(([mes, programado, realizado, ajustes = {}]) => ({
 			mes,
 			programado,
 			realizado,
 			reportes: [],
 			ejecucionesReportes: realizado,
-			realizadoSinReporte: 0
+			realizadoSinReporte: 0,
+			salida: 0,
+			entrada: 0,
+			noEjecutado: 0,
+			ajustes: [],
+			reportesAbiertos: [],
+			...ajustes
 		})),
 		totalProgramado: 0,
 		totalRealizado: 0,
@@ -39,27 +44,6 @@ function partida(
 		...cambios
 	};
 }
-
-describe('estado de cada celda del programa', () => {
-	it('distingue cumplido, pendiente del mes en curso, vencido y extra', () => {
-		const celda = (mes: string, programado: number | null, realizado: number) => ({
-			mes,
-			programado,
-			realizado,
-			reportes: [],
-			ejecucionesReportes: realizado,
-			realizadoSinReporte: 0
-		});
-		expect(estadoCelda(celda('2026-06-01', 1, 1), HOY)).toBe('cumplido');
-		expect(estadoCelda(celda('2026-06-01', 1, 0), HOY)).toBe('vencido');
-		expect(estadoCelda(celda('2026-07-01', 1, 0), HOY)).toBe('pendiente');
-		expect(estadoCelda(celda('2026-08-01', 1, 0), HOY)).toBe('pendiente');
-		expect(estadoCelda(celda('2026-06-01', null, 1), HOY)).toBe('extra');
-		expect(estadoCelda(celda('2026-06-01', null, 0), HOY)).toBe('sin_programa');
-		// Una partida diaria con 30 programados y 29 realizados en junio sigue vencida.
-		expect(estadoCelda(celda('2026-06-01', 30, 29), HOY)).toBe('vencido');
-	});
-});
 
 describe('pendientes vencidos y filtros', () => {
 	const partidas = [
@@ -70,6 +54,15 @@ describe('pendientes vencidos y filtros', () => {
 		]),
 		partida(2, [['2026-05-01', 31, 30]], { periodicidad: 'diaria', distribucion: 'mantenimiento' })
 	];
+
+	it('omite de los vencidos lo reprogramado y lo no ejecutado', () => {
+		const ajustadas = [
+			partida(4, [['2026-06-01', 1, 0, { salida: 1 }]]),
+			partida(5, [['2026-06-01', 1, 0, { noEjecutado: 1 }]]),
+			partida(6, [['2026-06-01', 2, 0, { salida: 1 }]])
+		];
+		expect(pendientesVencidos(ajustadas, HOY).map((v) => [v.numero, v.faltan])).toEqual([['6', 1]]);
+	});
 
 	it('señala como vencida la partida programada en junio sin reporte emitido', () => {
 		expect(pendientesVencidos(partidas, HOY)).toEqual([
@@ -115,6 +108,30 @@ describe('resumen del mes para el panel', () => {
 			cumplidas: 1,
 			pendientes: 1,
 			vencidas: 1
+		});
+	});
+
+	it('da 5 de 33 con 27 pendientes cuando una partida del mes no se ejecutó', () => {
+		const partidas = Array.from({ length: 33 }, (_, i) =>
+			partida(i + 1, [['2026-07-01', 1, i < 5 ? 1 : 0, i === 5 ? { noEjecutado: 1 } : {}]])
+		);
+		const avance = {
+			programa: {
+				id: ID(1),
+				contratoId: ID(2),
+				sitioId: ID(3),
+				nombre: null,
+				periodoInicio: '2026-05-01',
+				periodoFin: '2027-04-30',
+				meses: []
+			},
+			partidas
+		};
+		expect(resumenDelMes([avance], HOY)).toEqual({
+			programadas: 33,
+			cumplidas: 5,
+			pendientes: 27,
+			vencidas: 0
 		});
 	});
 
@@ -184,6 +201,24 @@ describe('siguiente trabajo para «Mi trabajo»', () => {
 			['7', '2026-10-01', 'pendiente', 1]
 		]);
 		expect(trabajo[0]).toMatchObject({ contratoId: ID(2), sitioId: ID(3), partidaId: ID(3) });
+	});
+
+	it('incluye lo reprogramado en el mes destino y no en el de origen', () => {
+		const trabajo = siguienteTrabajo(
+			[
+				avance([
+					partida(3, [
+						['2026-06-01', 1, 0, { salida: 1 }],
+						['2026-10-01', 0, 0, { entrada: 1 }]
+					])
+				])
+			],
+			[],
+			hoy
+		);
+		expect(trabajo.map((t) => [t.numero, t.mes, t.estado])).toEqual([
+			['3', '2026-10-01', 'pendiente']
+		]);
 	});
 
 	it('relaciona los borradores por partida, sitio y mes, el más reciente primero', () => {

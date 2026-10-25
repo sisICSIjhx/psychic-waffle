@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { convertirError, ErrorDatos } from './cliente';
+import { convertirError, ErrorDatos, validarFuncion } from './cliente';
 
 const rpc = vi.fn();
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ rpc })) }));
@@ -48,6 +48,10 @@ describe('implementación Supabase', () => {
 			detalle: { motivo: 'sitio_duplicado' }
 		});
 		await expect(cliente.llamar('pg_terminate_backend')).rejects.toThrow(/no permitida/);
+		// Las definiciones envueltas (con dígitos) solo se llaman desde la base.
+		for (const envuelta of ['api_guardar_reporte_0016', 'api_crear_revision_0003']) {
+			expect(() => validarFuncion(envuelta)).toThrow(/no permitida/);
+		}
 		expect(() => crearClienteSupabase('', '')).toThrow(/Faltan/);
 	});
 });

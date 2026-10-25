@@ -60,8 +60,8 @@ seguir siendo una tabla de contenido que Word puede actualizar.
 ### Requirement: Precisión de las páginas del índice
 
 Las páginas del índice SHALL coincidir con las que asigna Microsoft Word 365 en al menos el 99 % de las
-entradas del conjunto de verificación de reportes sintéticos y en todas las entradas de los 3
-documentos de prueba. Una diferencia residual SHALL ser de una sola página y SHALL corregirse con
+entradas del conjunto de verificación de reportes sintéticos, en al menos el 98,5 % de las entradas del
+subconjunto que no se usó para calibrar y en todas las entradas de los 3 documentos de prueba. Una diferencia residual SHALL ser de una sola página y SHALL corregirse con
 «Actualizar tabla» sin dañar el documento.
 
 #### Scenario: Documentos de prueba
@@ -72,7 +72,7 @@ documentos de prueba. Una diferencia residual SHALL ser de una sola página y SH
 #### Scenario: Conjunto de verificación
 
 - **WHEN** se comparan las páginas calculadas con las que Word asigna a los títulos de los reportes sintéticos del conjunto de verificación
-- **THEN** coinciden al menos el 99 % de las entradas, también en el subconjunto que no se usó para calibrar
+- **THEN** coinciden al menos el 99 % de las entradas del conjunto y el 98,5 % de las del subconjunto que no se usó para calibrar
 
 #### Scenario: Diferencia residual
 

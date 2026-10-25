@@ -16,13 +16,15 @@
 		ocurrenciasDelMes
 	} from '$lib/dominio/captura';
 	import type { Ocurrencia } from '$lib/dominio/documento';
-	import type {
-		Cliente,
-		Contrato,
-		Partida,
-		PartidaResumen,
-		ReporteResumen,
-		Sitio
+	import {
+		ETIQUETA_MOTIVO_AJUSTE,
+		type Ajuste,
+		type Cliente,
+		type Contrato,
+		type Partida,
+		type PartidaResumen,
+		type ReporteResumen,
+		type Sitio
 	} from '$lib/dominio/esquemas';
 	import {
 		buscarPartidas,
@@ -50,6 +52,10 @@
 	export let trabajo: Record<string, TrabajoDePartida> = {};
 	/** Reportes vigentes de la partida elegida. */
 	export let reportesPartida: ReporteDePartida[] = [];
+	/** Reprogramaciones de la partida que llegan a sus meses y aún faltan por reportar. */
+	export let reprogramaciones: Ajuste[] = [];
+	/** `?reprogramacion=` de la dirección: llega preseleccionada. */
+	export let reprogramacionPedida: string | null = null;
 	export let borradores: ReporteResumen[] = [];
 	export let form: { error?: string; observaciones?: { campo: string; mensaje: string }[] } | null =
 		null;
@@ -63,8 +69,13 @@
 	let cambiarContexto = false;
 	let partidaElegida = partida?.id ?? '';
 	let formSeleccion: HTMLFormElement | undefined;
+	let reprogramacionId = reprogramacionPedida ?? '';
 
 	$: if (!meses.includes(periodoMes)) periodoMes = mesSugerido ?? '';
+	$: reprogramacionesDelMes = reprogramaciones.filter((r) => r.mesDestino === periodoMes);
+	// Al cambiar de mes, una reprogramación de otro mes deja de estar elegida.
+	$: if (reprogramacionId && !reprogramacionesDelMes.some((r) => r.id === reprogramacionId))
+		reprogramacionId = '';
 	$: conOcurrencia = !!tipoOcurrencia && (!mesCompletoOpcional || modoPeriodo === 'ocurrencia');
 	$: ocurrencias =
 		conOcurrencia && tipoOcurrencia && periodoMes
@@ -99,7 +110,7 @@
 		if (t.vencidos.length) return { icono: '!', texto: `Vencida · ${textoMes(t.vencidos[0])}` };
 		if (t.estadoMes === 'vencido')
 			return { icono: '!', texto: `Vencida · ${textoMes(mesReferencia)}` };
-		if (t.estadoMes === 'pendiente') {
+		if (t.estadoMes === 'pendiente' || t.estadoMes === 'programado') {
 			return { icono: '●', texto: `Pendiente · ${textoMes(mesReferencia)}` };
 		}
 		return null;
@@ -242,6 +253,31 @@
 				{#if conOcurrencia}<input type="hidden" name="ocurrenciaTipo" value={tipoOcurrencia} />{/if}
 				<div class="paso">
 					<h3 class="titulo-paso"><span class="numero-paso">2</span> Periodo y TAG</h3>
+					{#if reprogramacionesDelMes.length}
+						<fieldset class="casillas trabajo-reprogramado">
+							<legend>¿Qué trabajo reporta?</legend>
+							<label>
+								<input
+									type="radio"
+									name="reprogramacionId"
+									value=""
+									bind:group={reprogramacionId}
+								/>
+								Trabajo de {textoMes(periodoMes)}
+							</label>
+							{#each reprogramacionesDelMes as r (r.id)}
+								<label>
+									<input
+										type="radio"
+										name="reprogramacionId"
+										value={r.id}
+										bind:group={reprogramacionId}
+									/>
+									Reprogramado desde {textoMes(r.mesOrigen)} ({ETIQUETA_MOTIVO_AJUSTE[r.motivo]})
+								</label>
+							{/each}
+						</fieldset>
+					{/if}
 					<div class="form-grid">
 						<div class="form-group">
 							<label for="periodoMes">Mes del reporte</label>

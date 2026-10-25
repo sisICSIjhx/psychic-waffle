@@ -23,6 +23,7 @@ function pendiente(
 		mes,
 		estado,
 		faltan: 1,
+		reprogramacionId: null,
 		borradores: [],
 		sitio: 'EM-99999',
 		...cambios

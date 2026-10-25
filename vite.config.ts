@@ -29,7 +29,10 @@ export default defineConfig({
 					name: 'server',
 					environment: 'node',
 					include: ['src/**/*.{test,spec}.{js,ts}'],
-					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}']
+					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}'],
+					// Las pruebas con PGlite y sharp tardan 1-2 s solas, pero más de 5 s cuando la suite
+					// completa corre en paralelo.
+					testTimeout: 20_000
 				}
 			}
 		]

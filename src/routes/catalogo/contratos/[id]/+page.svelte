@@ -17,5 +17,9 @@
 	equipos={data.equipos}
 	firmantes={data.firmantes}
 	programas={data.programas}
+	resumenSitios={data.resumenSitios}
+	cambios={data.cambios}
+	historialAbierto={data.historialAbierto}
+	permisos={data.permisos}
 	form={resultado}
 />

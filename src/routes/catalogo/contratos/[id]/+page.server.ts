@@ -1,6 +1,12 @@
 import { error as errorHttp, fail } from '@sveltejs/kit';
 import { ErrorDatos } from '$lib/server/bd/cliente';
 import { almacenamiento, datos } from '$lib/server/datos';
+import {
+	ErrorCambio,
+	ejecutarCambio,
+	leerCambio,
+	leerConfirmacion
+} from '$lib/server/edicion-catalogo';
 import { mensajeDeError } from '$lib/server/errores';
 import { analizarHojas, ErrorImportacion } from '$lib/server/importacion/catalogo';
 import {
@@ -14,20 +20,36 @@ import {
 	guardarImportacionPendiente,
 	tomarImportacionPendiente
 } from '$lib/server/importacion/temporal';
+import { contextoBitacora, puedeEditarCatalogo } from '$lib/server/permisos';
 import type { Actions, PageServerLoad } from './$types';
 
 const texto = (formulario: FormData, campo: string) => String(formulario.get(campo) ?? '').trim();
 const opcional = (formulario: FormData, campo: string) => texto(formulario, campo) || null;
 const TAMANO_MAXIMO_LIBRO = 10 * 1024 * 1024;
+const SIN_PERMISO = 'No tiene permiso para editar el catálogo.';
 
-export const load: PageServerLoad = async ({ params, url }) => {
+/** Falla de una edición del catálogo con lo que la interfaz necesita para mostrarla junto al campo. */
+function falloDeCambio(accion: string, tipo: string, error: unknown) {
+	const detalle = error instanceof ErrorDatos ? error.detalle : {};
+	const estado = error instanceof ErrorDatos && error.tipo === 'conflicto' ? 409 : 400;
+	return fail(estado, {
+		accion,
+		tipo,
+		error: error instanceof ErrorCambio ? error.message : mensajeDeError(error),
+		motivo: typeof detalle.motivo === 'string' ? detalle.motivo : null,
+		detalle: JSON.parse(JSON.stringify(detalle)) as Record<string, unknown>
+	});
+}
+
+export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const repos = await datos();
 	const contrato = (await repos.catalogo.listarContratos()).find((c) => c.id === params.id);
 	if (!contrato) errorHttp(404, 'Contrato no encontrado');
 	const sitios = await repos.catalogo.listarSitios(contrato.id);
 	const sitio = sitios.find((s) => s.id === url.searchParams.get('sitio')) ?? sitios[0] ?? null;
 	const estado = url.searchParams.get('estado') === 'por_confirmar' ? 'por_confirmar' : undefined;
-	const [partidas, equipos, firmantes, programas] = await Promise.all([
+	const paginaCambios = Math.max(1, Number(url.searchParams.get('cambios')) || 1);
+	const [partidas, equipos, firmantes, programas, resumenSitios, cambios] = await Promise.all([
 		sitio
 			? repos.catalogo.listarPartidas({
 					contratoId: contrato.id,
@@ -39,7 +61,9 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		repos.catalogo.listarFirmantes(contrato.id),
 		sitio
 			? repos.programa.listarProgramas({ contratoId: contrato.id, sitioId: sitio.id })
-			: Promise.resolve([])
+			: Promise.resolve([]),
+		repos.catalogo.resumenSitios(contrato.id),
+		repos.catalogo.listarCambios(contrato.id, paginaCambios)
 	]);
 	return {
 		contrato,
@@ -49,22 +73,29 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		partidas,
 		equipos,
 		firmantes,
-		programas
+		programas,
+		resumenSitios,
+		cambios,
+		historialAbierto: url.searchParams.has('cambios'),
+		permisos: { editarCatalogo: puedeEditarCatalogo(locals) }
 	};
 };
 
 export const actions: Actions = {
-	asociarSitio: async ({ request, params }) => {
+	asociarSitio: async ({ request, params, locals }) => {
+		if (!puedeEditarCatalogo(locals))
+			return fail(403, { accion: 'asociarSitio', error: SIN_PERMISO });
 		const formulario = await request.formData();
 		const repos = await datos();
+		const contexto = contextoBitacora(locals);
 		try {
 			let sitioId: string;
 			try {
 				sitioId = (
-					await repos.catalogo.guardarSitio({
-						clave: texto(formulario, 'clave'),
-						nombre: texto(formulario, 'nombre')
-					})
+					await repos.catalogo.guardarSitio(
+						{ clave: texto(formulario, 'clave'), nombre: texto(formulario, 'nombre') },
+						{ ...contexto, contratoId: params.id }
+					)
 				).id;
 			} catch (error) {
 				// Un sitio ya registrado (aunque esté escrito de otra forma) se asocia en lugar de duplicarse.
@@ -73,7 +104,7 @@ export const actions: Actions = {
 				if (!existente?.id) throw error;
 				sitioId = existente.id;
 			}
-			await repos.catalogo.asociarSitio(params.id, sitioId);
+			await repos.catalogo.asociarSitio(params.id, sitioId, contexto);
 			return { accion: 'asociarSitio', mensaje: 'Sitio asociado al contrato.' };
 		} catch (error) {
 			return fail(400, { accion: 'asociarSitio', error: mensajeDeError(error) });
@@ -117,33 +148,82 @@ export const actions: Actions = {
 		}
 	},
 
-	guardarFirmante: async ({ request, params }) => {
+	// Solo altas: las correcciones de un firmante pasan por ensayarCambio y aplicarCambio.
+	registrarFirmante: async ({ request, params, locals }) => {
+		if (!puedeEditarCatalogo(locals)) {
+			return fail(403, { accion: 'registrarFirmante', error: SIN_PERMISO });
+		}
 		const formulario = await request.formData();
 		try {
 			const repos = await datos();
-			const id = opcional(formulario, 'id');
-			if (id && !(await repos.catalogo.listarFirmantes(params.id)).some((f) => f.id === id)) {
-				return fail(400, {
-					accion: 'guardarFirmante',
-					error: 'El firmante no pertenece a este contrato.'
-				});
-			}
-			await repos.catalogo.guardarFirmante({
-				...(id ? { id } : {}),
-				contratoId: params.id,
-				funcion: texto(formulario, 'funcion') as 'elaboro' | 'aprobo' | 'recibio',
-				nombre: texto(formulario, 'nombre'),
-				cargo: texto(formulario, 'cargo'),
-				empresa: texto(formulario, 'empresa'),
-				vigenteDesde: texto(formulario, 'vigenteDesde'),
-				vigenteHasta: opcional(formulario, 'vigenteHasta')
+			await repos.catalogo.guardarFirmante(
+				{
+					contratoId: params.id,
+					funcion: texto(formulario, 'funcion') as 'elaboro' | 'aprobo' | 'recibio',
+					nombre: texto(formulario, 'nombre'),
+					cargo: texto(formulario, 'cargo'),
+					empresa: texto(formulario, 'empresa'),
+					vigenteDesde: texto(formulario, 'vigenteDesde'),
+					vigenteHasta: opcional(formulario, 'vigenteHasta')
+				},
+				contextoBitacora(locals)
+			);
+			return { accion: 'registrarFirmante', mensaje: 'Firmante registrado.' };
+		} catch (error) {
+			return fail(400, { accion: 'registrarFirmante', error: mensajeDeError(error) });
+		}
+	},
+
+	// Calcula la corrección y su impacto sin aplicarla, para el diálogo de confirmación.
+	ensayarCambio: async ({ request, params, locals }) => {
+		if (!puedeEditarCatalogo(locals)) {
+			return fail(403, { accion: 'ensayarCambio', tipo: '', error: SIN_PERMISO });
+		}
+		const formulario = await request.formData();
+		let cambio;
+		try {
+			cambio = leerCambio(formulario);
+			const resultado = await ejecutarCambio((await datos()).catalogo, params.id, cambio, {
+				...contextoBitacora(locals),
+				ensayo: true
 			});
 			return {
-				accion: 'guardarFirmante',
-				mensaje: id ? 'Firmante actualizado.' : 'Firmante registrado.'
+				accion: 'ensayarCambio',
+				tipo: cambio.tipo,
+				campos: cambio.campos,
+				resultado: JSON.parse(JSON.stringify(resultado)) as typeof resultado
 			};
 		} catch (error) {
-			return fail(400, { accion: 'guardarFirmante', error: mensajeDeError(error) });
+			return falloDeCambio('ensayarCambio', cambio?.tipo ?? '', error);
+		}
+	},
+
+	// Aplica la corrección confirmada; el motivo se valida aquí y otra vez en la base.
+	aplicarCambio: async ({ request, params, locals }) => {
+		if (!puedeEditarCatalogo(locals)) {
+			return fail(403, { accion: 'aplicarCambio', tipo: '', error: SIN_PERMISO });
+		}
+		const formulario = await request.formData();
+		let cambio;
+		try {
+			cambio = leerCambio(formulario);
+			const confirmacion = leerConfirmacion(formulario);
+			const resultado = await ejecutarCambio((await datos()).catalogo, params.id, cambio, {
+				...contextoBitacora(locals),
+				...confirmacion,
+				ensayo: false
+			});
+			return {
+				accion: 'aplicarCambio',
+				tipo: cambio.tipo,
+				mensaje: 'Cambio guardado y registrado en el historial.',
+				efectos: {
+					borradoresActualizados: resultado.aplicado?.borradoresActualizados ?? [],
+					borradoresConAviso: resultado.aplicado?.borradoresConAviso ?? []
+				}
+			};
+		} catch (error) {
+			return falloDeCambio('aplicarCambio', cambio?.tipo ?? '', error);
 		}
 	},
 

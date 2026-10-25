@@ -2,7 +2,8 @@
 // agrupación según el trabajo pendiente del programa y mes que se sugiere al elegirla.
 import type { Ocurrencia } from './documento.ts';
 import type { AvancePrograma, ReporteResumen } from './esquemas.ts';
-import { estadoCelda, type BorradorResumen, type EstadoCelda } from './planeacion.ts';
+import { estadoEjecucion, type EstadoEjecucion } from './cumplimiento.ts';
+import type { BorradorResumen } from './planeacion.ts';
 
 /** Texto comparable: sin acentos, en minúsculas y con los espacios normalizados. */
 export function normalizarBusqueda(texto: string): string {
@@ -51,7 +52,7 @@ export interface TrabajoDePartida {
 	/** Meses vencidos anteriores al mes de referencia, del más antiguo al más reciente. */
 	vencidos: string[];
 	/** Estado de la celda del mes de referencia, si la partida tiene programa ese mes. */
-	estadoMes: EstadoCelda | null;
+	estadoMes: EstadoEjecucion | null;
 	/** Borradores de la partida en los meses pendientes, del más reciente al más antiguo. */
 	borradores: { id: string; titulo: string; periodoMes: string; ocurrencia: Ocurrencia | null }[];
 }
@@ -74,13 +75,16 @@ export function trabajoDePartidas(
 	for (const { id } of partidas) {
 		const celdas = avance?.partidas.find((p) => p.id === id)?.celdas ?? [];
 		const vencidos = celdas
-			.filter((c) => c.mes.slice(0, 7) < referencia && estadoCelda(c, hoy) === 'vencido')
+			.filter((c) => c.mes.slice(0, 7) < referencia && estadoEjecucion(c, hoy) === 'vencido')
 			.map((c) => c.mes)
 			.sort();
 		const celdaMes = celdas.find((c) => c.mes.slice(0, 7) === referencia);
-		const estadoMes = celdaMes ? estadoCelda(celdaMes, hoy) : null;
+		const estadoMes = celdaMes ? estadoEjecucion(celdaMes, hoy) : null;
+		// Un mes de referencia futuro (programado) cuenta como pendiente, igual que el mes en curso.
 		const referenciaPendiente =
-			estadoMes === 'pendiente' || estadoMes === 'vencido' ? [celdaMes!.mes.slice(0, 7)] : [];
+			estadoMes === 'pendiente' || estadoMes === 'vencido' || estadoMes === 'programado'
+				? [celdaMes!.mes.slice(0, 7)]
+				: [];
 		const mesesPendientes = new Set([
 			...vencidos.map((m) => m.slice(0, 7)),
 			...referenciaPendiente

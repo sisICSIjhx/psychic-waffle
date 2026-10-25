@@ -51,4 +51,19 @@ describe('Dialogo', () => {
 		await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
 		origen.remove();
 	});
+
+	it('no confirma mientras la acción está deshabilitada', async () => {
+		const origen = botonDeOrigen();
+		const { rerender, confirmar } = montar();
+		await rerender({ abierto: true, confirmarDeshabilitado: true });
+		const boton = page.getByRole('button', { name: 'Emitir', exact: true }).last();
+		await expect.element(boton).toBeDisabled();
+		(boton.element() as HTMLButtonElement).click();
+		expect(confirmar).not.toHaveBeenCalled();
+		await expect.element(page.getByRole('dialog')).toBeVisible();
+		await rerender({ confirmarDeshabilitado: false });
+		await boton.click();
+		expect(confirmar).toHaveBeenCalledTimes(1);
+		origen.remove();
+	});
 });

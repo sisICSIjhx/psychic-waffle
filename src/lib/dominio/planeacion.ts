@@ -1,30 +1,13 @@
-// Reglas puras de la planeación anual: estado de cada celda P/R, pendientes vencidos, filtros de la
-// matriz y resumen del mes para el panel de control.
+// Reglas puras de la planeación anual: pendientes vencidos, filtros de la matriz, resumen del mes
+// para el panel de control y siguiente trabajo. El estado de cada celda (con los ajustes de
+// reprogramado y no ejecutado) sale de cumplimiento.ts.
+import { estadoEjecucion, faltan, objetivo } from './cumplimiento.ts';
 import type { Ocurrencia } from './documento.ts';
-import type { AvancePrograma, CeldaPrograma, ReporteResumen } from './esquemas.ts';
+import type { AvancePrograma, ReporteResumen } from './esquemas.ts';
+
+export { mesTerminado } from './cumplimiento.ts';
 
 type PartidaAvance = AvancePrograma['partidas'][number];
-
-/**
- * - sin_programa: nada programado ni realizado.
- * - cumplido: lo realizado cubre lo programado.
- * - pendiente: falta realizar en el mes en curso o en uno futuro.
- * - vencido: el mes ya terminó y falta realizar.
- * - extra: se realizó sin estar programado.
- */
-export type EstadoCelda = 'sin_programa' | 'cumplido' | 'pendiente' | 'vencido' | 'extra';
-
-/** Un mes («AAAA-MM-DD») está vencido cuando ya terminó respecto de la fecha de hoy. */
-export function mesTerminado(mes: string, hoy: string): boolean {
-	return mes.slice(0, 7) < hoy.slice(0, 7);
-}
-
-export function estadoCelda(celda: CeldaPrograma, hoy: string): EstadoCelda {
-	const programado = celda.programado ?? 0;
-	if (programado <= 0) return celda.realizado > 0 ? 'extra' : 'sin_programa';
-	if (celda.realizado >= programado) return 'cumplido';
-	return mesTerminado(celda.mes, hoy) ? 'vencido' : 'pendiente';
-}
 
 export interface FiltroPlaneacion {
 	distribucion?: 'produccion' | 'mantenimiento' | null;
@@ -58,13 +41,13 @@ export function pendientesVencidos(
 	return partidas
 		.flatMap((p) =>
 			p.celdas
-				.filter((c) => estadoCelda(c, hoy) === 'vencido')
+				.filter((c) => estadoEjecucion(c, hoy) === 'vencido')
 				.map((c) => ({
 					partidaId: p.id,
 					numero: p.numero,
 					actividad: p.actividad,
 					mes: c.mes,
-					faltan: (c.programado ?? 0) - c.realizado
+					faltan: faltan(c)
 				}))
 		)
 		.sort(
@@ -74,11 +57,11 @@ export function pendientesVencidos(
 }
 
 export interface ResumenMes {
-	/** Partidas con algo programado en el mes. */
+	/** Partidas con algo por ejecutar en el mes (lo programado más lo que llega reprogramado). */
 	programadas: number;
-	/** De ellas, las que ya cubren lo programado. */
+	/** De ellas, las ya ejecutadas. */
 	cumplidas: number;
-	/** Las que aún no lo cubren. */
+	/** Las que aún tienen algo por ejecutar (lo no ejecutado no cuenta como pendiente). */
 	pendientes: number;
 	/** Celdas vencidas de meses anteriores (partida y mes). */
 	vencidas: number;
@@ -94,12 +77,12 @@ export function resumenDelMes(avances: readonly AvancePrograma[], hoy: string): 
 	for (const avance of avances) {
 		for (const partida of avance.partidas) {
 			for (const celda of partida.celdas) {
-				const estado = estadoCelda(celda, hoy);
+				const estado = estadoEjecucion(celda, hoy);
 				if (estado === 'vencido') resumen.vencidas++;
-				if (celda.mes !== mes || (celda.programado ?? 0) <= 0) continue;
+				if (celda.mes !== mes || objetivo(celda) <= 0) continue;
 				resumen.programadas++;
-				if (estado === 'cumplido') resumen.cumplidas++;
-				else resumen.pendientes++;
+				if (estado === 'ejecutado') resumen.cumplidas++;
+				else if (estado === 'pendiente') resumen.pendientes++;
 			}
 		}
 	}
@@ -136,6 +119,8 @@ export interface TrabajoPendiente {
 	estado: 'vencido' | 'pendiente';
 	/** Ejecuciones programadas que aún no se realizan en ese mes. */
 	faltan: number;
+	/** Reprogramación que llega a ese mes y aún falta por reportar (para la captura). */
+	reprogramacionId: string | null;
 	/** Borradores de esa partida, sitio y mes, del más reciente al más antiguo. */
 	borradores: { id: string; titulo: string; tags: string | null; ocurrencia: Ocurrencia | null }[];
 }
@@ -156,7 +141,7 @@ export function siguienteTrabajo(
 	for (const { programa, partidas } of avances) {
 		for (const partida of partidas) {
 			for (const celda of partida.celdas) {
-				const estado = estadoCelda(celda, hoy);
+				const estado = estadoEjecucion(celda, hoy);
 				if (estado !== 'vencido' && !(estado === 'pendiente' && celda.mes === mesActual)) continue;
 				trabajo.push({
 					contratoId: programa.contratoId,
@@ -167,7 +152,14 @@ export function siguienteTrabajo(
 					periodicidad: partida.periodicidad,
 					mes: celda.mes,
 					estado,
-					faltan: (celda.programado ?? 0) - celda.realizado,
+					faltan: faltan(celda),
+					reprogramacionId:
+						celda.ajustes.find(
+							(a) =>
+								a.tipo === 'reprogramado' &&
+								a.mesDestino === celda.mes &&
+								a.ejecuciones < a.cantidad
+						)?.id ?? null,
 					borradores: ordenados
 						.filter(
 							(b) =>

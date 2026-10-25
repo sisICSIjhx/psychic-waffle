@@ -1,5 +1,7 @@
 // Datos de la captura que dependen del programa y de los reportes: mes de referencia, trabajo
-// pendiente de cada partida del sitio, mes sugerido y reportes vigentes de la partida elegida.
+// pendiente de cada partida del sitio, mes sugerido, reportes vigentes de la partida elegida y las
+// reprogramaciones que llegan a sus meses y aún no tienen todas sus ejecuciones emitidas.
+import type { Ajuste } from '../dominio/esquemas.ts';
 import { programaVigente } from '../dominio/planeacion.ts';
 import {
 	mesSugerido,
@@ -29,6 +31,7 @@ export async function datosDeSeleccion(
 	mesSugerido: string | null;
 	trabajo: Record<string, TrabajoDePartida>;
 	reportesPartida: ReporteDePartida[];
+	reprogramaciones: Ajuste[];
 }> {
 	// El mes pedido es también el de referencia para agrupar; sin él, el mes en curso.
 	const mesReferencia = meses.includes(mesPedido) ? mesPedido : `${hoy.slice(0, 7)}-01`;
@@ -36,12 +39,22 @@ export async function datosDeSeleccion(
 	// Trabajo de cada partida según el programa vigente del sitio, con todos los borradores del sitio
 	// desde el inicio del programa (ninguno se pierde por un límite).
 	let trabajo: Record<string, TrabajoDePartida> = {};
+	let reprogramaciones: Ajuste[] = [];
 	if (contratoId && sitioId) {
 		const programa = programaVigente(
 			await repos.programa.listarProgramas({ contratoId, sitioId }),
 			hoy
 		);
 		const avance = programa ? await repos.programa.obtenerAvance(programa.id) : null;
+		const celdasPartida = avance?.partidas.find((p) => p.id === partidaId)?.celdas ?? [];
+		reprogramaciones = celdasPartida
+			.flatMap((c) => c.ajustes)
+			.filter(
+				(a, i, todos) =>
+					a.tipo === 'reprogramado' &&
+					a.ejecuciones < a.cantidad &&
+					todos.findIndex((b) => b.id === a.id) === i
+			);
 		const borradores = programa
 			? await repos.reportes.listarTodos({
 					estado: 'borrador',
@@ -76,6 +89,7 @@ export async function datosDeSeleccion(
 			? mesPedido
 			: mesSugerido(partidaId ? trabajo[partidaId] : undefined, meses, hoy),
 		trabajo,
-		reportesPartida
+		reportesPartida,
+		reprogramaciones
 	};
 }

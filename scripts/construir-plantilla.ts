@@ -1,7 +1,11 @@
-// Construye src/lib/server/plantillas/FOR-ICSI-RMT-01.v1.docx a partir de un reporte real.
+// Construye src/lib/server/plantillas/FOR-ICSI-RMT-01.v2.docx a partir de un reporte real.
 //
 // Uso (solo en local; el reporte fuente vive en insumos/, que no se versiona):
-//   node scripts/construir-plantilla.ts "<reporte FOR-ICSI-RMT-01 con tabla de verificación>.docx"
+//   node scripts/construir-plantilla.ts "<reporte FOR-ICSI-RMT-01 con tabla de verificación>.docx" [destino]
+//
+// v2: el índice queda como un campo TOC vacío dentro de su control de contenido y sin
+// `w:updateFields`; el generador escribe las entradas con sus páginas ya calculadas
+// (src/lib/server/documentos/indice.ts), así Word no pide actualizar campos al abrir.
 //
 // Conserva de la fuente: portada, tabla de encabezado, tabla de firmas, estilos, numeración, tema,
 // encabezados y pies (con el membrete) y las tablas de herramientas y verificación. Sustituye los
@@ -23,7 +27,10 @@ import {
 } from '../src/lib/server/documentos/ooxml.ts';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const DESTINO = resolve(RAIZ, 'src/lib/server/plantillas/FOR-ICSI-RMT-01.v1.docx');
+const DESTINO = resolve(
+	RAIZ,
+	process.argv[3] ?? 'src/lib/server/plantillas/FOR-ICSI-RMT-01.v2.docx'
+);
 
 /** Fuentes con licencia libre (OFL/Apache) que se conservan incrustadas para la fidelidad. */
 const FUENTES_INCRUSTADAS = new Set(['Open Sans', 'Open Sans Bold', 'Arimo Bold']);
@@ -223,30 +230,21 @@ function transformarPortada(portada: string): string {
 	});
 }
 
+/**
+ * Control de contenido del índice: título y un párrafo de reserva con el campo TOC vacío (begin,
+ * instrucción, separate y end). El generador sustituye ese párrafo por las entradas resueltas.
+ */
 function indice(): string {
 	const tabulador = `<w:tabs><w:tab w:val="right" w:leader="dot" w:pos="${ANCHO_CONTENIDO - 10}"/></w:tabs>`;
-	const entrada1 = (contenido: string) => parrafo('TDC1', contenido, tabulador);
-	const inicioCampo =
+	const campo =
 		'<w:r><w:fldChar w:fldCharType="begin"/></w:r>' +
 		'<w:r><w:instrText xml:space="preserve"> TOC \\o "1-3" \\h \\z \\u </w:instrText></w:r>' +
-		'<w:r><w:fldChar w:fldCharType="separate"/></w:r>';
+		'<w:r><w:fldChar w:fldCharType="separate"/></w:r>' +
+		'<w:r><w:fldChar w:fldCharType="end"/></w:r>';
 	return [
 		'<w:sdt><w:sdtPr><w:docPartObj><w:docPartGallery w:val="Table of Contents"/><w:docPartUnique/></w:docPartObj></w:sdtPr><w:sdtContent>',
 		parrafo('TtuloTDC', run('Contenido')),
-		entrada1(inicioCampo + run('1. OBJETIVO')),
-		entrada1(run('2. ALCANCE')),
-		parrafoComando('FOR t IN indice.alcances'),
-		parrafo('TDC2', run(cmd('INS $t')), tabulador),
-		parrafoComando('END-FOR t'),
-		entrada1(run('3. HERRAMIENTAS Y EQUIPO')),
-		parrafoComando('IF verificacion.incluida'),
-		entrada1(run('4. DOCUMENTOS DE VERIFICACIÓN')),
-		parrafoComando('END-IF'),
-		entrada1(
-			run(cmd('INS secciones.conclusiones')) +
-				run('. CONCLUSIONES Y/O RECOMENDACIONES') +
-				'<w:r><w:fldChar w:fldCharType="end"/></w:r>'
-		),
+		parrafo('TDC1', campo, tabulador),
 		'</w:sdtContent></w:sdt>',
 		'<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
 	].join('');
@@ -544,8 +542,8 @@ async function main(): Promise<void> {
 		);
 	}
 
-	// Ajustes saneados: sin protección, rsid ni plantilla adjunta; Word actualiza el índice al abrir y
-	// quita la información personal al guardar.
+	// Ajustes saneados: sin protección, rsid ni plantilla adjunta, sin actualizar campos al abrir (el
+	// índice llega resuelto) y quitando la información personal al guardar.
 	const ajustes = (await leer('word/settings.xml'))
 		.replace(/<w:rsids>[\s\S]*?<\/w:rsids>/, '')
 		.replace(
@@ -553,10 +551,9 @@ async function main(): Promise<void> {
 			''
 		)
 		.replace(/<w:docVars>[\s\S]*?<\/w:docVars>/, '')
-		.replace(/(<w:zoom [^>]*\/>)/, '$1<w:removePersonalInformation/>')
-		.replace('<w:hdrShapeDefaults>', '<w:updateFields w:val="true"/><w:hdrShapeDefaults>');
-	if (!ajustes.includes('<w:updateFields'))
-		throw new Error('No se pudo activar la actualización del índice');
+		.replace(/(<w:zoom [^>]*\/>)/, '$1<w:removePersonalInformation/>');
+	if (ajustes.includes('<w:updateFields'))
+		throw new Error('La plantilla no debe pedir actualizar campos al abrir');
 	salida.file('word/settings.xml', ajustes);
 
 	salida.file('word/document.xml', documentoNuevo);

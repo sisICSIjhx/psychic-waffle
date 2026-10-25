@@ -41,4 +41,9 @@ describe('navegación entre vistas', () => {
 		expect(clienteCaptura('prosasa')).toBeNull();
 		expect(clienteCaptura(null)).toBeNull();
 	});
+
+	it('el tablero de cumplimiento tiene su ruta y su título', () => {
+		expect(vistaDesdeRuta('/cumplimiento')).toBe('cumplimiento');
+		expect(tituloDePagina('/cumplimiento')).toBe('Cumplimiento del programa');
+	});
 });

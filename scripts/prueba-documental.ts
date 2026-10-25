@@ -1,4 +1,4 @@
-// Prueba documental: genera los reportes de ejemplo de scripts/datos-prueba/ con la plantilla v1.
+// Prueba documental: genera los reportes de ejemplo de scripts/datos-prueba/ con la plantilla vigente.
 //
 // Uso: node scripts/prueba-documental.ts [--pdf] [archivo.json ...]
 //
@@ -26,6 +26,7 @@ interface FotoEjemplo {
 	foto: number;
 	descripcion?: string;
 	momento?: MomentoFoto;
+	rotacion?: 0 | 90 | 180 | 270;
 }
 
 type ReporteEjemplo = Omit<ReporteDocumento, 'alcances'> & {
@@ -90,7 +91,8 @@ async function prepararReporte(
 			fotos.push({
 				datos: await obtener(f.foto),
 				descripcion: f.descripcion,
-				momento: f.momento ?? null
+				momento: f.momento ?? null,
+				rotacion: f.rotacion ?? 0
 			});
 		}
 		alcances.push({ ...alcance, fotos });

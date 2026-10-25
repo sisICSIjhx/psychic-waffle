@@ -69,7 +69,7 @@
 
 	/** Captura nueva con contrato, sitio, partida y mes ya elegidos. */
 	const captura = (t: TrabajoPendiente) =>
-		`${resolve('/captura')}?contrato=${t.contratoId}&sitio=${t.sitioId}&partida=${t.partidaId}&mes=${t.mes}`;
+		`${resolve('/captura')}?contrato=${t.contratoId}&sitio=${t.sitioId}&partida=${t.partidaId}&mes=${t.mes}${t.reprogramacionId ? `&reprogramacion=${t.reprogramacionId}` : ''}`;
 
 	const detalleBorrador = (b: TrabajoPendiente['borradores'][number]) =>
 		[

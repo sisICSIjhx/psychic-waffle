@@ -3,6 +3,7 @@
 export type VistaId =
 	| 'dashboard'
 	| 'planeacion'
+	| 'cumplimiento'
 	| 'captura'
 	| 'historial'
 	| 'catalogo'
@@ -12,6 +13,7 @@ export type VistaId =
 export const routesByView = {
 	dashboard: '/',
 	planeacion: '/planeacion',
+	cumplimiento: '/cumplimiento',
 	captura: '/captura',
 	historial: '/historial',
 	catalogo: '/catalogo',
@@ -22,6 +24,7 @@ export const routesByView = {
 export const titulosPorVista: Record<VistaId, string> = {
 	dashboard: 'Mi trabajo',
 	planeacion: 'Planeación Anual',
+	cumplimiento: 'Cumplimiento del programa',
 	captura: 'Captura de Reportes',
 	historial: 'Historial Global',
 	catalogo: 'Catálogo de Contratos',

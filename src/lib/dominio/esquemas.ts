@@ -20,6 +20,8 @@ export const FUNCIONES_FIRMA = ['elaboro', 'aprobo', 'recibio'] as const;
 export const ESTADOS_REPORTE = ['borrador', 'en_revision', 'emitido', 'sustituido'] as const;
 export const ESTADOS_VERIFICACION = ['pendiente', 'ok', 'no_aplica', 'con_observacion'] as const;
 export const MOMENTOS_FOTO = ['antes', 'durante', 'despues'] as const;
+/** Giro de una foto en grados, en el sentido de las agujas del reloj. */
+export const ROTACIONES_FOTO = [0, 90, 180, 270] as const;
 export const TIPOS_OCURRENCIA = ['semana', 'quincena', 'dia'] as const;
 
 const id = z.uuid();
@@ -44,14 +46,17 @@ export const esquemaContrato = z.object({
 	vigenciaInicio: fecha,
 	vigenciaFin: fecha,
 	cliente: esquemaCliente.nullable(),
-	vigente: z.boolean().optional()
+	vigente: z.boolean().optional(),
+	/** Versión del dato para la concurrencia optimista de las ediciones. */
+	actualizadoEn: marcaDeTiempo
 });
 export type Contrato = z.infer<typeof esquemaContrato>;
 
 export const esquemaSitio = z.object({
 	id,
 	clave: z.string().trim().min(1),
-	nombre: z.string()
+	nombre: z.string(),
+	actualizadoEn: marcaDeTiempo
 });
 export type Sitio = z.infer<typeof esquemaSitio>;
 
@@ -75,7 +80,8 @@ export const esquemaFirmante = z.object({
 	cargo: z.string(),
 	empresa: z.string(),
 	vigenteDesde: fecha,
-	vigenteHasta: fecha.nullable()
+	vigenteHasta: fecha.nullable(),
+	actualizadoEn: marcaDeTiempo
 });
 export type Firmante = z.infer<typeof esquemaFirmante>;
 
@@ -85,6 +91,89 @@ export const esquemaFirmantesVigentes = z.object({
 	recibio: esquemaFirmante.nullable()
 });
 export type FirmantesVigentes = z.infer<typeof esquemaFirmantesVigentes>;
+
+// Bitácora del catálogo (cambio edicion-contratos-bitacora).
+export const ENTIDADES_CATALOGO = ['contrato', 'sitio', 'firmante', 'contrato_sitio'] as const;
+export const ACCIONES_CATALOGO = ['crear', 'editar', 'reemplazar', 'asociar', 'quitar'] as const;
+export const ORIGENES_CAMBIO = ['interfaz', 'script'] as const;
+
+export const esquemaCambioCampo = z.object({
+	campo: z.string(),
+	antes: z.string().nullable(),
+	despues: z.string().nullable()
+});
+export type CambioCampo = z.infer<typeof esquemaCambioCampo>;
+
+const contratoBreve = z.object({ id, numero: z.string() });
+
+/** Reportes afectados por un cambio del catálogo, por estado. */
+export const esquemaImpactoCambio = z.object({
+	borradores: z.number().int(),
+	borradoresIds: z.array(id).default([]),
+	borradoresActualizados: z.array(id).default([]),
+	borradoresConAviso: z.array(id).default([]),
+	enRevision: z.number().int(),
+	emitidos: z.number().int(),
+	sustituidos: z.number().int(),
+	otrosContratos: z.array(contratoBreve).default([]),
+	/** Primer mes cuyos reportes toman al firmante nuevo. */
+	desdeMes: fecha.optional()
+});
+export type ImpactoCambio = z.infer<typeof esquemaImpactoCambio>;
+
+export const esquemaResultadoEdicion = z.object({
+	ensayo: z.boolean(),
+	cambios: z.array(esquemaCambioCampo),
+	impacto: esquemaImpactoCambio,
+	aplicado: z
+		.object({
+			cambioId: id,
+			borradoresActualizados: z.array(id),
+			borradoresConAviso: z.array(id)
+		})
+		.optional()
+});
+export type ResultadoEdicion = z.infer<typeof esquemaResultadoEdicion>;
+
+export const esquemaCambioCatalogo = z.object({
+	id,
+	entidad: z.enum(ENTIDADES_CATALOGO),
+	entidadId: id,
+	contratoId: id.nullable(),
+	accion: z.enum(ACCIONES_CATALOGO),
+	cambios: z.array(esquemaCambioCampo),
+	motivo: z.string().nullable(),
+	efectos: z.record(z.string(), z.unknown()),
+	usuarioId: id.nullable(),
+	usuarioTexto: z.string().nullable(),
+	origen: z.enum(ORIGENES_CAMBIO),
+	realizadoEn: marcaDeTiempo
+});
+export type CambioCatalogo = z.infer<typeof esquemaCambioCatalogo>;
+
+export const esquemaPaginaCambios = z.object({
+	total: z.number().int().nonnegative(),
+	pagina: z.number().int().positive(),
+	tamano: z.number().int().positive(),
+	filas: z.array(esquemaCambioCatalogo)
+});
+export type PaginaCambios = z.infer<typeof esquemaPaginaCambios>;
+
+export const esquemaResumenSitio = z.object({
+	sitioId: id,
+	partidas: z.number().int(),
+	programas: z.number().int(),
+	reportes: z.number().int(),
+	otrosContratos: z.array(contratoBreve)
+});
+export type ResumenSitio = z.infer<typeof esquemaResumenSitio>;
+
+/** Datos del contrato que cambiaron desde la copia que recibió el reporte. */
+export const esquemaEstadoContratoReporte = z.object({
+	cambiado: z.boolean(),
+	datos: z.array(z.object({ campo: z.string(), reporte: z.unknown(), contrato: z.unknown() }))
+});
+export type EstadoContratoReporte = z.infer<typeof esquemaEstadoContratoReporte>;
 
 export const esquemaAlcancePartida = z.object({
 	id: id.optional(),
@@ -200,6 +289,48 @@ export const esquemaPrograma = z.object({
 });
 export type Programa = z.infer<typeof esquemaPrograma>;
 
+// Ajustes del programa (cambio tablero-cumplimiento): el plan original no cambia; lo reprogramado y
+// lo no ejecutado se registran aparte.
+export const TIPOS_AJUSTE = ['reprogramado', 'no_ejecutado'] as const;
+export const MOTIVOS_AJUSTE = [
+	'cliente_operacion',
+	'clima',
+	'materiales_refacciones',
+	'acceso_permisos',
+	'personal',
+	'otro'
+] as const;
+export type MotivoAjuste = (typeof MOTIVOS_AJUSTE)[number];
+export const ETIQUETA_MOTIVO_AJUSTE: Record<MotivoAjuste, string> = {
+	cliente_operacion: 'Cliente u operación',
+	clima: 'Clima',
+	materiales_refacciones: 'Materiales o refacciones',
+	acceso_permisos: 'Acceso o permisos',
+	personal: 'Personal',
+	otro: 'Otro'
+};
+
+export const esquemaAjuste = z.object({
+	id,
+	programaId: id,
+	partidaId: id,
+	tipo: z.enum(TIPOS_AJUSTE),
+	mesOrigen: fecha,
+	mesDestino: fecha.nullable(),
+	cantidad: z.number().int().positive(),
+	motivo: z.enum(MOTIVOS_AJUSTE),
+	nota: z.string().nullable(),
+	registradoEn: marcaDeTiempo,
+	anuladoEn: marcaDeTiempo.nullable(),
+	/** Ejecuciones emitidas ligadas a la reprogramación. */
+	ejecuciones: z.number().int(),
+	/** Borradores ligados (se desligan al anular). */
+	borradores: z.number().int(),
+	/** Reportes en revisión o emitidos ligados: impiden anular. */
+	bloqueantes: z.number().int()
+});
+export type Ajuste = z.infer<typeof esquemaAjuste>;
+
 export const esquemaCeldaPrograma = z.object({
 	mes: fecha,
 	programado: z.number().nullable(),
@@ -208,7 +339,18 @@ export const esquemaCeldaPrograma = z.object({
 	/** Ejecuciones con reporte emitido (varios reportes por TAG del mismo periodo cuentan una). */
 	ejecucionesReportes: z.number(),
 	/** Marcas R del Excel y realizados capturados a mano. */
-	realizadoSinReporte: z.number()
+	realizadoSinReporte: z.number(),
+	/** Reprogramado desde este mes a otro (ajustes vigentes). */
+	salida: z.number().default(0),
+	/** Reprogramado hacia este mes. */
+	entrada: z.number().default(0),
+	noEjecutado: z.number().default(0),
+	/** Ajustes vigentes con origen o destino en este mes. */
+	ajustes: z.array(esquemaAjuste).default([]),
+	/** Reportes en borrador o en revisión de la partida y el mes, del más reciente al más antiguo. */
+	reportesAbiertos: z
+		.array(z.object({ id, estado: z.enum(['borrador', 'en_revision']) }))
+		.default([])
 });
 export type CeldaPrograma = z.infer<typeof esquemaCeldaPrograma>;
 
@@ -230,6 +372,27 @@ export const esquemaAvancePrograma = z.object({
 	)
 });
 export type AvancePrograma = z.infer<typeof esquemaAvancePrograma>;
+
+/** Programa que contiene el mes de corte, con su contrato, sitio y avance (tablero). */
+export const esquemaCumplimientoPrograma = z.object({
+	contrato: esquemaContrato,
+	sitio: esquemaSitio,
+	avance: esquemaAvancePrograma
+});
+export type CumplimientoPrograma = z.infer<typeof esquemaCumplimientoPrograma>;
+
+/** Reporte no sustituido de un mes, para la vista semanal. */
+export const esquemaEjecucionMes = z.object({
+	id,
+	partidaId: id,
+	estado: z.enum(['borrador', 'en_revision', 'emitido']),
+	ocurrencia: z
+		.object({ tipo: z.enum(['semana', 'quincena', 'dia']), numero: z.number().int() })
+		.nullable(),
+	reprogramacionId: id.nullable(),
+	diasEjecucion: z.array(z.object({ desde: fecha, hasta: fecha }))
+});
+export type EjecucionMes = z.infer<typeof esquemaEjecucionMes>;
 
 export const esquemaRealizadoManual = z.object({
 	id,
@@ -270,7 +433,8 @@ export const esquemaFoto = z.object({
 	ancho: z.number().int().positive(),
 	alto: z.number().int().positive(),
 	bytes: z.number().int().positive(),
-	tipoMime: z.string()
+	tipoMime: z.string(),
+	rotacion: z.union(ROTACIONES_FOTO.map((r) => z.literal(r))).default(0)
 });
 export type Foto = z.infer<typeof esquemaFoto>;
 
@@ -352,6 +516,10 @@ export const esquemaReporte = z.object({
 	version: z.number().int().positive(),
 	revision: z.number().int().nonnegative(),
 	sustituyeA: id.nullable(),
+	/** Reprogramación del programa a la que corresponde el reporte (en su mes destino). */
+	reprogramacionId: id.nullable().default(null),
+	/** Mes de origen de esa reprogramación. */
+	reprogramadoDesde: fecha.nullable().default(null),
 	emitidoEn: marcaDeTiempo.nullable(),
 	creadoEn: marcaDeTiempo,
 	actualizadoEn: marcaDeTiempo,
@@ -368,6 +536,8 @@ export type Reporte = z.infer<typeof esquemaReporte>;
 export const esquemaReporteNuevo = z.object({
 	id: id.optional(),
 	partidaId: id,
+	/** Reprogramación que se reporta en este mes (la base valida partida y mes destino). */
+	reprogramacionId: id.nullable().optional(),
 	periodoMes: fecha,
 	ocurrencia: esquemaOcurrencia.nullable().optional(),
 	diasEjecucion: esquemaDiasEjecucion.optional(),
@@ -420,7 +590,13 @@ export const esquemaReporteGuardado = z.object({
 			observaciones: z.string(),
 			partidaAlcanceId: id.nullable().optional(),
 			fotos: z.array(
-				z.object({ id, descripcion: z.string(), momento: z.enum(MOMENTOS_FOTO).nullable() })
+				z.object({
+					id,
+					descripcion: z.string(),
+					momento: z.enum(MOMENTOS_FOTO).nullable(),
+					// Sin giro la foto conserva el suyo (p. ej., un envío de una pestaña anterior).
+					rotacion: z.union(ROTACIONES_FOTO.map((r) => z.literal(r))).optional()
+				})
 			)
 		})
 	),

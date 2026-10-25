@@ -170,6 +170,49 @@ describe('datos de la selección en la captura', () => {
 		]);
 	});
 
+	it('devuelve las reprogramaciones de la partida y el reporte creado queda ligado', async () => {
+		const programa = (await repos.programa.listarProgramas({ contratoId, sitioId }))[0];
+		const ajuste = await repos.programa.registrarAjuste({
+			programaId: programa.id,
+			partidaId: partidas['3'],
+			tipo: 'reprogramado',
+			mesOrigen: '2026-06-01',
+			mesDestino: '2026-10-01',
+			cantidad: 1,
+			motivo: 'clima'
+		});
+		const datos = await datosDeSeleccion(repos, {
+			contratoId,
+			sitioId,
+			partidas: lista(),
+			partidaId: partidas['3'],
+			meses: ['2026-06-01', '2026-10-01'],
+			mesPedido: '2026-10-01',
+			hoy: '2026-10-21'
+		});
+		expect(datos.reprogramaciones.map((r) => [r.id, r.mesOrigen, r.mesDestino])).toEqual([
+			[ajuste.id, '2026-06-01', '2026-10-01']
+		]);
+		const sinAjustes = await datosDeSeleccion(repos, {
+			contratoId,
+			sitioId,
+			partidas: lista(),
+			partidaId: partidas['7'],
+			meses: ['2026-10-01'],
+			mesPedido: '2026-10-01',
+			hoy: '2026-10-21'
+		});
+		expect(sinAjustes.reprogramaciones).toEqual([]);
+		const ligado = await servicio.crearReporte({
+			partidaId: partidas['3'],
+			periodoMes: '2026-10-01',
+			ocurrencia: null,
+			equipoIds: [],
+			reprogramacionId: ajuste.id
+		});
+		expect([ligado.reprogramacionId, ligado.reprogramadoDesde]).toEqual([ajuste.id, '2026-06-01']);
+	});
+
 	it('sin contrato ni sitio no consulta el programa', async () => {
 		const datos = await datosDeSeleccion(repos, {
 			contratoId: null,
@@ -184,7 +227,8 @@ describe('datos de la selección en la captura', () => {
 			mesReferencia: '2026-10-01',
 			mesSugerido: null,
 			trabajo: {},
-			reportesPartida: []
+			reportesPartida: [],
+			reprogramaciones: []
 		});
 	});
 });

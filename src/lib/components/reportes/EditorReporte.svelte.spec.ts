@@ -48,6 +48,8 @@ function reporte(cambios: Partial<Reporte> = {}): Reporte {
 		version: 3,
 		revision: 0,
 		sustituyeA: null,
+		reprogramacionId: null,
+		reprogramadoDesde: null,
 		emitidoEn: null,
 		creadoEn: '2026-05-18T00:00:00Z',
 		actualizadoEn: '2026-05-18T00:00:00Z',
@@ -412,7 +414,8 @@ function foto(n: number, alcanceId = ID(10)): Foto {
 		ancho: 640,
 		alto: 480,
 		bytes: 1000,
-		tipoMime: 'image/jpeg'
+		tipoMime: 'image/jpeg',
+		rotacion: 0
 	};
 }
 
@@ -726,5 +729,256 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 		await expect.element(boton).toBeDisabled();
 		await expect.element(boton).toHaveAccessibleDescription('Indique los días de ejecución');
 		expect(page.getByRole('link', { name: 'Descargar DOCX' }).elements()).toHaveLength(0);
+	});
+});
+
+describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
+	const tresFotos = () =>
+		reporte({
+			alcances: [{ ...alcanceBase(), fotos: [foto(1), { ...foto(2), momento: 'antes' }, foto(3)] }]
+		});
+
+	/** Elige un archivo en el campo oculto de «Reemplazar» de la foto `n`. */
+	function elegirReemplazo(n: number, nombre = 'nueva.jpg') {
+		const entrada = document.querySelector(
+			`[data-foto="${ID(100 + n)}"] input[type=file]`
+		) as HTMLInputElement;
+		const datos = new DataTransfer();
+		datos.items.add(new File(['x'], nombre, { type: 'image/jpeg' }));
+		entrada.files = datos.files;
+		entrada.dispatchEvent(new Event('change', { bubbles: true }));
+	}
+
+	/** «guardar» correcto y «fotos» que devuelve la foto 9 (o la rechaza), cuando se libera. */
+	function conCarga({ rechazar = false } = {}) {
+		let liberar: () => void = () => {};
+		const espera = new Promise<void>((r) => (liberar = r));
+		const enviar = vi.fn<EnviarAccion>(async (accion) => {
+			if (accion !== 'fotos') {
+				return { ok: true as const, datos: { reporte: { ...reporte(), version: 4 } } };
+			}
+			await espera;
+			return {
+				ok: true as const,
+				datos: rechazar
+					? {
+							fotos: [],
+							rechazadas: [{ nombre: 'nueva.jpg', motivo: 'El archivo está dañado.' }],
+							version: 4
+						}
+					: { fotos: [{ ...foto(9), descripcion: '' }], rechazadas: [], version: 5 }
+			};
+		});
+		return { enviar, liberar: () => liberar() };
+	}
+
+	const idsGuardados = (enviar: ReturnType<typeof conCarga>['enviar']) =>
+		enviado(enviar as unknown as ReturnType<typeof guardadoCorrecto>).alcances[0].fotos.map(
+			(f: Foto) => f.id
+		);
+
+	it('quitar desde la vista muestra la siguiente y su propio «Deshacer»', async () => {
+		render(Notificaciones);
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: tresFotos(),
+			espera: 60_000,
+			enviar: sinRespuesta,
+			plazoDeshacer: 60_000
+		});
+		await page.getByRole('button', { name: 'Ampliar la Ilustración 2.1.2' }).click();
+		const vista = page.getByRole('dialog');
+		await expect.element(vista).toHaveTextContent('2 de 3');
+		await vista.getByRole('button', { name: 'Quitar' }).click();
+		// La que ocupaba su lugar se muestra y se renumera.
+		await expect.element(vista).toHaveTextContent('2 de 2');
+		await expect
+			.element(vista.getByLabelText('Descripción de la Ilustración 2.1.2'))
+			.toHaveValue('Foto 3');
+		await expect.element(vista.getByText('Se quitó la Ilustración 2.1.2.')).toBeInTheDocument();
+
+		await vista.getByRole('button', { name: 'Deshacer' }).click();
+		await expect.element(vista).toHaveTextContent('2 de 3');
+		await expect
+			.element(vista.getByLabelText('Descripción de la Ilustración 2.1.2'))
+			.toHaveValue('Foto 2');
+		await expect.element(vista.getByText('Se quitó la Ilustración 2.1.2.')).not.toBeInTheDocument();
+	});
+
+	it('girar desde la tarjeta o la vista se autoguarda con la rotación', async () => {
+		const enviar = guardadoCorrecto();
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: tresFotos(),
+			espera: 10,
+			enviar
+		});
+		await page.getByRole('button', { name: 'Girar a la derecha la Ilustración 2.1.1' }).click();
+		await vi.waitFor(() =>
+			expect(enviado(enviar).alcances[0].fotos.map((f: Foto) => f.rotacion)).toEqual([90, 0, 0])
+		);
+		await page.getByRole('button', { name: 'Ampliar la Ilustración 2.1.3' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Girar a la izquierda' }).click();
+		await vi.waitFor(() =>
+			expect(enviado(enviar).alcances[0].fotos.map((f: Foto) => f.rotacion)).toEqual([90, 0, 270])
+		);
+	});
+
+	it('quitar la única foto cierra la vista, enfoca «Agregar fotos» y deja la notificación', async () => {
+		render(Notificaciones);
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: reporte({ alcances: [{ ...alcanceBase(), fotos: [foto(1)] }] }),
+			espera: 60_000,
+			enviar: sinRespuesta,
+			plazoDeshacer: 60_000
+		});
+		await page.getByRole('button', { name: 'Ampliar la Ilustración 2.1.1' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Quitar' }).click();
+		await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
+		await expect.element(page.getByLabelText('Agregar fotos')).toHaveFocus();
+		await expect.element(page.getByText('Se quitó la Ilustración 2.1.1.')).toBeInTheDocument();
+	});
+
+	it('reemplazar conserva posición, pie, descripción y espacio, y «Deshacer» lo revierte', async () => {
+		render(Notificaciones);
+		const { enviar, liberar } = conCarga();
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: tresFotos(),
+			espera: 10,
+			enviar,
+			plazoDeshacer: 60_000
+		});
+		elegirReemplazo(2);
+		await expect.element(page.getByText('Reemplazando…')).toBeInTheDocument();
+		await vi.waitFor(() => expect(enviar.mock.calls.some(([a]) => a === 'fotos')).toBe(true));
+		const subida = enviar.mock.calls.find(([a]) => a === 'fotos')![1];
+		expect([subida.get('alcanceId'), subida.get('momento')]).toEqual([ID(10), 'antes']);
+		liberar();
+
+		await expect.element(page.getByText('Se reemplazó la Ilustración 2.1.2.')).toBeInTheDocument();
+		await expect.element(page.getByText('Reemplazando…')).not.toBeInTheDocument();
+		const tarjetas = () =>
+			[...document.querySelectorAll('.fotos-alcance .foto')].map((t) =>
+				t.getAttribute('data-foto')
+			);
+		expect(tarjetas()).toEqual([ID(101), ID(109), ID(103)]);
+		await expect
+			.element(page.getByLabelText('Descripción de la Ilustración 2.1.2'))
+			.toHaveValue('Foto 2');
+		// El guardado lleva la nueva en su lugar; la anterior sigue hasta que venza el plazo.
+		await vi.waitFor(() =>
+			expect(idsGuardados(enviar)).toEqual([ID(101), ID(109), ID(102), ID(103)])
+		);
+		const nueva = enviado(enviar as never).alcances[0].fotos[1];
+		expect([nueva.descripcion, nueva.momento]).toEqual(['Foto 2', 'antes']);
+
+		await page.getByRole('button', { name: 'Deshacer' }).click();
+		expect(tarjetas()).toEqual([ID(101), ID(102), ID(103)]);
+		await vi.waitFor(() => expect(idsGuardados(enviar)).toEqual([ID(101), ID(102), ID(103)]));
+	});
+
+	it('un archivo rechazado deja intacta la foto anterior', async () => {
+		const { enviar, liberar } = conCarga({ rechazar: true });
+		render(EditorReporte, { conImagenes: false, reporte: tresFotos(), espera: 60_000, enviar });
+		elegirReemplazo(2);
+		liberar();
+		await expect.element(page.getByText('nueva.jpg: El archivo está dañado.')).toBeInTheDocument();
+		await expect
+			.element(page.getByLabelText('Descripción de la Ilustración 2.1.2'))
+			.toHaveValue('Foto 2');
+		expect(document.querySelectorAll('.fotos-alcance .foto')).toHaveLength(3);
+	});
+
+	it('si la anterior se quitó mientras esperaba, la nueva queda al final con aviso', async () => {
+		render(Notificaciones);
+		const { enviar, liberar } = conCarga();
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: tresFotos(),
+			espera: 60_000,
+			enviar,
+			plazoDeshacer: 60_000
+		});
+		elegirReemplazo(1);
+		await vi.waitFor(() => expect(enviar.mock.calls.some(([a]) => a === 'fotos')).toBe(true));
+		await page.getByRole('button', { name: 'Quitar la Ilustración 2.1.1' }).click();
+		liberar();
+		await expect
+			.element(page.getByText(/ya no estaba en su lugar; la foto nueva quedó al final/))
+			.toBeInTheDocument();
+		expect(
+			[...document.querySelectorAll('.fotos-alcance .foto')].map((t) => t.getAttribute('data-foto'))
+		).toEqual([ID(102), ID(103), ID(109)]);
+	});
+});
+
+describe('EditorReporte: trabajo reprogramado', () => {
+	it('muestra en el contexto el mes del que viene la reprogramación', async () => {
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: reporte({ reprogramacionId: ID(80), reprogramadoDesde: '2026-06-01' }),
+			espera: 60_000,
+			enviar: sinRespuesta
+		});
+		await expect.element(page.getByText(/Reprogramado desde junio 2026/)).toBeInTheDocument();
+	});
+});
+
+describe('EditorReporte: datos del contrato cambiados', () => {
+	it('en un borrador ofrece actualizar y, al hacerlo, el aviso desaparece con el dato vigente', async () => {
+		const enviar = vi.fn<EnviarAccion>(async (accion) => ({
+			ok: true as const,
+			datos: {
+				reporte:
+					accion === 'actualizarContrato'
+						? { ...reporte(), contratoTexto: 'OC-CORREGIDA', version: 5 }
+						: { ...reporte(), version: 4 }
+			}
+		}));
+		render(EditorReporte, {
+			conImagenes: false,
+			reporte: reporte(),
+			contratoCambiado: true,
+			camposContrato: ['contrato'],
+			espera: 60_000,
+			enviar
+		});
+		await expect
+			.element(page.getByText(/Los datos del contrato cambiaron \(número de contrato\)/))
+			.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'Ver el contrato' }))
+			.toHaveAttribute('href', `/catalogo/contratos/${ID(2)}`);
+		await page.getByRole('button', { name: 'Actualizar datos del contrato' }).click();
+		await vi.waitFor(() =>
+			expect(enviar.mock.calls.some(([accion]) => accion === 'actualizarContrato')).toBe(true)
+		);
+		await expect
+			.element(page.getByText(/Los datos del contrato cambiaron/))
+			.not.toBeInTheDocument();
+		await expect.element(page.getByText('OC-CORREGIDA').first()).toBeInTheDocument();
+	});
+
+	it('en revisión solo indica regresarlo a borrador; un emitido no muestra el aviso', async () => {
+		const { rerender } = render(EditorReporte, {
+			conImagenes: false,
+			reporte: reporte({ estado: 'en_revision' }),
+			contratoCambiado: true,
+			camposContrato: ['firmantes.aprobo'],
+			espera: 60_000,
+			enviar: sinRespuesta
+		});
+		await expect
+			.element(page.getByText(/firma de aprobó.*regrese el reporte a borrador/s))
+			.toBeInTheDocument();
+		expect(
+			page.getByRole('button', { name: 'Actualizar datos del contrato' }).elements()
+		).toHaveLength(0);
+		await rerender({ reporte: reporte({ estado: 'emitido' }) });
+		await expect
+			.element(page.getByText(/Los datos del contrato cambiaron/))
+			.not.toBeInTheDocument();
 	});
 });

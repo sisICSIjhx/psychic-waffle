@@ -9,7 +9,7 @@ import type { Partida, Reporte } from '../dominio/esquemas';
 import { AlmacenamientoLocal } from './almacenamiento';
 import type { ClienteSql } from './bd/cliente';
 import { crearClientePglite } from './bd/pglite';
-import { ErrorValidacion, ServicioCaptura } from './captura';
+import { ErrorValidacion, rutaMiniatura, ServicioCaptura } from './captura';
 import { texto } from './documentos/ooxml';
 import { crearRepositorios, type Repositorios } from './repositorios/index';
 
@@ -150,7 +150,17 @@ describe('recorrido completo de la captura', () => {
 		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
 		expect(emitido.estado).toBe('emitido');
 
+		// Un DOCX registrado con la plantilla v1 (índice con aviso al abrir) ya no se reutiliza.
+		const anterior = await repos.reportes.registrarDocumento({
+			reporteId: emitido.id,
+			reporteVersion: emitido.version,
+			versionPlantilla: 'FOR-ICSI-RMT-01.v1',
+			ruta: 'documentos/plantilla-anterior.docx',
+			nombreArchivo: 'plantilla-anterior.docx',
+			bytes: 10
+		});
 		const descarga = await servicio.generarDocumento(emitido.id);
+		expect(descarga.documento.id).not.toBe(anterior.id);
 		expect(descarga.nombreArchivo).toBe('P13_MANTENIMIENTO-MANOMETROS_PI-0001_2026-06.docx');
 		const documento = await (await JSZip.loadAsync(descarga.datos))
 			.file('word/document.xml')!
@@ -162,7 +172,8 @@ describe('recorrido completo de la captura', () => {
 		// La segunda descarga de la misma versión reutiliza el documento registrado.
 		const otraVez = await servicio.generarDocumento(emitido.id);
 		expect(otraVez.documento.id).toBe(descarga.documento.id);
-		expect((await servicio.obtener(emitido.id)).documentos).toHaveLength(1);
+		expect(otraVez.documento.versionPlantilla).toBe('FOR-ICSI-RMT-01.v2');
+		expect((await servicio.obtener(emitido.id)).documentos).toHaveLength(2);
 
 		// Un documento generado con una versión que ya cambió no se registra.
 		await expect(
@@ -265,5 +276,278 @@ describe('recorrido completo de la captura', () => {
 				})
 			)
 		).toEqual(['seleccion']);
+	});
+});
+
+describe('miniaturas de las fotos', () => {
+	const existe = (ruta: string) =>
+		new AlmacenamientoLocal(carpeta)
+			.leer(ruta)
+			.then(() => true)
+			.catch(() => false);
+
+	async function conFoto(otro: ServicioCaptura = servicio) {
+		const reporte = await crear();
+		const carga = await otro.cargarFotos({
+			reporteId: reporte.id,
+			alcanceId: reporte.alcances[0].id,
+			version: reporte.version,
+			momento: null,
+			archivos: [
+				{
+					nombre: 'grande.jpg',
+					datos: await sharp({
+						create: { width: 2000, height: 1500, channels: 3, background: '#335577' }
+					})
+						.jpeg()
+						.toBuffer()
+				}
+			]
+		});
+		return { reporte: await servicio.obtener(reporte.id), foto: carga.fotos[0] };
+	}
+
+	it('genera al cargar una miniatura de 480 px junto a la optimizada', async () => {
+		const { foto } = await conFoto();
+		expect(rutaMiniatura(foto.rutaOptimizada)).toBe(
+			foto.rutaOptimizada.replace(/\.jpg$/, '-mini.jpg')
+		);
+		const datos = await new AlmacenamientoLocal(carpeta).leer(rutaMiniatura(foto.rutaOptimizada));
+		const { width, height } = await sharp(datos).metadata();
+		expect([width, height]).toEqual([480, 360]);
+	});
+
+	it('registra la foto aunque no se pueda crear la miniatura', async () => {
+		const local = new AlmacenamientoLocal(carpeta);
+		const fallida = new ServicioCaptura(repos, {
+			guardar: (ruta, datos) =>
+				ruta.endsWith('-mini.jpg')
+					? Promise.reject(new Error('disco lleno'))
+					: local.guardar(ruta, datos),
+			leer: (ruta) => local.leer(ruta),
+			eliminar: (ruta) => local.eliminar(ruta)
+		});
+		const { reporte, foto } = await conFoto(fallida);
+		expect(reporte.alcances[0].fotos.map((f) => f.id)).toEqual([foto.id]);
+		expect(await existe(rutaMiniatura(foto.rutaOptimizada))).toBe(false);
+
+		// La primera lectura la genera y la conserva para la siguiente.
+		const generada = await servicio.leerMiniatura(reporte, foto.id);
+		expect((await sharp(generada!).metadata()).width).toBe(480);
+		expect(await existe(rutaMiniatura(foto.rutaOptimizada))).toBe(true);
+		expect(await servicio.leerMiniatura(reporte, 'otra')).toBeNull();
+	});
+
+	it('quitar una foto borra sus tres archivos salvo si los comparte una revisión', async () => {
+		const { reporte, foto } = await conFoto();
+		const rutas = [foto.rutaOriginal, foto.rutaOptimizada, rutaMiniatura(foto.rutaOptimizada)];
+		const guardado = aGuardado(reporte);
+		guardado.diasEjecucion = [{ desde: '2026-06-18', hasta: '2026-06-18' }];
+		for (const alcance of guardado.alcances) alcance.estadoVerificacion = 'ok';
+		const capturado = await servicio.guardar(guardado);
+		const enRevision = await servicio.cambiarEstado(capturado.id, capturado.version, 'en_revision');
+		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
+
+		// La revisión comparte los archivos con el emitido: quitarla ahí no borra ninguno.
+		const revision = await servicio.crearRevision(emitido.id);
+		const sinFoto = aGuardado(revision);
+		sinFoto.alcances[0].fotos = [];
+		await servicio.guardar(sinFoto);
+		for (const ruta of rutas) expect(await existe(ruta)).toBe(true);
+
+		// En un borrador que es el único dueño, se borran original, optimizada y miniatura.
+		const otro = await conFoto();
+		const propias = [
+			otro.foto.rutaOriginal,
+			otro.foto.rutaOptimizada,
+			rutaMiniatura(otro.foto.rutaOptimizada)
+		];
+		for (const ruta of propias) expect(await existe(ruta)).toBe(true);
+		const vacio = aGuardado(otro.reporte);
+		vacio.alcances[0].fotos = [];
+		await servicio.guardar(vacio);
+		for (const ruta of propias) expect(await existe(ruta)).toBe(false);
+	});
+});
+
+describe('giro de las fotos', () => {
+	const fotosDe = (r: Reporte) => r.alcances.flatMap((a) => a.fotos.map((f) => [f.id, f.rotacion]));
+
+	async function conFotos() {
+		const reporte = await crear();
+		const carga = await servicio.cargarFotos({
+			reporteId: reporte.id,
+			alcanceId: reporte.alcances[0].id,
+			version: reporte.version,
+			momento: null,
+			archivos: [
+				{ nombre: 'uno.jpg', datos: await jpeg() },
+				{ nombre: 'dos.jpg', datos: await jpeg('#998877') }
+			]
+		});
+		expect(carga.fotos.map((f) => f.rotacion)).toEqual([0, 0]);
+		return servicio.obtener(reporte.id);
+	}
+
+	it('guarda y devuelve el giro, y un guardado sin él lo conserva', async () => {
+		const reporte = await conFotos();
+		const [uno, dos] = reporte.alcances[0].fotos;
+		const guardado = aGuardado(reporte);
+		guardado.alcances[0].fotos[0].rotacion = 90;
+		const girado = await servicio.guardar(guardado);
+		expect(fotosDe(girado)).toEqual([
+			[uno.id, 90],
+			[dos.id, 0]
+		]);
+
+		const sinGiro = aGuardado(girado);
+		for (const foto of sinGiro.alcances[0].fotos) delete foto.rotacion;
+		sinGiro.alcances[0].fotos.reverse();
+		const conservado = await servicio.guardar(sinGiro);
+		expect(fotosDe(conservado)).toEqual([
+			[dos.id, 0],
+			[uno.id, 90]
+		]);
+	});
+
+	it('rechaza un giro que no es múltiplo de 90 sin cambiar la versión ni los datos', async () => {
+		const reporte = await conFotos();
+		const sql = (repos.reportes as unknown as { sql: ClienteSql }).sql;
+		const envio = aGuardado(reporte) as unknown as {
+			conclusiones: string;
+			alcances: { fotos: { rotacion: number }[] }[];
+		};
+		envio.conclusiones = 'No debe guardarse';
+		envio.alcances[0].fotos[0].rotacion = 45;
+		await expect(sql.llamar('api_guardar_reporte', envio)).rejects.toMatchObject({
+			tipo: 'invalido',
+			detalle: { motivo: 'rotacion' }
+		});
+		const actual = await servicio.obtener(reporte.id);
+		expect(actual.version).toBe(reporte.version);
+		expect(actual.conclusiones).toBe(reporte.conclusiones);
+		expect(fotosDe(actual).map(([, r]) => r)).toEqual([0, 0]);
+	});
+
+	it('aplicar el catálogo conserva el giro y la revisión lo copia con sus días', async () => {
+		const reporte = await conFotos();
+		const guardado = aGuardado(reporte);
+		guardado.alcances[0].fotos[1].rotacion = 270;
+		guardado.diasEjecucion = [
+			{ desde: '2026-06-03', hasta: '2026-06-05' },
+			{ desde: '2026-06-09', hasta: '2026-06-09' }
+		];
+		for (const alcance of guardado.alcances) alcance.estadoVerificacion = 'ok';
+		let actual = await servicio.guardar(guardado);
+		actual = await servicio.aplicarCatalogo(actual.id, actual.version);
+		expect(fotosDe(actual).map(([, r]) => r)).toEqual([0, 270]);
+
+		const enRevision = await servicio.cambiarEstado(actual.id, actual.version, 'en_revision');
+		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
+		const revision = await servicio.crearRevision(emitido.id);
+		expect(fotosDe(revision).map(([, r]) => r)).toEqual([0, 270]);
+		expect(revision.diasEjecucion).toEqual(guardado.diasEjecucion);
+	});
+});
+
+describe('giro en una revisión', () => {
+	const medios = async (docx: Buffer) => {
+		const zip = await JSZip.loadAsync(docx);
+		const nombres = Object.keys(zip.files)
+			.filter((n) => n.startsWith('word/media/') && !zip.files[n].dir)
+			.sort();
+		return Promise.all(nombres.map((n) => zip.file(n)!.async('nodebuffer')));
+	};
+
+	it('girar en la revisión no cambia el DOCX del emitido ni sus archivos', async () => {
+		const reporte = await crear();
+		await servicio.cargarFotos({
+			reporteId: reporte.id,
+			alcanceId: reporte.alcances[0].id,
+			version: reporte.version,
+			momento: null,
+			archivos: [{ nombre: 'uno.jpg', datos: await jpeg() }]
+		});
+		const guardado = aGuardado(await servicio.obtener(reporte.id));
+		guardado.diasEjecucion = [{ desde: '2026-06-18', hasta: '2026-06-18' }];
+		for (const alcance of guardado.alcances) alcance.estadoVerificacion = 'ok';
+		const capturado = await servicio.guardar(guardado);
+		const enRevision = await servicio.cambiarEstado(capturado.id, capturado.version, 'en_revision');
+		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
+		const antes = await servicio.generarDocumento(emitido.id);
+		const foto = emitido.alcances[0].fotos[0];
+		const almacen = new AlmacenamientoLocal(carpeta);
+		const optimizada = await almacen.leer(foto.rutaOptimizada);
+
+		const revision = await servicio.crearRevision(emitido.id);
+		const girada = aGuardado(revision);
+		girada.alcances[0].fotos[0].rotacion = 90;
+		await servicio.guardar(girada);
+
+		// El emitido conserva su giro y sus archivos; regenerado, su DOCX lleva la misma imagen.
+		const original = await servicio.obtener(emitido.id);
+		expect(original.alcances[0].fotos[0].rotacion).toBe(0);
+		expect((await almacen.leer(foto.rutaOptimizada)).equals(optimizada)).toBe(true);
+		await almacen.eliminar(antes.documento.ruta);
+		const despues = await servicio.generarDocumento(emitido.id);
+		expect(despues.documento.id).not.toBe(antes.documento.id);
+		expect(await medios(despues.datos)).toEqual(await medios(antes.datos));
+
+		// La revisión sí sale girada: 320 × 240 px pasa a 240 × 320.
+		const medidas = async (docx: Buffer) =>
+			Promise.all(
+				(await medios(docx)).map(async (m) => {
+					const { width, height } = await sharp(m).metadata();
+					return `${width}x${height}`;
+				})
+			);
+		expect(await medidas(antes.datos)).toContain('320x240');
+		const deRevision = await medidas((await servicio.generarDocumento(revision.id)).datos);
+		expect(deRevision).toContain('240x320');
+		expect(deRevision).not.toContain('320x240');
+	});
+});
+
+describe('datos del contrato corregidos', () => {
+	it('el borrador actualizado lleva el número nuevo al DOCX y el emitido conserva el anterior', async () => {
+		const textoDocx = async (datos: Buffer) =>
+			texto(await (await JSZip.loadAsync(datos)).file('word/document.xml')!.async('string'));
+		const completo = (r: Reporte) => {
+			const g = aGuardado(r);
+			g.diasEjecucion = [{ desde: '2026-06-18', hasta: '2026-06-18' }];
+			for (const alcance of g.alcances) alcance.estadoVerificacion = 'ok';
+			return g;
+		};
+		const emitidoBase = await servicio.guardar(completo(await crear()));
+		const enRevision = await servicio.cambiarEstado(
+			emitidoBase.id,
+			emitidoBase.version,
+			'en_revision'
+		);
+		const emitido = await servicio.cambiarEstado(enRevision.id, enRevision.version, 'emitido');
+		const borrador = await servicio.guardar(completo(await crear()));
+		const anterior = emitido.contratoTexto;
+
+		const contrato = (await repos.catalogo.listarContratos()).find(
+			(k) => k.id === emitido.contratoId
+		)!;
+		await repos.catalogo.editarContrato(
+			{ ...contrato, numero: 'OC-FICTICIA-CORREGIDA' },
+			{ ensayo: false, motivo: 'Número provisional corregido', actualizarBorradores: false }
+		);
+		const estado = await servicio.estadoContrato(await servicio.obtener(borrador.id));
+		expect(estado.datos).toEqual([
+			{ campo: 'contrato', reporte: anterior, contrato: 'OC-FICTICIA-CORREGIDA' }
+		]);
+		expect((await servicio.estadoContrato(emitido)).cambiado).toBe(false);
+
+		const actualizado = await servicio.actualizarContrato(borrador.id, borrador.version);
+		expect(actualizado.contratoTexto).toBe('OC-FICTICIA-CORREGIDA');
+		expect(await textoDocx((await servicio.generarDocumento(actualizado.id)).datos)).toContain(
+			'OC-FICTICIA-CORREGIDA'
+		);
+		const delEmitido = await textoDocx((await servicio.generarDocumento(emitido.id)).datos);
+		expect(delEmitido).toContain(anterior);
+		expect(delEmitido).not.toContain('OC-FICTICIA-CORREGIDA');
 	});
 });

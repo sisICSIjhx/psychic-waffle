@@ -1,5 +1,6 @@
-// Preparación de fotografías para el documento: orientación EXIF corregida, lado mayor limitado y
-// JPEG de calidad media, para que reportes con muchas fotos mantengan un tamaño manejable.
+// Preparación de fotografías para el documento: orientación EXIF corregida, giro elegido en el editor,
+// lado mayor limitado y JPEG de calidad media, para que reportes con muchas fotos mantengan un tamaño
+// manejable.
 import sharp from 'sharp';
 
 export const LADO_MAYOR_PX = 1600;
@@ -24,14 +25,16 @@ export async function prepararImagen(
 	{
 		ladoMayor = LADO_MAYOR_PX,
 		calidad = CALIDAD_JPEG,
-		rgba
-	}: { ladoMayor?: number; calidad?: number; rgba?: PixelesRgba } = {}
+		rgba,
+		giro = 0
+	}: { ladoMayor?: number; calidad?: number; rgba?: PixelesRgba; giro?: 0 | 90 | 180 | 270 } = {}
 ): Promise<ImagenPreparada> {
 	const entrada = rgba
 		? sharp(datos, { raw: { width: rgba.ancho, height: rgba.alto, channels: 4 } })
 		: sharp(datos, { failOn: 'error' });
-	const { data, info } = await entrada
-		.rotate()
+	// sharp admite una sola rotación por canalización además de la EXIF (autoOrient).
+	const orientada = giro ? entrada.autoOrient().rotate(giro) : entrada.rotate();
+	const { data, info } = await orientada
 		.resize({ width: ladoMayor, height: ladoMayor, fit: 'inside', withoutEnlargement: true })
 		.flatten({ background: '#ffffff' })
 		.jpeg({ quality: calidad, mozjpeg: true })
