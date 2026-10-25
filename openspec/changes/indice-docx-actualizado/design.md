@@ -27,7 +27,8 @@ partida comprobado en `feat/ux-fase-c` (commit 163c9a1):
   Open Sans y Arimo Bold sí van incrustadas (licencias libres). Arimo y Liberation Sans no están
   instaladas en el equipo.
 - Análisis y prototipos, fuera del repositorio y temporales:
-  `resultado-indice-docx.md` del análisis (respaldo local en `C:Userssistemasespaldoseportes-icsiprototipos-indice-docx`)
+  `resultado-indice-docx.md` del análisis (respaldo local en
+  `C:\Users\sistemas\respaldos\reportes-icsi\prototipos-indice-docx`)
   y su carpeta `indice-docx\` (`paginacion.mjs`, `indice-calculado.mjs`, `paginas-word.ps1`,
   `gen-aleatorios.mjs`, `comparar.mjs`, `ttf.mjs`). Este diseño recoge las reglas y constantes
   calibradas (D3) para que la implementación no dependa de esa carpeta.
