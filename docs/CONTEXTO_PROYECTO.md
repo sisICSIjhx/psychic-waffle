@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-21 contra los archivos locales (rama `feat/edicion-contratos`).
+Verificado el 2026-10-21 contra los archivos locales (rama `feat/tablero-cumplimiento`).
 
 ## Producto y arquitectura
 
@@ -18,12 +18,13 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/edicion-contrat
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
     resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0018`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0019`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
   - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
     notificaciones con deshacer, botones segmentados y selector con búsqueda). Tokens de tema
     (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
 - Rutas: `/` «Mi trabajo» (avance del mes, tarjetas y siguiente trabajo; `?ver=`); `/planeacion`
-  matriz P/R; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección
+  matriz P/R con estados de ejecución y documental y ajustes (`?vista=mensual` y `?vista=semanal`);
+  `/cumplimiento` tablero de indicadores en el menú; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección
   guiada con búsqueda; `/reportes/[id]` editor (autoguardado, fotos, estados),
   `/reportes/[id]/documento` DOCX y `/reportes/[id]/fotos/[fotoId]` (`?tamano=mini` para la miniatura); `/historial`; `/catalogo` con
   contratos y partidas (en `/catalogo/contratos/[id]`, corrección del contrato, sitios y firmantes con
@@ -78,8 +79,10 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/edicion-contrat
   páginas calculadas y sin aviso al abrir; `npm run verificar:indice` mide contra Word); `editor-fotos`
   terminado (barra sobre la foto, arrastre, vista ampliada, reemplazo y giro como dato con la 0017);
   `edicion-contratos-bitacora` terminado (bitácora `cambios_catalogo`, corrección con motivo y aviso
-  en el editor; permisos en `src/lib/server/permisos.ts`); sigue `tablero-cumplimiento`.
-- Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
+  en el editor; permisos en `src/lib/server/permisos.ts`); `tablero-cumplimiento` terminado (ajustes del programa, vistas mensual y semanal y
+  tablero; dominio en `src/lib/dominio/cumplimiento.ts`). Ninguno está archivado.
+- Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); carga del
+  histórico antes de usar el tablero; proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas
   derivadas por confirmar; probar HEIC con una foto real.

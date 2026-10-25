@@ -156,15 +156,15 @@ semanal), el grupo 10.
       semanal y diálogo de ajuste), `/captura` con una reprogramación y `/cumplimiento`: contraste AA
       (incluidos colores de estado y semáforos), foco visible y sin desborde horizontal, con capturas
       fuera del repositorio.
-- [ ] 11.3 Hacer el commit y ejecutar `scripts/revision-codex.ps1` con `-Cambio` (el cambio OpenSpec
+- [x] 11.3 Hacer el commit y ejecutar `scripts/revision-codex.ps1` con `-Cambio` (el cambio OpenSpec
       tablero-cumplimiento), `-Base` (último commit de `feat/edicion-contratos`), `-Sha` (último commit
       del cambio), `-Fase tablero-cumplimiento`, `-Ronda` y como `-ArchivosContexto` los artefactos del
       cambio y `0019_cumplimiento.sql` (como máximo 2 rondas); registrar
       hallazgos y resoluciones en `docs/revisiones/tablero-cumplimiento.md`.
-- [ ] 11.4 Agregar la entrada en `HISTORIAL.md` (fecha local, motivo, alcance, archivos, validación
+- [x] 11.4 Agregar la entrada en `HISTORIAL.md` (fecha local, motivo, alcance, archivos, validación
       real y pendientes: carga del histórico y semáforo del %con reporte) y verificar su formato con
       Prettier.
-- [ ] 11.5 Actualizar `docs/CONTEXTO_PROYECTO.md` (ruta `/cumplimiento` en el menú, vistas de
+- [x] 11.5 Actualizar `docs/CONTEXTO_PROYECTO.md` (ruta `/cumplimiento` en el menú, vistas de
       `/planeacion`, migraciones hasta `0019` y estado del cambio) y verificar enlaces y formato con
       Prettier.
 

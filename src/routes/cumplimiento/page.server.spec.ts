@@ -60,7 +60,7 @@ describe('carga del tablero de cumplimiento', () => {
 	});
 
 	it('un mes de corte inexistente usa el mes en curso', async () => {
-		for (const corte of ['2026-13', '2026-00']) {
+		for (const corte of ['2026-13', '2026-00', '0000-01']) {
 			expect((await cargar(`corte=${corte}`)).corte).toBe('2026-10-01');
 		}
 	});
