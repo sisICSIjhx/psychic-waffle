@@ -3,9 +3,13 @@
 	Ejecuta la revisión de Codex sobre un commit de la rama de trabajo.
 
 .DESCRIPTION
-	Arma un prompt con instrucciones fijas, los archivos de contexto del cambio OpenSpec y el diff
-	del commit (sin package-lock.json), y lo entrega a «codex review» por stdin con el sandbox en
-	solo lectura. Codex no necesita leer archivos por su cuenta: todo lo que revisa va en el prompt.
+	Arma un prompt con instrucciones fijas, los archivos de contexto del trabajo (plan, diseño o
+	tareas) y el diff del commit o, con -Base, del rango Base..Sha (sin package-lock.json), y lo
+	entrega a «codex review» por stdin con el sandbox en solo lectura. Codex no necesita leer
+	archivos por su cuenta: todo lo que revisa va en el prompt.
+
+	-Cambio describe el trabajo revisado en las instrucciones (por omisión, el cambio OpenSpec
+	reportes-mantenimiento-for-icsi-rmt-01). -Base permite revisar una fase hecha en varios commits.
 
 	Protecciones para insumos/, storage/ y .env* (salvo .env.example):
 	- Si el commit contiene alguna de esas rutas, el script se detiene antes de enviar nada.
@@ -21,10 +25,19 @@
 
 .EXAMPLE
 	powershell -File scripts/revision-codex.ps1 -Sha 20f235d -Fase 0 -DirectorioSalida $env:TEMP\revisiones
+
+.EXAMPLE
+	powershell -File scripts/revision-codex.ps1 -Base dfbc60f -Sha 110ffd9 -Fase ux-A -Ronda 1 `
+		-Cambio 'el plan de diseño de interfaz y experiencia de usuario (docs/PLAN_DISENO_UX.md)' `
+		-ArchivosContexto docs/PLAN_DISENO_UX.md
 #>
 param(
 	[Parameter(Mandatory = $true)][string]$Sha,
 	[Parameter(Mandatory = $true)][string]$Fase,
+	# Trabajo al que pertenece la fase, tal como se nombra en las instrucciones para Codex.
+	[string]$Cambio = 'el cambio OpenSpec reportes-mantenimiento-for-icsi-rmt-01',
+	# Commit anterior a la fase: se revisa el rango Base..Sha en lugar de un solo commit.
+	[string]$Base = '',
 	[string]$DirectorioSalida = (Join-Path $env:TEMP 'reportes-icsi-revisiones'),
 	[string]$Ronda = '1',
 	# El modelo de config.toml puede no estar disponible con cuenta de ChatGPT.
@@ -41,6 +54,13 @@ $ErrorActionPreference = 'Stop'
 $raiz = (git rev-parse --show-toplevel).Trim()
 $shaCompleto = (git -C $raiz rev-parse --verify "$Sha^{commit}").Trim()
 $corto = $shaCompleto.Substring(0, 7)
+$baseCompleta = if ($Base) { (git -C $raiz rev-parse --verify "$Base^{commit}").Trim() } else { '' }
+$alcance = if ($baseCompleta) {
+	"los commits del rango $baseCompleta..$shaCompleto (sin incluir la base)"
+}
+else {
+	"el commit $shaCompleto"
+}
 
 New-Item -ItemType Directory -Force $DirectorioSalida | Out-Null
 $salida = Join-Path $DirectorioSalida "fase-$Fase-ronda-$Ronda-$corto.txt"
@@ -49,13 +69,13 @@ $aislado = Join-Path $temporal "revision-codex-$corto-$PID"
 $archivoPrompt = Join-Path $temporal "revision-codex-$corto-$PID.txt"
 
 $instrucciones = @"
-Revisa únicamente los cambios introducidos por el commit $shaCompleto. Corresponden a la fase
-$Fase del cambio OpenSpec reportes-mantenimiento-for-icsi-rmt-01. El diff completo y los archivos
-de contexto van al final de este mensaje; no necesitas ejecutar comandos. Reglas obligatorias:
+Revisa únicamente los cambios introducidos por $alcance. Corresponden a la fase $Fase de
+$Cambio. El diff completo y los archivos de contexto van al final de este mensaje; no necesitas
+ejecutar comandos. Reglas obligatorias:
 - No abras, listes ni leas las rutas insumos/, storage/ ni ningún archivo .env* (salvo .env.example).
 - No modifiques archivos ni ejecutes comandos que escriban en disco o accedan a la red.
 - Prioriza errores de corrección, seguridad, pérdida de datos, fugas de datos personales y
-  contradicciones con el diseño y las tareas del cambio OpenSpec.
+  contradicciones con los archivos de contexto (plan, diseño, requisitos o tareas).
 - Para cada hallazgo indica: severidad (alta, media o baja), archivo, línea, descripción y la
   corrección sugerida. Si no hay hallazgos, dilo explícitamente.
 - Responde en español.
@@ -72,12 +92,21 @@ function Get-GitTexto([string[]]$argumentos) {
 $patronSensible = '(^|/)(insumos|storage)(/|$)|(^|/)\.env'
 $esSensible = { param($ruta) $ruta.Replace('\', '/') -match $patronSensible -and $ruta -notmatch '(^|[/\\])\.env\.example$' }
 
+# Con «powershell -File» una lista llega como un solo texto: se aceptan rutas separadas por comas.
+$ArchivosContexto = @($ArchivosContexto | ForEach-Object { $_ -split ',' } |
+		ForEach-Object { $_.Trim() } | Where-Object { $_ })
+
 foreach ($ruta in $ArchivosContexto) {
 	if (& $esSensible $ruta) { throw "Ruta de contexto no permitida: $ruta" }
 }
 
-$archivosCommit = (Get-GitTexto @('-c', 'core.quotepath=off', 'show', '--name-only', '--format=',
-		$shaCompleto)) -split "`n" | Where-Object { $_ }
+$listaArchivos = if ($baseCompleta) {
+	@('-c', 'core.quotepath=off', 'diff', '--name-only', $baseCompleta, $shaCompleto)
+}
+else {
+	@('-c', 'core.quotepath=off', 'show', '--name-only', '--format=', $shaCompleto)
+}
+$archivosCommit = (Get-GitTexto $listaArchivos) -split "`n" | Where-Object { $_ }
 $sensibles = @($archivosCommit | Where-Object { & $esSensible $_ })
 if ($sensibles.Count -gt 0) {
 	throw "El commit contiene rutas que no deben revisarse con Codex ($($sensibles -join ', ')). Retíralas del commit antes de revisar."
@@ -89,9 +118,18 @@ foreach ($ruta in $ArchivosContexto) {
 	$contenido = Get-GitTexto @('show', "${shaCompleto}:$ruta")
 	$partes.Add("`n===== CONTEXTO: $ruta (versión del commit) =====`n$contenido")
 }
-$diff = Get-GitTexto @('-c', 'core.quotepath=off', 'show', '--format=fuller', '--no-ext-diff',
-	'--unified=40', $shaCompleto, '--', '.', ':(exclude)package-lock.json')
-$partes.Add("`n===== DIFF DEL COMMIT $shaCompleto =====`n$diff")
+if ($baseCompleta) {
+	$commits = Get-GitTexto @('log', '--format=%h %s', "$baseCompleta..$shaCompleto")
+	$diff = Get-GitTexto @('-c', 'core.quotepath=off', 'diff', '--no-ext-diff', '--unified=40',
+		$baseCompleta, $shaCompleto, '--', '.', ':(exclude)package-lock.json')
+	$partes.Add("`n===== COMMITS DEL RANGO =====`n$commits")
+	$partes.Add("`n===== DIFF DEL RANGO $baseCompleta..$shaCompleto =====`n$diff")
+}
+else {
+	$diff = Get-GitTexto @('-c', 'core.quotepath=off', 'show', '--format=fuller', '--no-ext-diff',
+		'--unified=40', $shaCompleto, '--', '.', ':(exclude)package-lock.json')
+	$partes.Add("`n===== DIFF DEL COMMIT $shaCompleto =====`n$diff")
+}
 [System.IO.File]::WriteAllText($archivoPrompt, ($partes -join "`n"), (New-Object System.Text.UTF8Encoding $false))
 
 $codigo = 1

@@ -116,10 +116,10 @@ describe('recorrido completo de la captura', () => {
 		expect(reporte.equipos.map((e) => e.tag)).toEqual(['PI-0001']);
 		expect(reporte.firmantes.recibio?.nombre).toBe('Persona Ficticia Tres');
 
-		// Sin fecha ni estado de verificación no se puede enviar a revisión.
+		// Sin días ni estado de verificación no se puede enviar a revisión.
 		expect(
 			await esperarValidacion(servicio.cambiarEstado(reporte.id, reporte.version, 'en_revision'))
-		).toEqual(['fechaEjecucion', 'alcances.0.estado']);
+		).toEqual(['diasEjecucion', 'alcances.0.estado']);
 
 		const alcanceId = reporte.alcances[0].id;
 		const carga = await servicio.cargarFotos({
@@ -141,7 +141,7 @@ describe('recorrido completo de la captura', () => {
 
 		const conFotos = await servicio.obtener(reporte.id);
 		const guardado = aGuardado(conFotos);
-		guardado.fechaEjecucion = '2026-06-18';
+		guardado.diasEjecucion = [{ desde: '2026-06-18', hasta: '2026-06-18' }];
 		guardado.alcances[0].estadoVerificacion = 'ok';
 		guardado.alcances[0].fotos[0].descripcion = 'Vista general';
 		const capturado = await servicio.guardar(guardado);

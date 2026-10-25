@@ -7,7 +7,7 @@ import {
 	agruparCuadricula,
 	ajustarACaja,
 	CAJA_FOTO,
-	fechaEncabezado,
+	fechasEncabezado,
 	nombreArchivo,
 	numeracionSecciones,
 	ordenDeAparicion,
@@ -66,8 +66,8 @@ export interface ReporteDocumento extends IdentidadReporte {
 		contrato: string;
 		sitio: string;
 		periodicidad: string;
-		/** AAAA-MM-DD */
-		fecha: string;
+		/** Días de ejecución: segmentos {desde, hasta} de un solo mes. */
+		dias: { desde: string; hasta: string }[];
 		tipoMantenimiento: string;
 	};
 	firmantes: { elaboro: FirmanteDocumento; aprobo: FirmanteDocumento; recibio: FirmanteDocumento };
@@ -252,7 +252,7 @@ export async function generarDocx(
 			sitio: limpiarTexto(reporte.encabezado.sitio),
 			tag: textoTags(reporte.tags),
 			periodicidad: limpiarTexto(reporte.encabezado.periodicidad),
-			fecha: fechaEncabezado(reporte.encabezado.fecha),
+			fecha: fechasEncabezado(reporte.encabezado.dias),
 			tipoMantenimiento: limpiarTexto(reporte.encabezado.tipoMantenimiento)
 		},
 		firmas: {

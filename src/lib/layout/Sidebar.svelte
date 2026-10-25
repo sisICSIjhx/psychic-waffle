@@ -29,7 +29,11 @@
 	}
 </script>
 
-<aside class="sidebar {isCollapsed ? 'collapsed' : ''}" class:mobile-open={isMobileOpen}>
+<aside
+	id="menu-principal"
+	class="sidebar {isCollapsed ? 'collapsed' : ''}"
+	class:mobile-open={isMobileOpen}
+>
 	<div class="sidebar-header-fixed">
 		<div class="brand">
 			<div class="brand-logo">
@@ -45,7 +49,7 @@
 					><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg
 				>
 			</div>
-			{#if !isCollapsed}<span class="brand-title">ICSI V2</span>{/if}
+			{#if !isCollapsed}<span class="brand-title">ICSI Reportes</span>{/if}
 		</div>
 	</div>
 
@@ -54,7 +58,8 @@
 			<a
 				href={resolve('/')}
 				class="nav-item {activeView === 'dashboard' ? 'active' : ''}"
-				title="Panel de Control"
+				aria-current={activeView === 'dashboard' ? 'page' : undefined}
+				title="Mi trabajo"
 				on:click={() => navigate('dashboard')}
 			>
 				<svg
@@ -78,13 +83,14 @@
 						rx="1"
 					/></svg
 				>
-				{#if !isCollapsed}<span>Panel de Control</span>{/if}
+				{#if !isCollapsed}<span>Mi trabajo</span>{/if}
 			</a>
 
-			{#if !isCollapsed}<div class="nav-header">PLANEACIÓN</div>{/if}
+			{#if !isCollapsed}<div class="nav-header">Planeación</div>{/if}
 			<a
 				href={resolve('/planeacion')}
 				class="nav-item {activeView === 'planeacion' ? 'active' : ''}"
+				aria-current={activeView === 'planeacion' ? 'page' : undefined}
 				title="Planeación Anual"
 				on:click={() => navigate('planeacion')}
 			>
@@ -105,7 +111,7 @@
 				{#if !isCollapsed}<span>Anual</span>{/if}
 			</a>
 
-			{#if !isCollapsed}<div class="nav-header">CAPTURA</div>{/if}
+			{#if !isCollapsed}<div class="nav-header">Captura</div>{/if}
 			{#each clientesCaptura as cliente (cliente.clave)}
 				<!-- resolve() se aplica a la ruta; el filtro por cliente va en la consulta. -->
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -114,6 +120,9 @@
 					class="nav-item {activeView === 'captura' && activeCliente === cliente.clave
 						? 'active'
 						: ''}"
+					aria-current={activeView === 'captura' && activeCliente === cliente.clave
+						? 'page'
+						: undefined}
 					title={`Captura: ${cliente.etiqueta}`}
 					on:click={() => navigate('captura', cliente.clave)}
 				>
@@ -133,10 +142,11 @@
 				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			{/each}
 
-			{#if !isCollapsed}<div class="nav-header">REPORTES</div>{/if}
+			{#if !isCollapsed}<div class="nav-header">Reportes</div>{/if}
 			<a
 				href={resolve('/historial')}
 				class="nav-item {activeView === 'historial' ? 'active' : ''}"
+				aria-current={activeView === 'historial' ? 'page' : undefined}
 				title="Historial Global"
 				on:click={() => navigate('historial')}
 			>
@@ -154,6 +164,7 @@
 			<a
 				href={resolve('/catalogo')}
 				class="nav-item {activeView === 'catalogo' ? 'active' : ''}"
+				aria-current={activeView === 'catalogo' ? 'page' : undefined}
 				title="Catálogo de Contratos"
 				on:click={() => navigate('catalogo')}
 			>
@@ -171,51 +182,18 @@
 				{#if !isCollapsed}<span>Catálogo</span>{/if}
 			</a>
 
-			{#if !isCollapsed}<div class="nav-header">ADMINISTRACIÓN</div>{/if}
-			<a
-				href={resolve('/personal')}
-				class="nav-item {activeView === 'personal' ? 'active' : ''}"
-				title="Administración de Personal"
-				on:click={() => navigate('personal')}
-			>
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path
-						d="M23 21v-2a4 4 0 0 0-3-3.87"
-					/><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg
-				>
-				{#if !isCollapsed}<span>Personal</span>{/if}
-			</a>
-			<a
-				href={resolve('/perfil')}
-				class="nav-item {activeView === 'perfil' ? 'active' : ''}"
-				title="Mi Perfil"
-				on:click={() => navigate('perfil')}
-			>
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle
-						cx="12"
-						cy="7"
-						r="4"
-					/></svg
-				>
-				{#if !isCollapsed}<span>Mi Perfil</span>{/if}
-			</a>
+			<!-- «Personal» y «Mi Perfil» vuelven al menú con la autenticación; hoy no tienen contenido. -->
 		</nav>
 
 		<div class="sidebar-footer">
-			<button class="btn-icon" title="Colapsar menú" on:click={toggleCollapse}>
+			<button
+				class="btn-icon btn-contraer"
+				type="button"
+				title={isCollapsed ? 'Expandir el menú' : 'Contraer el menú'}
+				aria-label={isCollapsed ? 'Expandir el menú' : 'Contraer el menú'}
+				aria-expanded={!isCollapsed}
+				on:click={toggleCollapse}
+			>
 				<svg
 					class={isCollapsed ? 'rotate-180' : ''}
 					width="20"
@@ -228,7 +206,13 @@
 					stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg
 				>
 			</button>
-			<button class="btn-icon" title="Cambiar tema" on:click={toggleTheme}>
+			<button
+				class="btn-icon"
+				type="button"
+				title={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+				aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+				on:click={toggleTheme}
+			>
 				{#if theme === 'dark'}
 					<svg
 						width="20"
@@ -373,7 +357,7 @@
 	}
 	.btn-icon {
 		width: 100%;
-		height: 40px;
+		height: var(--alto-control);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -409,5 +393,11 @@
 	}
 	.rotate-180 {
 		transform: rotate(180deg);
+	}
+	/* En móvil el menú se abre y cierra desde la cabecera; contraerlo no aplica. */
+	@media (max-width: 768px) {
+		.btn-contraer {
+			display: none;
+		}
 	}
 </style>

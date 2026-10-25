@@ -92,7 +92,7 @@ function aGuardado(reporte: Reporte, cambios: Partial<ReporteGuardado> = {}): Re
 	return {
 		id: reporte.id,
 		version: reporte.version,
-		fechaEjecucion: reporte.fechaEjecucion,
+		diasEjecucion: reporte.diasEjecucion,
 		titulo: reporte.titulo,
 		tipoMantenimiento: reporte.tipoMantenimiento,
 		objetivo: reporte.objetivo,
@@ -124,7 +124,7 @@ async function emitir(
 	fecha = reporte.periodoMes.replace(/01$/, '15')
 ) {
 	const { reporte: guardado } = await repos.reportes.guardar(
-		aGuardado(reporte, { fechaEjecucion: fecha })
+		aGuardado(reporte, { diasEjecucion: [{ desde: fecha, hasta: fecha }] })
 	);
 	const enRevision = await repos.reportes.cambiarEstado(
 		guardado.id,
@@ -442,7 +442,9 @@ describe('edición de reportes', () => {
 		const base = await crearBase(repos, 'e4');
 		const reporte = await nuevoReporte(repos, base);
 		const error = await esperarError(
-			repos.reportes.guardar(aGuardado(reporte, { fechaEjecucion: '2026-06-02' }))
+			repos.reportes.guardar(
+				aGuardado(reporte, { diasEjecucion: [{ desde: '2026-06-02', hasta: '2026-06-02' }] })
+			)
 		);
 		expect(error.tipo).toBe('invalido');
 	});

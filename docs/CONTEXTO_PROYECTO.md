@@ -1,10 +1,10 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-20 contra los archivos locales (rama `feat/reportes-rmt-01`).
+Verificado el 2026-10-21 contra los archivos locales (rama `feat/fechas-multiples`).
 
 ## Producto y arquitectura
 
-- Producto: «ICSI Reportes» (marca «ICSI V2» en la barra lateral). Panel web en español para capturar
+- Producto: «ICSI Reportes» (la misma marca en la barra lateral). Panel web en español para capturar
   el reporte FOR-ICSI-RMT-01 desde el catálogo de cada contrato, generar el DOCX y dar seguimiento al
   programa anual. Objetivo confirmado por el usuario: bajar la elaboración de un reporte de unos 60 a
   30 minutos o menos. Clientes actuales: Cerritos (TEMEX GAS), Proagroindustrias y Virtual Pipelines.
@@ -14,20 +14,25 @@ Verificado el 2026-10-20 contra los archivos locales (rama `feat/reportes-rmt-01
   componentes en Chromium con Playwright). Node 26.2.0, npm 11.13.0.
 - Capas:
   - `src/lib/dominio/`: reglas puras compartidas (esquemas Zod, documento, captura, planeación,
-    fechas en la zona America/Mexico_City).
+    fechas en la zona America/Mexico_City, textos de la interfaz).
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, plantilla en
     `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0012`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
-  - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes y campos.
-- Rutas: `/` panel; `/planeacion` matriz P/R; `/captura` (`?cliente=`, `?mes=`) selección guiada;
-  `/reportes/[id]` editor (autoguardado, fotos, estados), `/reportes/[id]/documento` DOCX y
-  `/reportes/[id]/fotos/[fotoId]`; `/historial`; `/catalogo` con contratos y partidas; `/personal` y
-  `/perfil` sin cambios.
+  - `supabase/migrations/0001…0016`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
+    notificaciones con deshacer, botones segmentados y selector con búsqueda). Tokens de tema
+    (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
+- Rutas: `/` «Mi trabajo» (avance del mes, tarjetas y siguiente trabajo; `?ver=`); `/planeacion`
+  matriz P/R; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección
+  guiada con búsqueda; `/reportes/[id]` editor (autoguardado, fotos, estados),
+  `/reportes/[id]/documento` DOCX y `/reportes/[id]/fotos/[fotoId]`; `/historial`; `/catalogo` con
+  contratos y partidas; `/personal` y `/perfil` existen pero no están en el menú hasta que haya
+  autenticación.
 - Datos locales: sin `.env` se usa PGlite en `storage/pglite`; fotos y documentos en `storage/`
   (ignorado). Supabase se activa con `PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (tarea 3.8,
   pendiente del usuario). PGlite no admite dos procesos: detener el servidor antes de usar los scripts.
-- Scripts: `npm run importar` (Excel del catálogo, ensayo por omisión), `node scripts/derivar-partidas.ts`
+- Scripts: `npm run importar` (Excel del catálogo, o `--programa` para un programa anual por sitio;
+  ensayo por omisión), `node scripts/derivar-partidas.ts`
   (partidas por confirmar desde reportes; `--complementar` para las confirmadas),
   `npm run verificar:datos` (nombres de los insumos fuera de lo versionable), `npm run prueba:documental`.
 
@@ -47,9 +52,10 @@ Verificado el 2026-10-20 contra los archivos locales (rama `feat/reportes-rmt-01
 | Vistas y editor                | src/lib/components/views/, src/lib/components/reportes/             |
 | Datos y contratos              | supabase/migrations/, src/lib/dominio/esquemas.ts, src/lib/server/  |
 | Documento DOCX                 | src/lib/server/documentos/, src/lib/server/plantillas/              |
-| Cambio en curso                | openspec/changes/reportes-mantenimiento-for-icsi-rmt-01/            |
-| Revisiones con Codex           | docs/revisiones/fase-N.md                                           |
+| Cambios en curso               | openspec/changes/ (rmt-01 en cierre; ux-editor-inicio-captura)      |
+| Revisiones con Codex           | docs/revisiones/fase-N.md y ux-fase-X.md                            |
 | Propuesta técnica y pendientes | docs/PROPUESTA_TECNOLOGICA_Y_PENDIENTES.md                          |
+| Plan de diseño UI/UX           | docs/PLAN_DISENO_UX.md                                              |
 | Validación                     | npm run check, npm run lint, npm run test (raíz)                    |
 | Decisiones anteriores          | Buscar por tema en HISTORIAL.md                                     |
 | Requisitos                     | openspec/specs/<capacidad>/spec.md y los deltas del cambio en curso |
@@ -59,6 +65,16 @@ Verificado el 2026-10-20 contra los archivos locales (rama `feat/reportes-rmt-01
 
 - Cambio `reportes-mantenimiento-for-icsi-rmt-01`: fases 0 a 6 implementadas y revisadas con Codex;
   cierre (fase 7) en curso. Todo funciona en local con PGlite.
+- Plan de diseño UX: fase A (fundamentos) en `feat/ux-fase-a`; fases B (editor) y C (inicio «Mi
+  trabajo» y captura con selector de partida) del cambio OpenSpec `ux-editor-inicio-captura` en
+  `feat/ux-fase-b` y `feat/ux-fase-c`, con todas sus tareas hechas (uso solo en escritorio; la misma
+  persona envía y emite). Siguen las pruebas con usuarios y archivar el cambio; fases D y E por
+  planear.
+- Cambios de octubre de 2026 (seis cambios OpenSpec apilados, uno por rama): `importacion-programa-anual`
+  terminado (Proagro con programa 2026-03 a 2027-02 en EM-30184 y EM-30185 y vigencia ajustada);
+  `fechas-ejecucion-multiples` terminado (días en segmentos `dias_ejecucion`; diarias por mes o por
+  semana, con un día cubierto = una ejecución); siguen `indice-docx-actualizado`, `editor-fotos`,
+  `edicion-contratos-bitacora` y `tablero-cumplimiento`.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas

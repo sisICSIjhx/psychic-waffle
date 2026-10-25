@@ -37,7 +37,7 @@ async function reporteBase(cambios: Partial<ReporteDocumento> = {}): Promise<Rep
 			contrato: 'CONTRATO-PRUEBA-001',
 			sitio: 'EM-00000 SITIO DE PRUEBA',
 			periodicidad: 'Trimestral',
-			fecha: '2026-06-01',
+			dias: [{ desde: '2026-06-01', hasta: '2026-06-01' }],
 			tipoMantenimiento: 'Preventivo'
 		},
 		firmantes: {
@@ -273,10 +273,12 @@ describe('generación del DOCX FOR-ICSI-RMT-01', () => {
 		await expect(generarDocx(reporte, { limiteBytes: 10_000 })).rejects.toThrow(/excede el límite/);
 	}, 60_000);
 
-	it('rechaza una fecha incompleta', async () => {
+	it('rechaza una fecha incompleta o sin días', async () => {
 		const reporte = await reporteBase();
-		reporte.encabezado.fecha = '2026-06';
+		reporte.encabezado.dias = [{ desde: '2026-06', hasta: '2026-06' }];
 		await expect(generarDocx(reporte)).rejects.toThrow(/Fecha incompleta/);
+		reporte.encabezado.dias = [];
+		await expect(generarDocx(reporte)).rejects.toThrow(/No hay días/);
 	});
 
 	it('produce un paquete sin metadatos personales ni marcas de revisión', async () => {

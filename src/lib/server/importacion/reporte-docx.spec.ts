@@ -20,7 +20,7 @@ async function reporte(cambios: Partial<ReporteDocumento> = {}): Promise<Reporte
 			contrato: 'OC-FICTICIA',
 			sitio: 'EM-99999 SITIO FICTICIO',
 			periodicidad: 'Mensual',
-			fecha: '2026-07-01',
+			dias: [{ desde: '2026-07-01', hasta: '2026-07-01' }],
 			tipoMantenimiento: 'Preventivo'
 		},
 		firmantes: {

@@ -14,15 +14,13 @@ describe('Sidebar', () => {
 		render(Sidebar, { activeView: 'dashboard' });
 
 		const esperados: [string, string][] = [
-			['Panel de Control', '/'],
+			['Mi trabajo', '/'],
 			['Anual', '/planeacion'],
 			['Cerritos', '/captura?cliente=cerritos'],
 			['Proagro', '/captura?cliente=proagro'],
 			['Virtual', '/captura?cliente=virtual'],
 			['Historial Global', '/historial'],
-			['Catálogo', '/catalogo'],
-			['Personal', '/personal'],
-			['Mi Perfil', '/perfil']
+			['Catálogo', '/catalogo']
 		];
 		for (const [nombre, ruta] of esperados) {
 			await expect
@@ -30,6 +28,10 @@ describe('Sidebar', () => {
 				.toHaveAttribute('href', ruta);
 		}
 		expect(page.getByRole('link', { name: 'Prosasa' }).elements()).toHaveLength(0);
+		// Sin pantallas vacías: Personal y Mi Perfil vuelven con la autenticación.
+		expect(page.getByRole('link', { name: 'Personal' }).elements()).toHaveLength(0);
+		expect(page.getByRole('link', { name: 'Mi Perfil' }).elements()).toHaveLength(0);
+		await expect.element(page.getByText('ICSI Reportes')).toBeInTheDocument();
 	});
 
 	it('marca como activo solo el acceso del cliente elegido', async () => {
@@ -38,6 +40,23 @@ describe('Sidebar', () => {
 		await expect.element(page.getByRole('link', { name: 'Proagro' })).toHaveClass(/active/);
 		await expect.element(page.getByRole('link', { name: 'Cerritos' })).not.toHaveClass(/active/);
 		await expect.element(page.getByRole('link', { name: 'Anual' })).not.toHaveClass(/active/);
+		// La página activa se anuncia también a los lectores de pantalla.
+		await expect
+			.element(page.getByRole('link', { name: 'Proagro' }))
+			.toHaveAttribute('aria-current', 'page');
+		await expect
+			.element(page.getByRole('link', { name: 'Cerritos' }))
+			.not.toHaveAttribute('aria-current');
+	});
+
+	it('anuncia la vista activa con aria-current', async () => {
+		render(Sidebar, { activeView: 'historial' });
+		await expect
+			.element(page.getByRole('link', { name: 'Historial Global' }))
+			.toHaveAttribute('aria-current', 'page');
+		await expect
+			.element(page.getByRole('link', { name: 'Mi trabajo' }))
+			.not.toHaveAttribute('aria-current');
 	});
 
 	it('avisa al layout al navegar entre vistas', async () => {

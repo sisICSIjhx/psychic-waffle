@@ -256,16 +256,16 @@ export class ServicioCaptura {
 				const datos = await this.archivos.leer(previo.ruta).catch(() => null);
 				if (datos) return { datos, nombreArchivo: previo.nombreArchivo, documento: previo };
 			}
-			if (!reporte.fechaEjecucion) {
+			if (!reporte.diasEjecucion.length) {
 				throw new ErrorValidacion([
 					{
-						campo: 'fechaEjecucion',
-						mensaje: 'Capture la fecha de ejecución para generar el documento.'
+						campo: 'diasEjecucion',
+						mensaje: 'Capture los días de ejecución para generar el documento.'
 					}
 				]);
 			}
 			const plantilla = await this.plantilla();
-			const resultado = await generarDocx(await this.documentoDe(reporte, reporte.fechaEjecucion), {
+			const resultado = await generarDocx(await this.documentoDe(reporte), {
 				plantilla
 			});
 			// Cada intento escribe en su propia ruta: dos descargas simultáneas no comparten archivo.
@@ -295,7 +295,7 @@ export class ServicioCaptura {
 		}
 	}
 
-	private async documentoDe(reporte: Reporte, fecha: string): Promise<ReporteDocumento> {
+	private async documentoDe(reporte: Reporte): Promise<ReporteDocumento> {
 		const alcances = [];
 		for (const alcance of reporte.alcances) {
 			const fotos = [];
@@ -327,7 +327,7 @@ export class ServicioCaptura {
 				contrato: reporte.contratoTexto,
 				sitio: reporte.sitioTexto,
 				periodicidad: reporte.periodicidad,
-				fecha,
+				dias: reporte.diasEjecucion,
 				tipoMantenimiento: reporte.tipoMantenimiento
 			},
 			firmantes: {

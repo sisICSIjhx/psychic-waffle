@@ -44,3 +44,19 @@ export const llamarAccion: EnviarAccion = async (accion, datos, ruta) => {
 		};
 	}
 };
+
+/** Envío que sobrevive al cierre de la página (keepalive) y no espera respuesta. */
+export type EnviarAlCerrar = (accion: string, datos: FormData, ruta: string) => void;
+
+export const enviarAlCerrar: EnviarAlCerrar = (accion, datos, ruta) => {
+	try {
+		fetch(`${ruta}?/${accion}`, {
+			method: 'POST',
+			body: datos,
+			keepalive: true,
+			headers: { 'x-sveltekit-action': 'true' }
+		}).catch(() => undefined);
+	} catch {
+		// Un cuerpo mayor al límite de keepalive no se envía: lo quitado sigue en el reporte.
+	}
+};

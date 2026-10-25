@@ -15,7 +15,8 @@ import {
 	type PaginaReportes,
 	type Reporte,
 	type ReporteGuardado,
-	type ReporteNuevo
+	type ReporteNuevo,
+	type ReporteResumen
 } from '../../dominio/esquemas.ts';
 import type { ClienteSql } from '../bd/cliente.ts';
 
@@ -104,6 +105,21 @@ export class RepositorioReportes {
 	async listar(filtro: FiltroReportes = {}): Promise<PaginaReportes> {
 		const entrada = esquemaFiltroReportes.parse(filtro);
 		return esquemaPaginaReportes.parse(await this.sql.llamar('api_listar_reportes', entrada));
+	}
+
+	/**
+	 * Todas las filas que cumplen el filtro, recorriendo las páginas de 100 (el máximo de la consulta)
+	 * hasta el total. Para relacionar borradores con pendientes sin perder ninguno por un límite.
+	 */
+	async listarTodos(
+		filtro: Omit<FiltroReportes, 'pagina' | 'tamano'> = {}
+	): Promise<ReporteResumen[]> {
+		const filas: ReporteResumen[] = [];
+		for (let pagina = 1; ; pagina++) {
+			const resultado = await this.listar({ ...filtro, pagina, tamano: 100 });
+			filas.push(...resultado.filas);
+			if (filas.length >= resultado.total || resultado.filas.length === 0) return filas;
+		}
 	}
 
 	/**

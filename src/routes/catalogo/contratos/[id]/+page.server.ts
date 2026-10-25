@@ -2,7 +2,14 @@ import { error as errorHttp, fail } from '@sveltejs/kit';
 import { ErrorDatos } from '$lib/server/bd/cliente';
 import { almacenamiento, datos } from '$lib/server/datos';
 import { mensajeDeError } from '$lib/server/errores';
-import { analizarLibroCatalogo } from '$lib/server/importacion/catalogo';
+import { analizarHojas, ErrorImportacion } from '$lib/server/importacion/catalogo';
+import {
+	advertenciasDelEnsayo,
+	analizarProgramaAnual,
+	cargaDePrograma,
+	tipoDeLibro
+} from '$lib/server/importacion/programa';
+import { leerLibro, type Hoja } from '$lib/server/importacion/xlsx';
 import {
 	guardarImportacionPendiente,
 	tomarImportacionPendiente
@@ -161,17 +168,54 @@ export const actions: Actions = {
 			return fail(400, { accion: 'importar', error: 'El archivo supera los 10 MB.' });
 		}
 		try {
-			const catalogo = await analizarLibroCatalogo(new Uint8Array(await archivo.arrayBuffer()));
+			let hojas: Hoja[];
+			try {
+				hojas = await leerLibro(new Uint8Array(await archivo.arrayBuffer()));
+			} catch (error) {
+				throw new ErrorImportacion(
+					`No se pudo leer el archivo: ${error instanceof Error ? error.message : String(error)}`,
+					'(archivo)'
+				);
+			}
+			const repos = await datos();
+			if (tipoDeLibro(hojas) === 'programa') {
+				const contrato = (await repos.catalogo.listarContratos()).find((c) => c.id === params.id);
+				const sitio = (await repos.catalogo.listarSitios(params.id)).find((s) => s.id === sitioId);
+				if (!contrato || !sitio) {
+					return fail(400, { accion: 'importar', error: 'Elija un sitio del contrato.' });
+				}
+				const analisis = analizarProgramaAnual(hojas, { claveSitio: sitio.clave });
+				const carga = cargaDePrograma(analisis, contrato.id, sitio.id);
+				const resultado = await repos.programa.importarPrograma(carga, true);
+				const token = await guardarImportacionPendiente(almacenamiento(), {
+					tipo: 'programa',
+					...carga
+				});
+				return {
+					accion: 'importar',
+					tipo: 'programa' as const,
+					token,
+					nombreArchivo: archivo.name,
+					sitio: analisis.sitio,
+					resultadoPrograma: resultado,
+					advertenciasPrograma: advertenciasDelEnsayo(analisis, resultado, contrato)
+				};
+			}
+			const catalogo = analizarHojas(hojas);
 			const carga = {
 				contratoId: params.id,
 				sitioId,
 				programa: catalogo.programa,
 				partidas: catalogo.partidas
 			};
-			const resultado = await (await datos()).catalogo.importarCatalogo(carga, true);
-			const token = await guardarImportacionPendiente(almacenamiento(), carga);
+			const resultado = await repos.catalogo.importarCatalogo(carga, true);
+			const token = await guardarImportacionPendiente(almacenamiento(), {
+				tipo: 'catalogo',
+				...carga
+			});
 			return {
 				accion: 'importar',
+				tipo: 'catalogo' as const,
 				token,
 				nombreArchivo: archivo.name,
 				resultado,
@@ -202,7 +246,15 @@ export const actions: Actions = {
 			});
 		}
 		try {
-			const { resumen } = await (await datos()).catalogo.importarCatalogo(carga, false);
+			const repos = await datos();
+			if (carga.tipo === 'programa') {
+				const { resumen } = await repos.programa.importarPrograma(carga, false);
+				return {
+					accion: 'importarAplicada',
+					mensaje: `Programa importado: ${resumen.crear} partidas creadas, ${resumen.actualizar} actualizadas y ${resumen.sinCambios} sin cambios.`
+				};
+			}
+			const { resumen } = await repos.catalogo.importarCatalogo(carga, false);
 			return {
 				accion: 'importarAplicada',
 				mensaje: `Importación aplicada: ${resumen.crear} creadas, ${resumen.actualizar} actualizadas y ${resumen.sinCambios} sin cambios.`

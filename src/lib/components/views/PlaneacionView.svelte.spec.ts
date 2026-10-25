@@ -92,8 +92,19 @@ describe('PlaneacionView', () => {
 			[...c.classList].find((clase) => clase !== 'celda' && !clase.startsWith('s-'))
 		);
 		expect(estados).toEqual(['cumplido', 'vencido', 'pendiente']);
+		// El estado no depende solo del color: cada celda lleva símbolo y texto.
+		const celdas = [...container.querySelectorAll('tbody .celda')];
+		expect(celdas.map((c) => c.querySelector('.simbolo')?.textContent)).toEqual(['✓', '!', '●']);
+		expect(celdas.map((c) => c.querySelector('.sr-only')?.textContent)).toEqual([
+			'Cumplido:',
+			'Vencido:',
+			'Pendiente:'
+		]);
+		await expect
+			.element(page.getByRole('list', { name: 'Leyenda de la matriz' }))
+			.toHaveTextContent(/Cumplido.*Pendiente.*Vencido.*Realizado sin programar/);
 
-		const capturar = page.getByRole('link', { name: 'Capturar partida 7 de JUNIO 2026' });
+		const capturar = page.getByRole('link', { name: 'Capturar partida 7 de junio 2026' });
 		await expect
 			.element(capturar)
 			.toHaveAttribute('href', expect.stringContaining(`partida=${ID(7)}`));
@@ -106,7 +117,7 @@ describe('PlaneacionView', () => {
 	it('enlaza solo los reportes emitidos y distingue lo realizado sin reporte', async () => {
 		const { container } = montar();
 		const realizado = page.getByRole('link', {
-			name: 'Ver 6 reporte(s) emitido(s) de la partida 7 en MAYO 2026'
+			name: 'Ver 6 reportes emitidos de la partida 7 en mayo 2026'
 		});
 		await expect
 			.element(realizado)

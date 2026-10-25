@@ -309,6 +309,27 @@ export function fechaEncabezado(fechaIso: string): string {
 	return `${String(dia).padStart(2, '0')} / ${MESES[mes - 1]} / ${anio}`;
 }
 
+/**
+ * Días de ejecución del encabezado: «DD» o «DD-DD» unidos con «, » y « / MES / AAAA», p. ej.
+ * «15, 16, 20-25 / MAYO / 2026». Un día sale igual que con `fechaEncabezado`.
+ */
+export function fechasEncabezado(segmentos: readonly { desde: string; hasta: string }[]): string {
+	if (!segmentos.length) throw new RangeError('No hay días de ejecución');
+	const mes = segmentos[0].desde.slice(0, 7);
+	for (const s of segmentos) {
+		fechaEncabezado(s.desde);
+		fechaEncabezado(s.hasta);
+		if (s.desde.slice(0, 7) !== mes || s.hasta.slice(0, 7) !== mes) {
+			throw new RangeError('Los días de ejecución deben ser de un solo mes');
+		}
+	}
+	const dia = (fecha: string) => fecha.slice(8, 10);
+	const dias = segmentos
+		.map((s) => (s.desde === s.hasta ? dia(s.desde) : `${dia(s.desde)}-${dia(s.hasta)}`))
+		.join(', ');
+	return `${dias} / ${MESES[Number(mes.slice(5, 7)) - 1]} / ${mes.slice(0, 4)}`;
+}
+
 /** TAG del encabezado: todos en el orden del reporte, o «N/A» si no hay. */
 export function textoTags(tags: readonly string[] | undefined): string {
 	const limpios = (tags ?? []).map((t) => t.trim()).filter(Boolean);

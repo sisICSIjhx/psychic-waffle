@@ -1,40 +1,75 @@
 /* =========================================
        1. VARIABLES Y TEMA
        ========================================= */
+/* Contraste medido (WCAG 2.2 AA): texto 4.5:1 sobre --bg y --surface; bordes de campo e iconos
+   3:1. Los fondos «-bg» de los semánticos mantienen su texto por encima de 4.5:1. */
 :root {
+	color-scheme: light;
 	--bg: #f8fafc;
 	--bg-soft: #ffffff;
 	--surface: #ffffff;
+	--surface-2: #f1f5f9;
+	--card-bg: var(--bg-soft);
 	--text: #334155;
 	--muted: #64748b;
-	--primary: #0ea5e9;
-	--primary-soft: rgba(14, 165, 233, 0.1);
-	--ring: rgba(14, 165, 233, 0.25);
+	--primary: #0369a1;
+	--primary-hover: #075985;
+	--on-primary: #ffffff;
+	--primary-soft: rgba(3, 105, 161, 0.1);
+	--ring: rgba(3, 105, 161, 0.25);
 	--sidebar-w: 260px;
 	--sidebar-collapsed-w: 80px;
+	/* Objetivos: 24 px mínimo (WCAG 2.5.8); 44 px con puntero táctil. */
+	--alto-control: 40px;
+	--objetivo-min: 32px;
 	--radius: 12px;
 	--shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 	--border: #e2e8f0;
+	--borde-campo: #64748b;
 	--hover: #f1f5f9;
-	--accent-grad: linear-gradient(135deg, #38bdf8, #0ea5e9);
-	--success: #22c55e;
-	--warning: #eab308;
-	--danger: #ef4444;
+	--accent-grad: linear-gradient(135deg, #0284c7, #0369a1);
+	--success: #15803d;
+	--warning: #a16207;
+	--danger: #b91c1c;
+	--success-bg: #f0fdf4;
+	--warning-bg: #fefce8;
+	--danger-bg: #fef2f2;
+	--info-bg: #f0f9ff;
+	--neutral-bg: #f1f5f9;
 }
 
 html[data-theme='dark'] {
+	color-scheme: dark;
 	--bg: #0f172a;
 	--bg-soft: #1e293b;
 	--surface: #1e293b;
+	--surface-2: #334155;
 	--text: #f1f5f9;
 	--muted: #94a3b8;
 	--primary: #38bdf8;
+	--primary-hover: #7dd3fc;
+	--on-primary: #0f172a;
 	--primary-soft: rgba(56, 189, 248, 0.15);
 	--ring: rgba(56, 189, 248, 0.25);
 	--shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 	--border: #334155;
+	--borde-campo: #7c8ba1;
 	--hover: #334155;
-	--accent-grad: linear-gradient(135deg, #0ea5e9, #0284c7);
+	--success: #4ade80;
+	--warning: #facc15;
+	--danger: #f87171;
+	--success-bg: #052e16;
+	--warning-bg: #422006;
+	--danger-bg: #450a0a;
+	--info-bg: #082f49;
+	--neutral-bg: #334155;
+}
+
+@media (pointer: coarse) {
+	:root {
+		--alto-control: 44px;
+		--objetivo-min: 44px;
+	}
 }
 
 /* Scrollbars */
@@ -94,7 +129,7 @@ textarea {
 /* Layout */
 .layout {
 	display: grid;
-	grid-template-columns: var(--sidebar-w) 1fr;
+	grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
 	grid-template-rows: 64px 1fr;
 	grid-template-areas:
 		'sidebar header'
@@ -103,7 +138,7 @@ textarea {
 	transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .layout.is-collapsed {
-	grid-template-columns: var(--sidebar-collapsed-w) 1fr;
+	grid-template-columns: var(--sidebar-collapsed-w) minmax(0, 1fr);
 }
 
 /* Sidebar */
@@ -205,7 +240,7 @@ textarea {
 }
 .btn-icon {
 	width: 100%;
-	height: 40px;
+	height: var(--alto-control);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -296,27 +331,65 @@ textarea {
 	border-radius: 4px;
 }
 .main {
+	--relleno-main: 30px;
 	grid-area: main;
-	padding: 30px;
+	padding: var(--relleno-main);
 	overflow-y: auto;
 	position: relative;
+	min-width: 0;
+}
+/* El foco no queda bajo la barra fija del editor (WCAG 2.4.11). */
+.main:has(.barra-reporte) {
+	scroll-padding-top: 80px;
+}
+
+/* Visible solo con el foco del teclado (WCAG 2.4.1). */
+.saltar-contenido {
+	position: fixed;
+	top: 8px;
+	left: 8px;
+	z-index: 100;
+	padding: 10px 16px;
+	border-radius: 8px;
+	background: var(--primary);
+	color: var(--on-primary);
+	font-weight: 600;
+	transform: translateY(-200%);
+}
+.saltar-contenido:focus {
+	transform: none;
+}
+.main:focus {
+	outline: none;
 }
 
 .view-section {
-	animation: fadeIn 0.3s ease;
+	animation: fadeIn 0.2s ease;
 	max-width: 1200px;
 	margin: 0 auto;
 	padding-bottom: 80px;
 }
 
+/* Solo opacidad: un desplazamiento dejaría la vista (y su barra fija) corrida si la animación se
+   detiene, por ejemplo en una pestaña en segundo plano. */
 @keyframes fadeIn {
 	from {
 		opacity: 0;
-		transform: translateY(10px);
 	}
 	to {
 		opacity: 1;
-		transform: translateY(0);
+	}
+}
+
+/* Sin animaciones ni transiciones cuando el sistema pide reducir el movimiento. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
 	}
 }
 
@@ -345,20 +418,20 @@ textarea {
 .toolbar button {
 	background: var(--bg-soft);
 	color: var(--text);
-	border: 1px solid var(--border);
+	border: 1px solid var(--borde-campo);
 	border-radius: 8px;
 	padding: 8px 16px;
 	box-shadow: var(--shadow);
 }
 .toolbar button.primary {
 	background: var(--primary);
-	color: #fff;
+	color: var(--on-primary);
 	border: none;
 	font-weight: 600;
 	cursor: pointer;
 }
 .toolbar button.primary:hover {
-	opacity: 0.9;
+	background: var(--primary-hover);
 }
 
 /* Cards & KPI */
@@ -401,6 +474,47 @@ textarea {
 	color: var(--muted);
 }
 
+/* Campos: un solo estilo en toda la aplicación (firmas, alcances, filtros y catálogo). Los
+   contenedores más específicos solo ajustan el relleno o el ancho. */
+input:not([type='checkbox'], [type='radio'], [type='file'], [type='hidden'], [type='range']),
+select,
+textarea {
+	padding: 8px 10px;
+	border-radius: 8px;
+	border: 1px solid var(--borde-campo);
+	background: var(--bg);
+	color: var(--text);
+}
+input:not([type='checkbox'], [type='radio'], [type='file'], [type='hidden'], [type='range']),
+select {
+	min-height: var(--alto-control);
+}
+input:focus,
+select:focus,
+textarea:focus {
+	border-color: var(--primary);
+}
+input[type='checkbox'],
+input[type='radio'] {
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	flex-shrink: 0;
+	accent-color: var(--primary);
+}
+/* La etiqueta amplía el objetivo de la casilla. */
+label:has(> input[type='checkbox'], > input[type='radio']) {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: var(--objetivo-min);
+	cursor: pointer;
+}
+::placeholder {
+	color: var(--muted);
+	opacity: 1;
+}
+
 /* Form grid & fields */
 .form-grid {
 	display: grid;
@@ -413,7 +527,8 @@ textarea {
 	gap: 6px;
 	margin-bottom: 12px;
 }
-.form-group label {
+.form-group label,
+.form-group .etiqueta-campo {
 	font-size: 0.85rem;
 	font-weight: 500;
 	color: var(--muted);
@@ -423,10 +538,9 @@ textarea {
 .form-group textarea {
 	padding: 10px;
 	border-radius: 8px;
-	border: 1px solid var(--border);
+	border: 1px solid var(--borde-campo);
 	background: var(--bg);
 	color: var(--text);
-	outline: none;
 	width: 100%;
 }
 .form-group input:focus,
@@ -461,12 +575,22 @@ tr:last-child td {
 	border-bottom: none;
 }
 .action-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: var(--objetivo-min);
+	min-height: var(--objetivo-min);
 	background: none;
 	border: none;
+	color: var(--text);
 	cursor: pointer;
-	padding: 4px;
-	border-radius: 4px;
+	padding: 4px 8px;
+	border-radius: 6px;
+	font-size: 1rem;
 	transition: 0.2s;
+}
+.action-btn.delete {
+	font-size: 0.9rem;
 }
 .action-btn:hover {
 	background: var(--hover);
@@ -485,15 +609,15 @@ tr:last-child td {
 	display: inline-block;
 }
 .status-badge.ok {
-	background: rgba(34, 197, 94, 0.15);
+	background: var(--success-bg);
 	color: var(--success);
 }
 .status-badge.warn {
-	background: rgba(234, 179, 8, 0.15);
+	background: var(--warning-bg);
 	color: var(--warning);
 }
 .status-badge.err {
-	background: rgba(239, 68, 68, 0.15);
+	background: var(--danger-bg);
 	color: var(--danger);
 }
 
@@ -835,8 +959,10 @@ tr:last-child td {
 	pointer-events: auto;
 }
 @media (max-width: 768px) {
-	.layout {
-		grid-template-columns: 1fr;
+	/* En móvil el menú es un panel superpuesto: el estado contraído no reserva columna. */
+	.layout,
+	.layout.is-collapsed {
+		grid-template-columns: minmax(0, 1fr);
 		grid-template-areas:
 			'header'
 			'main';
@@ -847,22 +973,39 @@ tr:last-child td {
 		left: 0;
 		height: 100%;
 		width: 280px;
+		/* Cerrado no se ve ni recibe el foco; «visibility» espera a que termine la salida. */
 		transform: translateX(-100%);
-		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-		box-shadow: 5px 0 25px rgba(0, 0, 0, 0.2);
+		visibility: hidden;
+		transition:
+			transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+			visibility 0s linear 0.3s;
 		border-right: none;
 	}
 	.sidebar.mobile-open {
 		transform: translateX(0);
+		visibility: visible;
+		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		box-shadow: 5px 0 25px rgba(0, 0, 0, 0.2);
 	}
 	.mobile-menu-trigger {
-		display: block;
-	}
-	#btn-collapse {
-		display: none;
+		display: grid;
+		place-items: center;
+		width: 44px;
+		height: 44px;
+		margin-left: -8px;
 	}
 	.header {
-		padding: 0 20px;
+		padding: 0 16px;
+	}
+	.main {
+		--relleno-main: 16px;
+	}
+	.main:has(.barra-reporte) {
+		scroll-padding-top: 112px;
+	}
+	.card {
+		padding: 16px;
+		margin-bottom: 16px;
 	}
 	.kpi-grid,
 	.form-grid,
@@ -890,8 +1033,11 @@ tr:last-child td {
 	white-space: nowrap;
 	border: 0;
 }
+/* «relative» contiene los textos .sr-only de las celdas: sin él, su posición absoluta los saca del
+   desplazamiento de la tabla y ensancha la página en móvil. */
 .tabla-desplazable {
 	overflow-x: auto;
+	position: relative;
 }
 .enlace {
 	color: var(--primary);
@@ -906,9 +1052,14 @@ tr:last-child td {
 	font-size: 0.85rem;
 }
 .boton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: var(--alto-control);
 	background: var(--bg-soft);
 	color: var(--text);
-	border: 1px solid var(--border);
+	border: 1px solid var(--borde-campo);
 	border-radius: 8px;
 	padding: 8px 16px;
 	cursor: pointer;
@@ -918,9 +1069,13 @@ tr:last-child td {
 }
 .boton.primario {
 	background: var(--primary);
-	color: #fff;
-	border: none;
+	color: var(--on-primary);
+	border-color: var(--primary);
 	font-weight: 600;
+}
+.boton.primario:hover:not(:disabled) {
+	background: var(--primary-hover);
+	border-color: var(--primary-hover);
 }
 .boton:disabled {
 	opacity: 0.5;
@@ -928,41 +1083,50 @@ tr:last-child td {
 }
 .status-badge.vigente,
 .status-badge.accion-sin_cambios {
-	background: rgba(34, 197, 94, 0.15);
+	background: var(--success-bg);
 	color: var(--success);
 }
 .status-badge.por-confirmar,
 .status-badge.accion-actualizar {
-	background: rgba(234, 179, 8, 0.18);
+	background: var(--warning-bg);
 	color: var(--warning);
 	margin-left: 6px;
 }
 .status-badge.accion-crear {
-	background: var(--primary-soft);
+	background: var(--info-bg);
 	color: var(--primary);
 }
 .aviso {
 	padding: 10px 14px;
 	border-radius: 8px;
+	border: 1px solid transparent;
 	margin: 0 0 16px 0;
 	font-size: 0.9rem;
 }
 .aviso-error {
-	background: rgba(239, 68, 68, 0.12);
+	background: var(--danger-bg);
+	border-color: var(--danger);
 	color: var(--danger);
 }
 .aviso-exito {
-	background: rgba(34, 197, 94, 0.12);
+	background: var(--success-bg);
+	border-color: var(--success);
 	color: var(--success);
 }
 .aviso-alerta {
-	background: rgba(234, 179, 8, 0.15);
+	background: var(--warning-bg);
+	border-color: var(--warning);
 	color: var(--text);
 }
 .acciones-fila {
 	display: flex;
 	gap: 12px;
 	align-items: center;
+}
+.acciones-fila > a.enlace {
+	display: inline-flex;
+	align-items: center;
+	min-height: var(--objetivo-min);
 }
 .acciones-formulario {
 	justify-content: flex-end;
@@ -994,7 +1158,7 @@ tr:last-child td {
 .lista-editable textarea {
 	padding: 8px;
 	border-radius: 8px;
-	border: 1px solid var(--border);
+	border: 1px solid var(--borde-campo);
 	background: var(--bg);
 	color: var(--text);
 }
@@ -1055,6 +1219,12 @@ tr:last-child td {
 }
 details > summary {
 	cursor: pointer;
+	padding-block: 6px;
+}
+@media (pointer: coarse) {
+	details > summary {
+		padding-block: 11px;
+	}
 }
 @media (max-width: 768px) {
 	.campo-ancho {

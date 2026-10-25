@@ -8,8 +8,10 @@ import {
 	type Ocurrencia,
 	type Periodo
 } from './documento.ts';
+import { diasFueraDe, textoDias } from './dias-ejecucion.ts';
 import type {
 	Contrato,
+	ESTADOS_REPORTE,
 	FirmantesVigentes,
 	FirmasReporte,
 	Partida,
@@ -41,12 +43,33 @@ export const ETIQUETA_OCURRENCIA: Record<Ocurrencia['tipo'], string> = {
 	dia: 'Día'
 };
 
-/** Las periodicidades menores a mensual piden la ocurrencia dentro del mes. */
+export type EstadoReporte = (typeof ESTADOS_REPORTE)[number];
+
+export const ETIQUETA_ESTADO_REPORTE: Record<EstadoReporte, string> = {
+	borrador: 'Borrador',
+	en_revision: 'En revisión',
+	emitido: 'Emitido',
+	sustituido: 'Sustituido'
+};
+
+export type ModoPeriodo = 'mes' | 'semana' | 'quincena';
+
+/**
+ * Cómo se puede reportar una partida dentro del mes: las diarias por mes completo o por semana; las
+ * semanales por semana; las quincenales por quincena; el resto por mes. La ocurrencia «día» sigue
+ * siendo válida en los datos, pero la captura ya no la ofrece.
+ */
+export function modosDePeriodo(periodicidad: Periodicidad): ModoPeriodo[] {
+	if (periodicidad === 'diaria') return ['mes', 'semana'];
+	if (periodicidad === 'semanal') return ['semana'];
+	if (periodicidad === 'quincenal') return ['quincena'];
+	return ['mes'];
+}
+
+/** Ocurrencia que ofrece la captura (en las diarias, la semana opcional); null si es mensual. */
 export function tipoOcurrencia(periodicidad: Periodicidad): Ocurrencia['tipo'] | null {
-	if (periodicidad === 'diaria') return 'dia';
-	if (periodicidad === 'semanal') return 'semana';
-	if (periodicidad === 'quincenal') return 'quincena';
-	return null;
+	const modo = modosDePeriodo(periodicidad).find((m) => m !== 'mes');
+	return modo === 'semana' || modo === 'quincena' ? modo : null;
 }
 
 /** Números de ocurrencia válidos en el mes («AAAA-MM-01»). */
@@ -167,14 +190,18 @@ export function huellaCatalogo(partida: Partida): string {
 /** Reporte nuevo con el encabezado y el contenido copiados del catálogo y del contrato. */
 export function prellenarReporte(seleccion: SeleccionReporte): ReporteNuevo {
 	const { partida, contrato, sitio, periodoMes, ocurrencia } = seleccion;
-	const tipo = tipoOcurrencia(partida.periodicidad);
-	if (tipo && ocurrencia?.tipo !== tipo) {
+	const modos = modosDePeriodo(partida.periodicidad);
+	const modo = ocurrencia?.tipo ?? 'mes';
+	if (!(modos as string[]).includes(modo)) {
+		if (modos.length > 1) {
+			throw new RangeError(`La partida ${partida.numero} se reporta por mes completo o por semana`);
+		}
+		if (modos[0] === 'mes') {
+			throw new RangeError(`La partida ${partida.numero} no lleva semana, quincena ni día`);
+		}
 		throw new RangeError(
-			`La partida ${partida.numero} requiere elegir ${ETIQUETA_OCURRENCIA[tipo]}`
+			`La partida ${partida.numero} requiere elegir ${ETIQUETA_OCURRENCIA[modos[0]]}`
 		);
-	}
-	if (!tipo && ocurrencia) {
-		throw new RangeError(`La partida ${partida.numero} no lleva semana, quincena ni día`);
 	}
 	const equiposPartida = new Set(partida.equipos.map((e) => e.id));
 	const ajenos = seleccion.equipoIds.filter((id) => !equiposPartida.has(id));
@@ -188,7 +215,7 @@ export function prellenarReporte(seleccion: SeleccionReporte): ReporteNuevo {
 		partidaId: partida.id,
 		periodoMes,
 		ocurrencia,
-		fechaEjecucion: null,
+		diasEjecucion: [],
 		titulo: tituloReporte({
 			numeroPartida: partida.numero,
 			actividad: partida.actividad,
@@ -266,7 +293,7 @@ export type ReporteValidable = Pick<
 	Reporte,
 	| 'periodoMes'
 	| 'ocurrencia'
-	| 'fechaEjecucion'
+	| 'diasEjecucion'
 	| 'titulo'
 	| 'usuario'
 	| 'contratoTexto'
@@ -298,17 +325,23 @@ export function validarParaRevision(
 	const rango = rangoDelPeriodo(reporte.periodoMes, reporte.ocurrencia);
 	if (!rango) {
 		agregar('ocurrencia', 'La semana, quincena o día del reporte no existe en su mes.');
-	} else if (!reporte.fechaEjecucion || !/^\d{4}-\d{2}-\d{2}$/.test(reporte.fechaEjecucion)) {
-		agregar('fechaEjecucion', 'Capture la fecha completa de ejecución (día, mes y año).');
-	} else if (reporte.fechaEjecucion < rango.desde || reporte.fechaEjecucion > rango.hasta) {
-		const periodo =
-			rango.desde === rango.hasta
-				? `el ${textoDia(rango.desde)}`
-				: `del ${textoDia(rango.desde)} al ${textoDia(rango.hasta)}`;
-		agregar(
-			'fechaEjecucion',
-			`La fecha de ejecución debe estar dentro del periodo del reporte (${periodo}).`
-		);
+	} else if (!reporte.diasEjecucion?.length) {
+		agregar('diasEjecucion', 'Capture los días de ejecución.');
+	} else {
+		const fuera = diasFueraDe(reporte.diasEjecucion, rango);
+		if (fuera.length) {
+			const anio = rango.desde.slice(0, 4);
+			const periodo =
+				rango.desde === rango.hasta
+					? `el ${textoDia(rango.desde)} de ${anio}`
+					: rango.desde.slice(5, 7) === rango.hasta.slice(5, 7)
+						? `del ${Number(rango.desde.slice(8, 10))} al ${textoDia(rango.hasta)} de ${anio}`
+						: `del ${textoDia(rango.desde)} al ${textoDia(rango.hasta)} de ${anio}`;
+			agregar(
+				'diasEjecucion',
+				`Días fuera del periodo del reporte (${periodo}): ${textoDias(fuera)}.`
+			);
+		}
 	}
 
 	const encabezado = {
@@ -361,12 +394,102 @@ export function validarParaRevision(
 	return observaciones;
 }
 
+/** Secciones del editor del reporte, en el orden del documento. */
+export const SECCIONES_EDITOR = [
+	'encabezado',
+	'firmas',
+	'objetivo',
+	'alcance',
+	'herramientas',
+	'conclusiones'
+] as const;
+export type SeccionEditor = (typeof SECCIONES_EDITOR)[number];
+
+export interface DestinoObservacion {
+	seccion: SeccionEditor;
+	/** Alcance al que pertenece la observación, si aplica. */
+	alcanceId: string | null;
+	/** `id` del elemento del editor que recibe el foco. */
+	campoId: string;
+}
+
+const CAMPOS_ENCABEZADO: Record<string, string> = {
+	ocurrencia: 'fecha',
+	diasEjecucion: 'fecha',
+	fechaEjecucion: 'fecha',
+	titulo: 'titulo',
+	tipoMantenimiento: 'tipo',
+	usuario: 'dato-usuario',
+	contratoTexto: 'dato-contrato',
+	sitioTexto: 'dato-sitio',
+	periodicidad: 'dato-periodicidad',
+	equipos: 'tags'
+};
+const CAMPOS_ALCANCE = {
+	titulo: 'titulo-alcance',
+	estado: 'estado',
+	observaciones: 'observaciones'
+} as const;
+
+/**
+ * Sección y campo del editor al que lleva una observación de `validarParaRevision`. Las rutas de
+ * alcance traen el índice (`alcances.<i>.titulo`), así que el `id` se toma del mismo reporte que se
+ * validó. Devuelve null si la ruta no corresponde a ningún campo.
+ */
+export function destinoDeObservacion(
+	observacion: Observacion,
+	reporte: { alcances: readonly { id?: string }[] }
+): DestinoObservacion | null {
+	const { campo } = observacion;
+	if (Object.hasOwn(CAMPOS_ENCABEZADO, campo)) {
+		return { seccion: 'encabezado', alcanceId: null, campoId: CAMPOS_ENCABEZADO[campo] };
+	}
+	const firma = /^firmantes\.(elaboro|aprobo|recibio)$/.exec(campo);
+	if (firma) return { seccion: 'firmas', alcanceId: null, campoId: `firma-${firma[1]}-nombre` };
+	if (campo === 'objetivo' || campo === 'conclusiones') {
+		return { seccion: campo, alcanceId: null, campoId: campo };
+	}
+	if (campo === 'alcances')
+		return { seccion: 'alcance', alcanceId: null, campoId: 'agregar-alcance' };
+	const alcance = /^alcances\.(\d+)\.(titulo|estado|observaciones)$/.exec(campo);
+	const id = alcance ? reporte.alcances[Number(alcance[1])]?.id : undefined;
+	if (!alcance || !id) return null;
+	const prefijo = CAMPOS_ALCANCE[alcance[2] as keyof typeof CAMPOS_ALCANCE];
+	return { seccion: 'alcance', alcanceId: id, campoId: `${prefijo}-${id}` };
+}
+
+export interface Completitud {
+	total: number;
+	porSeccion: Record<SeccionEditor, number>;
+	/** Pendientes de cada alcance, por su `id`. */
+	porAlcance: Record<string, number>;
+}
+
+/** Cuenta las observaciones por sección y por alcance para el índice y la barra del editor. */
+export function completitudPorSeccion(
+	observaciones: readonly Observacion[],
+	reporte: { alcances: readonly { id?: string }[] }
+): Completitud {
+	const porSeccion = Object.fromEntries(SECCIONES_EDITOR.map((s) => [s, 0])) as Record<
+		SeccionEditor,
+		number
+	>;
+	const porAlcance: Record<string, number> = {};
+	for (const observacion of observaciones) {
+		const destino = destinoDeObservacion(observacion, reporte);
+		if (!destino) continue;
+		porSeccion[destino.seccion]++;
+		if (destino.alcanceId) porAlcance[destino.alcanceId] = (porAlcance[destino.alcanceId] ?? 0) + 1;
+	}
+	return { total: observaciones.length, porSeccion, porAlcance };
+}
+
 /** Estado editable de un reporte, en la forma que recibe el guardado. */
 export function aGuardado(reporte: Reporte): ReporteGuardado {
 	return {
 		id: reporte.id,
 		version: reporte.version,
-		fechaEjecucion: reporte.fechaEjecucion,
+		diasEjecucion: reporte.diasEjecucion,
 		titulo: reporte.titulo,
 		tipoMantenimiento: reporte.tipoMantenimiento,
 		objetivo: reporte.objetivo,

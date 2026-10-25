@@ -9,6 +9,8 @@ const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')
 function fila(n: number, cambios: Partial<PaginaReportes['filas'][number]> = {}) {
 	return {
 		id: ID(n),
+		partidaId: ID(900),
+		sitioId: ID(901),
 		titulo: `20.- VERIFICACIÓN DE VÁLVULAS ${n}. MAYO 2026`,
 		clienteClave: 'ficticio',
 		usuario: 'CLIENTE FICTICIO',

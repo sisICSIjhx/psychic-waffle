@@ -1,0 +1,14 @@
+# Finales de línea LF en el repositorio y en la copia de trabajo, como espera Prettier, aunque Git
+# tenga core.autocrlf=true en Windows.
+* text=auto eol=lf
+
+# Binarios: sin conversión de finales de línea ni diff de texto.
+*.docx binary
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.heic binary
+*.heif binary
+*.webp binary
+*.ico binary
