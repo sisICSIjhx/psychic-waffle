@@ -353,6 +353,6 @@
 	</section>
 
 	<div class="toolbar">
-		<button class="primary" type="submit">Guardar partida</button>
+		<button class="boton primario" type="submit">Guardar partida</button>
 	</div>
 </form>

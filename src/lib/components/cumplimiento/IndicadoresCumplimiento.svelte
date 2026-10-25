@@ -60,15 +60,17 @@
 </dl>
 
 <style>
+	/* Tres lecturas en columnas, sin caja propia: el panel ya las agrupa. */
 	.porcentajes {
 		display: grid;
-		gap: 12px;
+		gap: 16px 32px;
 		grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
 	}
 	.tarjeta {
-		padding: 12px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
+		display: grid;
+		gap: 2px;
+		align-content: start;
+		justify-items: start;
 	}
 	.nombre,
 	.valor,
@@ -79,31 +81,37 @@
 		font-weight: 600;
 	}
 	.formula {
-		color: var(--muted);
-		font-size: 0.8rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
 		font-weight: 400;
 	}
 	.valor {
-		font-size: 1.8rem;
+		font-size: 1.75rem;
 		font-weight: 700;
+		line-height: 1.2;
+		letter-spacing: -0.02em;
+		font-variant-numeric: tabular-nums;
 	}
 	.sin-datos {
-		color: var(--muted);
+		color: var(--tinta-tenue);
 	}
 	.cifras {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px 20px;
-		margin: 12px 0 0;
+		gap: 8px 32px;
+		margin: 20px 0 0;
+		padding-top: 16px;
+		border-top: 1px solid var(--linea);
 	}
 	.cifras dt {
-		font-size: 0.8rem;
-		color: var(--muted);
+		font-size: var(--texto-xs);
+		color: var(--tinta-tenue);
 	}
 	.cifras dd {
 		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 700;
+		font-size: var(--texto-lg);
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
 	}
 	abbr {
 		text-decoration: none;

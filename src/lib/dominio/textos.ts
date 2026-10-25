@@ -54,3 +54,29 @@ export function textoHaceTiempo(desde: number, ahora: number): string {
 	const hora = `${fecha.getHours()}:${String(fecha.getMinutes()).padStart(2, '0')}`;
 	return `a las ${hora}`;
 }
+
+/** Palabras cortas que se escriben en minúscula; las demás de dos letras son siglas («EM», «VT»). */
+const PALABRAS_MENORES = new Set(
+	'a al con de del e el en la las lo los o para por sin su sus u un una y'.split(' ')
+);
+/** Siglas frecuentes de tres letras con vocal, que no se distinguen de una palabra por su forma. */
+const SIGLAS = new Set(['ERM', 'EMR', 'TAG']);
+
+/**
+ * Texto capturado en mayúsculas («MANTENIMIENTO A RÓTULOS EM») en formato de oración («Mantenimiento
+ * a rótulos EM»). Conserva las siglas (dos letras que no son artículo ni preposición, palabras sin
+ * vocales como «DDV» y las de SIGLAS) y las palabras con cifras. Un texto que ya tiene minúsculas se
+ * deja igual.
+ */
+export function textoOracion(texto: string): string {
+	const limpio = texto.trim();
+	if (!limpio || /\p{Ll}/u.test(limpio)) return limpio;
+	const resultado = limpio.replace(/[\p{L}\d]+/gu, (palabra) => {
+		const minuscula = palabra.toLocaleLowerCase('es-MX');
+		const sigla =
+			!PALABRAS_MENORES.has(minuscula) &&
+			(palabra.length <= 2 || !/[AEIOUÁÉÍÓÚÜ]/u.test(palabra) || SIGLAS.has(palabra));
+		return sigla || /\d/.test(palabra) ? palabra : minuscula;
+	});
+	return resultado.replace(/\p{Ll}/u, (letra) => letra.toLocaleUpperCase('es-MX'));
+}

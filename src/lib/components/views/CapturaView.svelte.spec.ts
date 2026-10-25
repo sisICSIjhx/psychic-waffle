@@ -104,8 +104,9 @@ describe('CapturaView', () => {
 
 	it('resume el contrato y el sitio ya resueltos y permite cambiarlos', async () => {
 		montar();
+		await expect.element(page.getByText('OC-FICTICIA', { exact: true })).toBeInTheDocument();
 		await expect
-			.element(page.getByText('Ficticio · OC-FICTICIA · EM-99999 SITIO FICTICIO'))
+			.element(page.getByText('EM-99999 SITIO FICTICIO', { exact: true }))
 			.toBeInTheDocument();
 		expect(page.getByLabelText('Contrato').elements()).toHaveLength(0);
 		await page.getByRole('button', { name: 'Cambiar' }).click();
@@ -115,8 +116,9 @@ describe('CapturaView', () => {
 
 	it('con varios contratos también resume el contexto si ya viene elegido', async () => {
 		montar({ contratos: [contrato, { ...contrato, id: ID(9), numero: 'OC-OTRA' }] });
+		await expect.element(page.getByText('OC-FICTICIA', { exact: true })).toBeInTheDocument();
 		await expect
-			.element(page.getByText('Ficticio · OC-FICTICIA · EM-99999 SITIO FICTICIO'))
+			.element(page.getByText('EM-99999 SITIO FICTICIO', { exact: true }))
 			.toBeInTheDocument();
 		const sinElegir = montar({
 			contratos: [contrato, { ...contrato, id: ID(9) }],
@@ -134,14 +136,16 @@ describe('CapturaView', () => {
 			[
 				...page.getByRole('group', { name: nombre }).element().querySelectorAll('[role=option]')
 			].map((o) => (o as HTMLElement).innerText.replace(/\s+/g, ' ').trim());
+		// Las marcas (lápiz, alerta, reloj) son iconos SVG; el estado queda en el texto.
 		expect(grupo('Con borrador')).toEqual([
 			expect.stringMatching(
-				/^12\.- Verificación de válvulas ✎ ?Pendiente · octubre 2026 · con borrador/
+				/^12\.- Verificación de válvulas ?Pendiente · octubre 2026 · con borrador/
 			)
 		]);
 		expect(grupo('Pendientes')).toEqual([
-			expect.stringMatching(/^3\.- Rótulos.*! ?Vencida · junio 2026/),
-			expect.stringMatching(/^7\.- TOMA.*● ?Pendiente · octubre 2026/)
+			expect.stringMatching(/^3\.- Rótulos.* ?Vencida · junio 2026/),
+			// La actividad capturada en mayúsculas se muestra en formato de oración.
+			expect.stringMatching(/^7\.- Toma de potenciales.* ?Pendiente · octubre 2026/)
 		]);
 		expect(grupo('Otras partidas')).toEqual([expect.stringMatching(/^17\.- Calibración/)]);
 	});

@@ -1,8 +1,8 @@
-<!-- HeaderBar.svelte -->
+<!-- Cabecera de ventanas estrechas (marca y botón del menú) y aviso de conexión. En escritorio el
+     título de cada página vive en su contenido y la cabecera no se muestra. -->
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 
-	export let pageTitle = 'Mi trabajo';
 	export let menuAbierto = false;
 
 	const dispatch = createEventDispatcher<{ toggleMobileMenu: void }>();
@@ -37,70 +37,79 @@
 			aria-controls="menu-principal"
 			on:click={toggleMobileMenu}
 		>
-			<div class="brand-logo" style="width: 28px; height: 28px; box-shadow: none">
-				<svg
-					aria-hidden="true"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="3"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				>
-					<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-				</svg>
-			</div>
+			<svg
+				aria-hidden="true"
+				width="20"
+				height="20"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg
+			>
 		</button>
-		<h1 class="header-title"><span class="texto-titulo">{pageTitle}</span></h1>
-	</div>
-
-	<div class="estado-conexion" role="status">
-		{#if !enLinea}
-			<span class="sin-conexion">
-				<svg
-					aria-hidden="true"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					><line x1="2" y1="2" x2="22" y2="22" /><path d="M8.5 16.5a5 5 0 0 1 7 0" /><path
-						d="M2 8.82a15 15 0 0 1 4.17-2.65"
-					/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76" /><path
-						d="M16.85 11.25a10 10 0 0 1 2.22 1.68"
-					/><path d="M5 13a10 10 0 0 1 5.24-2.76" /><line x1="12" y1="20" x2="12.01" y2="20" /></svg
-				>
-				Sin conexión
-			</span>
-		{/if}
+		<span class="marca-cabecera">ICSI <span>Reportes</span></span>
 	</div>
 </header>
 
+<div class="estado-conexion" role="status">
+	{#if !enLinea}
+		<span class="sin-conexion">
+			<svg
+				aria-hidden="true"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				><line x1="2" y1="2" x2="22" y2="22" /><path d="M8.5 16.5a5 5 0 0 1 7 0" /><path
+					d="M2 8.82a15 15 0 0 1 4.17-2.65"
+				/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76" /><path
+					d="M16.85 11.25a10 10 0 0 1 2.22 1.68"
+				/><path d="M5 13a10 10 0 0 1 5.24-2.76" /><line x1="12" y1="20" x2="12.01" y2="20" /></svg
+			>
+			Sin conexión
+		</span>
+	{/if}
+</div>
+
 <style>
-	/* Títulos largos (p. ej. el del reporte abierto) se recortan con puntos suspensivos. */
-	.header-left,
-	.header-title {
+	.header-left {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 		min-width: 0;
 	}
-	.texto-titulo {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+	.marca-cabecera {
+		font-family: var(--fuente-marca);
+		font-size: var(--texto-lg);
+		font-weight: 800;
+		color: var(--accion);
 	}
+	.marca-cabecera span {
+		color: var(--tinta);
+		font-family: var(--fuente);
+		font-size: var(--texto-sm);
+		font-weight: 700;
+	}
+	/* Flota sobre el contenido para verse en cualquier página sin ocupar una barra propia. */
 	.estado-conexion {
-		flex-shrink: 0;
+		position: fixed;
+		top: 12px;
+		right: 16px;
+		z-index: 60;
 	}
 	.sin-conexion {
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		padding: 4px 10px;
-		border: 1px solid var(--danger);
-		border-radius: 999px;
-		background: var(--danger-bg);
-		color: var(--danger);
-		font-size: 0.85rem;
+		padding: 2px 10px;
+		border: 1px solid var(--peligro-borde);
+		border-radius: 3px;
+		background: var(--peligro-fondo);
+		color: var(--peligro);
+		font-size: var(--texto-sm);
 		font-weight: 600;
 	}
 	.sin-conexion svg {

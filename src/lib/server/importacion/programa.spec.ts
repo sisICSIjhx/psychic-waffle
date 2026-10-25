@@ -486,7 +486,7 @@ describe('api_importar_programa sobre la base', () => {
 			},
 			false
 		);
-	}, 60_000);
+	});
 
 	afterAll(() => repos.cerrar());
 

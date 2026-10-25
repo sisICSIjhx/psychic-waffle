@@ -7,7 +7,7 @@ describe('HeaderBar', () => {
 	afterEach(() => vi.restoreAllMocks());
 
 	it('nombra el botón del menú móvil y anuncia si está abierto', async () => {
-		const { rerender } = render(HeaderBar, { pageTitle: 'Historial Global', menuAbierto: false });
+		const { rerender } = render(HeaderBar, { menuAbierto: false });
 		const boton = page.getByRole('button', { name: 'Abrir el menú' });
 		await expect.element(boton).toHaveAttribute('aria-expanded', 'false');
 		await expect.element(boton).toHaveAttribute('aria-controls', 'menu-principal');

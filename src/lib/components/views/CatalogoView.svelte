@@ -45,7 +45,7 @@
 							<td>{contrato.cliente?.nombre ?? '—'}</td>
 							<td>{contrato.numero}</td>
 							<td>
-								{contrato.vigenciaInicio} a {contrato.vigenciaFin}
+								<span class="vigencia">{contrato.vigenciaInicio} a {contrato.vigenciaFin}</span>
 								{#if contrato.vigente}<span class="status-badge vigente">Vigente</span>{/if}
 							</td>
 							<td>
@@ -94,3 +94,10 @@
 		</form>
 	</details>
 </div>
+
+<style>
+	/* Las fechas «AAAA-MM-DD» no se parten por los guiones en pantallas angostas. */
+	.vigencia {
+		white-space: nowrap;
+	}
+</style>

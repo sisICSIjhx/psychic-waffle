@@ -107,7 +107,7 @@
 <style>
 	.subtitulo {
 		margin: 8px 0 4px;
-		font-size: 0.9rem;
+		font-size: var(--texto-base);
 	}
 	.lista {
 		margin: 0;
@@ -132,10 +132,10 @@
 	}
 	.ayuda {
 		margin: 4px 0 0;
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 	.ayuda.error {
-		color: var(--danger);
+		color: var(--peligro);
 	}
 </style>

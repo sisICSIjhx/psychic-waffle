@@ -67,7 +67,7 @@ describe('días de ejecución en la base', () => {
 		repos = crearRepositorios(cliente);
 		carpeta = await mkdtemp(join(tmpdir(), 'dias-'));
 		servicio = new ServicioCaptura(repos, new AlmacenamientoLocal(carpeta));
-	}, 60_000);
+	});
 
 	afterAll(async () => {
 		await repos.cerrar();

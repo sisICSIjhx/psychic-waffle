@@ -118,37 +118,38 @@
 	}
 	.titulo-mes {
 		margin: 0;
-		font-size: 1rem;
+		font-size: var(--texto-md);
 	}
 	.filas {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 6px;
 	}
+	/* Filas separadas por una línea; el estado lo dicen el símbolo y el texto, con su color. */
 	.fila {
 		display: grid;
 		grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto;
 		gap: 8px;
 		align-items: center;
-		padding: 8px 10px;
-		border: 1px solid var(--border);
-		border-left-width: 4px;
-		border-radius: 6px;
+		padding: 10px 0;
+		border-top: 1px solid var(--linea);
 	}
-	.fila.vencido,
-	.fila.no_ejecutado {
-		border-left-color: var(--danger);
+	.fila:first-child {
+		border-top: none;
 	}
-	.fila.pendiente {
-		border-left-color: var(--primary);
+	.fila.vencido .simbolo,
+	.fila.no_ejecutado .simbolo {
+		color: var(--peligro);
 	}
-	.fila.reprogramado {
-		border-left-color: var(--warning);
+	.fila.pendiente .simbolo {
+		color: var(--info);
 	}
-	.fila.ejecutado {
-		border-left-color: var(--success);
+	.fila.reprogramado .simbolo {
+		color: var(--alerta);
+	}
+	.fila.ejecutado .simbolo {
+		color: var(--exito);
 	}
 	.numero {
 		font-weight: 700;
@@ -165,7 +166,7 @@
 	.anotacion,
 	.detalle {
 		margin-left: 6px;
-		font-size: 0.85rem;
+		font-size: var(--texto-sm);
 	}
 	.acciones {
 		display: flex;

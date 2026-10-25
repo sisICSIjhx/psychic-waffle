@@ -44,8 +44,8 @@
 
 <style>
 	.grupo h3 {
-		margin: 12px 0 4px;
-		font-size: 0.95rem;
+		margin: 16px 0 6px;
+		font-size: var(--texto-base);
 	}
 	.lista {
 		margin: 0;

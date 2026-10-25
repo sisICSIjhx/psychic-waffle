@@ -33,7 +33,7 @@
 		type ReporteDePartida,
 		type TrabajoDePartida
 	} from '$lib/dominio/seleccion';
-	import { textoMes } from '$lib/dominio/textos';
+	import { textoMes, textoOracion } from '$lib/dominio/textos';
 
 	export let cliente: Cliente | null = null;
 	export let contratos: Contrato[] = [];
@@ -121,7 +121,7 @@
 		const conBorrador = t?.grupo === 'con_borrador';
 		return {
 			valor: p.id,
-			texto: `${p.numero}.- ${p.actividad}`,
+			texto: `${p.numero}.- ${textoOracion(p.actividad)}`,
 			grupo: t?.grupo ?? 'otras',
 			icono: conBorrador ? '✎' : estado?.icono,
 			insignia: conBorrador ? `${estado ? `${estado.texto} · ` : ''}con borrador` : estado?.texto,
@@ -171,12 +171,21 @@
 			{#if cliente}<input type="hidden" name="cliente" value={cliente.clave} />{/if}
 			{#if contextoResuelto && contrato && sitio}
 				<div class="contexto-resumen">
-					<span class="etiqueta">Contrato y sitio</span>
-					<span class="valor-contexto"
-						>{contrato.cliente?.nombre ?? ''} · {contrato.numero} · {sitio.clave}
-						{sitio.nombre}</span
-					>
-					<button class="boton" type="button" on:click={() => (cambiarContexto = true)}
+					<dl class="rotulo">
+						<div>
+							<dt>Cliente</dt>
+							<dd>{contrato.cliente?.nombre ?? '—'}</dd>
+						</div>
+						<div>
+							<dt>Contrato</dt>
+							<dd>{contrato.numero}</dd>
+						</div>
+						<div>
+							<dt>Sitio</dt>
+							<dd>{sitio.clave} {sitio.nombre}</dd>
+						</div>
+					</dl>
+					<button class="boton contorno" type="button" on:click={() => (cambiarContexto = true)}
 						>Cambiar</button
 					>
 					<input type="hidden" name="contrato" value={contrato.id} />
@@ -405,50 +414,43 @@
 	.contexto-resumen {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px 12px;
+		gap: 12px 24px;
 		align-items: center;
-		padding: 10px 12px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		/* Sobre --surface-2 el texto atenuado no llega a 4.5:1; sobre --bg sí. */
-		background: var(--bg);
+		justify-content: space-between;
 	}
-	.contexto-resumen .etiqueta {
-		flex-basis: 100%;
-		color: var(--muted);
-		font-size: 0.85rem;
-	}
-	.valor-contexto {
-		flex: 1 1 240px;
-		font-weight: 600;
+	.contexto-resumen .rotulo {
+		flex: 1 1 420px;
 	}
 	.contexto-listas {
 		display: grid;
 		gap: 12px;
 		grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
 	}
+	/* Pasos en orden (1 partida, 2 periodo y TAG, 3 crear): el número es información, no adorno. */
 	.paso {
 		display: grid;
 		gap: 10px;
-		margin-bottom: 16px;
+		margin-bottom: 24px;
 	}
 	.titulo-paso {
 		display: flex;
-		gap: 8px;
+		gap: 10px;
 		align-items: center;
 		margin: 0;
-		font-size: 1rem;
+		font-size: var(--texto-base);
+		font-weight: 600;
 	}
 	.numero-paso {
 		display: inline-grid;
 		place-items: center;
-		width: 26px;
-		height: 26px;
+		width: 22px;
+		height: 22px;
+		border: 1px solid var(--accion);
 		border-radius: 50%;
-		background: var(--primary);
-		color: var(--on-primary);
-		font-size: 0.85rem;
+		color: var(--accion);
+		font-size: var(--texto-xs);
 		font-weight: 700;
+		font-variant-numeric: tabular-nums;
 	}
 	.existentes ul {
 		display: grid;

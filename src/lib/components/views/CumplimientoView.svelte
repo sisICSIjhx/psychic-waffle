@@ -63,7 +63,7 @@
 </script>
 
 <section class="card" aria-labelledby="titulo-cumplimiento">
-	<h2 id="titulo-cumplimiento" class="view-heading">Cumplimiento del programa</h2>
+	<h2 id="titulo-cumplimiento" class="view-heading">Filtros</h2>
 	<form method="GET" class="filtros">
 		<div class="form-group">
 			<label for="filtro-cliente">Cliente</label>

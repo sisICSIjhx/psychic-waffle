@@ -1,11 +1,10 @@
-// Preferencias de la interfaz guardadas en el navegador: tema y menú contraído.
+// Preferencias de la interfaz guardadas en el navegador: el tema.
 // El script en línea de src/app.html aplica el tema antes de pintar con la misma clave y la misma
 // regla que temaInicial; si cambian aquí, deben cambiar allá.
 
 export type Tema = 'light' | 'dark';
 
 export const CLAVE_TEMA = 'icsi-tema';
-export const CLAVE_MENU_CONTRAIDO = 'icsi-menu-contraido';
 
 /** El tema guardado o, si no hay uno válido, el del sistema. */
 export function temaInicial(guardado: string | null, sistemaOscuro: boolean): Tema {

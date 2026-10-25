@@ -5,10 +5,10 @@
 
 	import Sidebar from '$lib/layout/Sidebar.svelte';
 	import HeaderBar from '$lib/layout/HeaderBar.svelte';
+	import EncabezadoPagina from '$lib/components/ui/EncabezadoPagina.svelte';
 	import Notificaciones from '$lib/components/ui/Notificaciones.svelte';
-	import { tituloDePagina, vistaDesdeRuta } from '$lib/layout/navegacion';
+	import { encabezadoDePagina, tituloDePagina, vistaDesdeRuta } from '$lib/layout/navegacion';
 	import {
-		CLAVE_MENU_CONTRAIDO,
 		CLAVE_TEMA,
 		guardarPreferencia,
 		leerPreferencia,
@@ -16,11 +16,11 @@
 		type Tema
 	} from '$lib/layout/preferencias';
 
+	import '@fontsource-variable/inter';
+	import '@fontsource-variable/manrope';
 	import '../app.css';
 
-	let sidebarCollapsed = false;
 	let mobileMenuOpen = false;
-	let esMovil = false;
 	// El script de app.html ya aplicó el tema al documento; aquí solo se sincroniza el botón.
 	let theme: Tema = 'dark';
 
@@ -30,16 +30,16 @@
 	$: currentView = vistaDesdeRuta(pathname);
 	$: tituloReporte = ($page.data as { reporte?: { titulo?: string } }).reporte?.titulo ?? null;
 	$: pageTitle = tituloDePagina(pathname, cliente, tituloReporte);
-	// En móvil el menú es un panel completo: la preferencia de contraerlo solo aplica en escritorio.
-	$: menuContraido = sidebarCollapsed && !esMovil;
+	$: datosPagina = $page.data as { contrato?: { numero?: string }; partida?: { numero?: string } };
+	$: encabezado = encabezadoDePagina(pathname, cliente, {
+		contrato: datosPagina.contrato?.numero,
+		partida: datosPagina.partida?.numero
+	});
 
 	onMount(() => {
 		const sistema = window.matchMedia('(prefers-color-scheme: dark)');
-		const movil = window.matchMedia('(max-width: 768px)');
 		theme = temaInicial(leerPreferencia(CLAVE_TEMA), sistema.matches);
 		aplicarTema(theme);
-		sidebarCollapsed = leerPreferencia(CLAVE_MENU_CONTRAIDO) === '1';
-		esMovil = movil.matches;
 
 		// Mientras no se elija un tema, se sigue el del sistema.
 		const alCambiarSistema = (evento: MediaQueryListEvent) => {
@@ -47,28 +47,25 @@
 			theme = evento.matches ? 'dark' : 'light';
 			aplicarTema(theme);
 		};
-		const alCambiarAncho = (evento: MediaQueryListEvent) => (esMovil = evento.matches);
 		sistema.addEventListener('change', alCambiarSistema);
-		movil.addEventListener('change', alCambiarAncho);
-		return () => {
-			sistema.removeEventListener('change', alCambiarSistema);
-			movil.removeEventListener('change', alCambiarAncho);
-		};
+		return () => sistema.removeEventListener('change', alCambiarSistema);
 	});
 
+	// Sin transiciones durante el cambio: se restauran después del siguiente cuadro.
 	function aplicarTema(tema: Tema) {
-		document.documentElement.setAttribute('data-theme', tema);
+		const raiz = document.documentElement;
+		raiz.classList.add('cambiando-tema');
+		raiz.setAttribute('data-theme', tema);
+		void getComputedStyle(raiz).color;
+		requestAnimationFrame(() =>
+			requestAnimationFrame(() => raiz.classList.remove('cambiando-tema'))
+		);
 	}
 
 	function handleNavigate() {
 		if (typeof window !== 'undefined' && window.innerWidth <= 768) {
 			mobileMenuOpen = false;
 		}
-	}
-
-	function toggleSidebarCollapse() {
-		sidebarCollapsed = !sidebarCollapsed;
-		guardarPreferencia(CLAVE_MENU_CONTRAIDO, sidebarCollapsed ? '1' : null);
 	}
 
 	function toggleTheme() {
@@ -100,22 +97,23 @@
 	on:click={toggleMobileMenu}
 ></div>
 
-<div class="layout" class:is-collapsed={menuContraido}>
+<div class="layout">
 	<Sidebar
 		activeView={currentView}
 		activeCliente={cliente}
-		isCollapsed={menuContraido}
 		isMobileOpen={mobileMenuOpen}
 		{theme}
 		on:navigate={handleNavigate}
-		on:toggleCollapse={toggleSidebarCollapse}
 		on:toggleTheme={toggleTheme}
 	/>
 
-	<HeaderBar {pageTitle} menuAbierto={mobileMenuOpen} on:toggleMobileMenu={toggleMobileMenu} />
+	<HeaderBar menuAbierto={mobileMenuOpen} on:toggleMobileMenu={toggleMobileMenu} />
 
 	<main class="main" id="contenido" tabindex="-1">
 		<div class="view-section">
+			{#if encabezado}
+				<EncabezadoPagina ceja={encabezado.ceja} titulo={encabezado.titulo} />
+			{/if}
 			<slot />
 		</div>
 	</main>

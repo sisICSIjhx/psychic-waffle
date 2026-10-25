@@ -78,30 +78,31 @@
 <style>
 	.dialogo {
 		width: min(480px, calc(100vw - 32px));
-		padding: 20px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-		background: var(--surface);
-		color: var(--text);
-		box-shadow: var(--shadow);
+		padding: 24px;
+		border: 1px solid var(--linea);
+		border-radius: var(--radio-flotante);
+		background: var(--superficie-flotante);
+		color: var(--tinta);
+		box-shadow: var(--sombra-flotante);
 	}
 	.dialogo::backdrop {
-		background: rgba(15, 23, 42, 0.6);
+		background: var(--velo);
 	}
 	.titulo-dialogo {
 		margin: 0 0 12px;
-		font-size: 1.1rem;
+		font-size: var(--texto-md);
+		font-weight: 600;
 	}
 	.contenido-dialogo {
 		display: grid;
 		gap: 8px;
-		font-size: 0.95rem;
+		color: var(--tinta-secundaria);
 	}
 	.acciones-dialogo {
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: flex-end;
 		gap: 8px;
-		margin-top: 20px;
+		margin-top: 24px;
 	}
 </style>

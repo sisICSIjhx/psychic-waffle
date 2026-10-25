@@ -108,6 +108,18 @@ export const SIMBOLO_EJECUCION: Record<EstadoEjecucion, string> = {
 	extra: '+'
 };
 
+/** Código corto del estado de ejecución en la matriz («E», «P», «PR»…); acompaña al símbolo. */
+export const CODIGO_EJECUCION: Record<EstadoEjecucion, string> = {
+	sin_programa: '',
+	programado: 'PR',
+	pendiente: 'P',
+	vencido: 'V',
+	reprogramado: 'RP',
+	no_ejecutado: 'NE',
+	ejecutado: 'E',
+	extra: 'RSP'
+};
+
 export const ETIQUETA_DOCUMENTAL: Record<EstadoDocumental, string> = {
 	ninguno: '',
 	sin_reporte: 'Sin reporte',
@@ -115,15 +127,15 @@ export const ETIQUETA_DOCUMENTAL: Record<EstadoDocumental, string> = {
 	con_reporte: 'Con reporte'
 };
 
-/** Etiqueta corta de la marca documental en la matriz. */
-export function marcaDocumental(c: CeldaEvaluable): string {
+/** Código corto del documento en la matriz: «CR» con reporte, «B» borrador, «ER» en revisión, «S» sin. */
+export function codigoDocumental(c: CeldaEvaluable): string {
 	switch (estadoDocumental(c)) {
 		case 'con_reporte':
-			return 'Con rep.';
+			return 'CR';
 		case 'reporte_en_borrador':
-			return conReporteEnRevision(c) ? 'En rev.' : 'Borrador';
+			return conReporteEnRevision(c) ? 'ER' : 'B';
 		case 'sin_reporte':
-			return 'Sin rep.';
+			return 'S';
 		default:
 			return '';
 	}

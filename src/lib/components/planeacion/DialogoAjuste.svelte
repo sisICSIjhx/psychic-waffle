@@ -191,7 +191,7 @@
 <style>
 	.actividad {
 		margin: 0;
-		color: var(--muted);
+		color: var(--tinta-tenue);
 		overflow-wrap: anywhere;
 	}
 	.formulario {
@@ -211,11 +211,11 @@
 	}
 	.error {
 		margin: 8px 0 0;
-		color: var(--danger);
+		color: var(--peligro);
 	}
 	.subtitulo {
 		margin: 12px 0 4px;
-		font-size: 0.9rem;
+		font-size: var(--texto-base);
 	}
 	.ajustes {
 		margin: 0;
@@ -235,7 +235,7 @@
 	.nota {
 		flex-basis: 100%;
 		margin: 0;
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 </style>

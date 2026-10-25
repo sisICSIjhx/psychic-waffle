@@ -33,26 +33,32 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		border: 1px solid currentColor;
 		white-space: nowrap;
 	}
 	svg {
-		width: 14px;
-		height: 14px;
+		width: 12px;
+		height: 12px;
 		flex-shrink: 0;
 	}
-	.estado-borrador,
+	/* Borrador: el estado de trabajo, en el acento suave (diseño «Foco operativo»). */
+	.estado-borrador {
+		background: var(--accion-suave);
+		color: var(--accion);
+	}
 	.estado-sustituido {
-		background: var(--neutral-bg);
-		color: var(--text);
+		background: var(--neutro-fondo);
+		border-color: var(--linea-fuerte);
+		color: var(--tinta-secundaria);
 	}
 	.estado-en_revision {
-		background: var(--warning-bg);
-		color: var(--warning);
+		background: var(--info-fondo);
+		border-color: var(--info-borde);
+		color: var(--info);
 	}
 	.estado-emitido {
-		background: var(--success-bg);
-		color: var(--success);
+		background: var(--exito-fondo);
+		border-color: var(--exito-borde);
+		color: var(--exito);
 	}
 	.estado-sustituido {
 		border-style: dashed;

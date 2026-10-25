@@ -74,7 +74,7 @@ beforeAll(async () => {
 		herramientas: [{ cantidad: '1', descripcion: 'Manómetro patrón' }],
 		equipoIds: [equipo.id]
 	});
-}, 60_000);
+});
 
 afterAll(async () => {
 	await repos.cerrar();

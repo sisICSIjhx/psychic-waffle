@@ -1,3 +1,5 @@
+<!-- Riel de navegación persistente: marca, destinos con icono sobre la etiqueta, captura por cliente
+     y cambio de tema. En ventanas estrechas se abre como panel desde la cabecera. -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { resolve } from '$app/paths';
@@ -5,7 +7,6 @@
 
 	export let activeView: VistaId | null = 'dashboard';
 	export let activeCliente: string | null = null;
-	export let isCollapsed = false;
 	export let isMobileOpen = false;
 	export let theme = 'dark';
 
@@ -13,8 +14,65 @@
 	const dispatch = createEventDispatcher<{
 		navigate: { view: VistaId; cliente?: string };
 		toggleTheme: void;
-		toggleCollapse: void;
 	}>();
+
+	/** Destinos principales con el trazo de su icono (24 × 24, línea de 2 px). */
+	const DESTINOS: {
+		vista: VistaId;
+		ruta: string;
+		etiqueta: string;
+		titulo: string;
+		icono: string;
+	}[] = [
+		{
+			vista: 'dashboard',
+			ruta: resolve('/'),
+			etiqueta: 'Mi trabajo',
+			titulo: 'Mi trabajo',
+			icono:
+				'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>'
+		},
+		{
+			vista: 'planeacion',
+			ruta: resolve('/planeacion'),
+			etiqueta: 'Programa',
+			titulo: 'Programa anual',
+			icono:
+				'<path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>'
+		},
+		{
+			vista: 'cumplimiento',
+			ruta: resolve('/cumplimiento'),
+			etiqueta: 'Cumplimiento',
+			titulo: 'Cumplimiento del programa',
+			icono:
+				'<path d="M12 16v5M16 14v7M20 10v11M22 3l-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15M4 18v3M8 14v7"/>'
+		},
+		{
+			vista: 'captura',
+			ruta: resolve('/captura'),
+			etiqueta: 'Capturar',
+			titulo: 'Capturar reporte',
+			icono:
+				'<path d="m18 5-2.414-2.414A2 2 0 0 0 14.172 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2"/><path d="M21.378 12.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><path d="M8 18h1"/>'
+		},
+		{
+			vista: 'historial',
+			ruta: resolve('/historial'),
+			etiqueta: 'Historial',
+			titulo: 'Historial de reportes',
+			icono:
+				'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/>'
+		},
+		{
+			vista: 'catalogo',
+			ruta: resolve('/catalogo'),
+			etiqueta: 'Catálogo',
+			titulo: 'Catálogo de contratos',
+			icono:
+				'<path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>'
+		}
+	];
 
 	function navigate(view: VistaId, cliente?: string) {
 		dispatch('navigate', { view, cliente });
@@ -23,398 +81,262 @@
 	function toggleTheme() {
 		dispatch('toggleTheme');
 	}
-
-	function toggleCollapse() {
-		dispatch('toggleCollapse');
-	}
 </script>
 
-<aside
-	id="menu-principal"
-	class="sidebar {isCollapsed ? 'collapsed' : ''}"
-	class:mobile-open={isMobileOpen}
->
-	<div class="sidebar-header-fixed">
-		<div class="brand">
-			<div class="brand-logo">
+<aside id="menu-principal" class="sidebar" class:mobile-open={isMobileOpen}>
+	<a class="marca" href={resolve('/')} on:click={() => navigate('dashboard')}>
+		<span class="marca-icsi">ICSI</span>
+		<span class="marca-producto">Reportes</span>
+	</a>
+
+	<nav class="nav" aria-label="Navegación principal">
+		{#each DESTINOS as destino (destino.vista)}
+			{@const activo =
+				activeView === destino.vista && (destino.vista !== 'captura' || !activeCliente)}
+			<!-- La ruta de cada destino ya pasó por resolve() en DESTINOS. -->
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
+			<a
+				href={destino.ruta}
+				class="nav-item"
+				class:active={activo}
+				class:en-seccion={!activo && activeView === destino.vista}
+				aria-current={activo ? 'page' : undefined}
+				title={destino.titulo}
+				on:click={() => navigate(destino.vista)}
+			>
 				<svg
-					width="20"
-					height="20"
 					viewBox="0 0 24 24"
 					fill="none"
 					stroke="currentColor"
-					stroke-width="3"
+					stroke-width="1.75"
 					stroke-linecap="round"
 					stroke-linejoin="round"
-					><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg
+					aria-hidden="true"
+					><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+					{@html destino.icono}</svg
 				>
-			</div>
-			{#if !isCollapsed}<span class="brand-title">ICSI Reportes</span>{/if}
-		</div>
+				<span>{destino.etiqueta}</span>
+			</a>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+		{/each}
+	</nav>
+
+	<div class="captura-clientes">
+		<p id="titulo-captura-clientes" class="titulo-clientes">Capturar en</p>
+		<ul aria-labelledby="titulo-captura-clientes">
+			{#each clientesCaptura as cliente (cliente.clave)}
+				{@const activo = activeView === 'captura' && activeCliente === cliente.clave}
+				<li>
+					<!-- resolve() se aplica a la ruta; el filtro por cliente va en la consulta. -->
+					<!-- eslint-disable svelte/no-navigation-without-resolve -->
+					<a
+						href={`${resolve('/captura')}?cliente=${cliente.clave}`}
+						class="cliente"
+						class:active={activo}
+						aria-current={activo ? 'page' : undefined}
+						title={`Capturar reporte: ${cliente.etiqueta}`}
+						on:click={() => navigate('captura', cliente.clave)}>{cliente.etiqueta}</a
+					>
+					<!-- eslint-enable svelte/no-navigation-without-resolve -->
+				</li>
+			{/each}
+		</ul>
 	</div>
 
-	<div class="sidebar-content-scroll">
-		<nav class="nav" aria-label="Navegación principal">
-			<a
-				href={resolve('/')}
-				class="nav-item {activeView === 'dashboard' ? 'active' : ''}"
-				aria-current={activeView === 'dashboard' ? 'page' : undefined}
-				title="Mi trabajo"
-				on:click={() => navigate('dashboard')}
-			>
+	<!-- «Personal» y «Mi Perfil» vuelven al menú con la autenticación; hoy no tienen contenido. -->
+
+	<div class="sidebar-footer">
+		<button
+			class="btn-icon"
+			type="button"
+			title={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+			aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+			on:click={toggleTheme}
+		>
+			{#if theme === 'dark'}
 				<svg
 					viewBox="0 0 24 24"
 					fill="none"
 					stroke="currentColor"
-					stroke-width="2"
+					stroke-width="1.75"
 					stroke-linecap="round"
 					stroke-linejoin="round"
-					><rect x="3" y="3" width="7" height="9" rx="1" /><rect
-						x="14"
-						y="3"
-						width="7"
-						height="5"
-						rx="1"
-					/><rect x="14" y="12" width="7" height="9" rx="1" /><rect
-						x="3"
-						y="16"
-						width="7"
-						height="5"
-						rx="1"
+					aria-hidden="true"
+					><circle cx="12" cy="12" r="4" /><path
+						d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
 					/></svg
 				>
-				{#if !isCollapsed}<span>Mi trabajo</span>{/if}
-			</a>
-
-			{#if !isCollapsed}<div class="nav-header">Planeación</div>{/if}
-			<a
-				href={resolve('/planeacion')}
-				class="nav-item {activeView === 'planeacion' ? 'active' : ''}"
-				aria-current={activeView === 'planeacion' ? 'page' : undefined}
-				title="Planeación Anual"
-				on:click={() => navigate('planeacion')}
-			>
+			{:else}
 				<svg
 					viewBox="0 0 24 24"
 					fill="none"
 					stroke="currentColor"
-					stroke-width="2"
+					stroke-width="1.75"
 					stroke-linecap="round"
 					stroke-linejoin="round"
-					><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line
-						x1="16"
-						y1="2"
-						x2="16"
-						y2="6"
-					/><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg
+					aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg
 				>
-				{#if !isCollapsed}<span>Anual</span>{/if}
-			</a>
-			<a
-				href={resolve('/cumplimiento')}
-				class="nav-item {activeView === 'cumplimiento' ? 'active' : ''}"
-				aria-current={activeView === 'cumplimiento' ? 'page' : undefined}
-				title="Cumplimiento del programa"
-				on:click={() => navigate('cumplimiento')}
-			>
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></svg
-				>
-				{#if !isCollapsed}<span>Cumplimiento</span>{/if}
-			</a>
-
-			{#if !isCollapsed}<div class="nav-header">Captura</div>{/if}
-			{#each clientesCaptura as cliente (cliente.clave)}
-				<!-- resolve() se aplica a la ruta; el filtro por cliente va en la consulta. -->
-				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				<a
-					href={`${resolve('/captura')}?cliente=${cliente.clave}`}
-					class="nav-item {activeView === 'captura' && activeCliente === cliente.clave
-						? 'active'
-						: ''}"
-					aria-current={activeView === 'captura' && activeCliente === cliente.clave
-						? 'page'
-						: undefined}
-					title={`Captura: ${cliente.etiqueta}`}
-					on:click={() => navigate('captura', cliente.clave)}
-				>
-					<svg
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline
-							points="14 2 14 8 20 8"
-						/><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg
-					>
-					{#if !isCollapsed}<span>{cliente.etiqueta}</span>{/if}
-				</a>
-				<!-- eslint-enable svelte/no-navigation-without-resolve -->
-			{/each}
-
-			{#if !isCollapsed}<div class="nav-header">Reportes</div>{/if}
-			<a
-				href={resolve('/historial')}
-				class="nav-item {activeView === 'historial' ? 'active' : ''}"
-				aria-current={activeView === 'historial' ? 'page' : undefined}
-				title="Historial Global"
-				on:click={() => navigate('historial')}
-			>
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg
-				>
-				{#if !isCollapsed}<span>Historial Global</span>{/if}
-			</a>
-			<a
-				href={resolve('/catalogo')}
-				class="nav-item {activeView === 'catalogo' ? 'active' : ''}"
-				aria-current={activeView === 'catalogo' ? 'page' : undefined}
-				title="Catálogo de Contratos"
-				on:click={() => navigate('catalogo')}
-			>
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path
-						d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
-					/></svg
-				>
-				{#if !isCollapsed}<span>Catálogo</span>{/if}
-			</a>
-
-			<!-- «Personal» y «Mi Perfil» vuelven al menú con la autenticación; hoy no tienen contenido. -->
-		</nav>
-
-		<div class="sidebar-footer">
-			<button
-				class="btn-icon btn-contraer"
-				type="button"
-				title={isCollapsed ? 'Expandir el menú' : 'Contraer el menú'}
-				aria-label={isCollapsed ? 'Expandir el menú' : 'Contraer el menú'}
-				aria-expanded={!isCollapsed}
-				on:click={toggleCollapse}
-			>
-				<svg
-					class={isCollapsed ? 'rotate-180' : ''}
-					width="20"
-					height="20"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg
-				>
-			</button>
-			<button
-				class="btn-icon"
-				type="button"
-				title={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-				aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-				on:click={toggleTheme}
-			>
-				{#if theme === 'dark'}
-					<svg
-						width="20"
-						height="20"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line
-							x1="12"
-							y1="21"
-							x2="12"
-							y2="23"
-						/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line
-							x1="18.36"
-							y1="18.36"
-							x2="19.78"
-							y2="19.78"
-						/><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line
-							x1="4.22"
-							y1="19.78"
-							x2="5.64"
-							y2="18.36"
-						/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg
-					>
-				{:else}
-					<svg
-						width="20"
-						height="20"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg
-					>
-				{/if}
-			</button>
-		</div>
+			{/if}
+		</button>
 	</div>
 </aside>
 
 <style>
-	/* Estilos específicos del Sidebar traídos de tu CSS */
 	.sidebar {
-		background: var(--bg-soft);
-		border-right: 1px solid var(--border);
+		grid-area: sidebar;
 		display: flex;
 		flex-direction: column;
+		gap: 26px;
 		height: 100%;
-		overflow: hidden;
-		z-index: 50;
-	}
-	.sidebar-header-fixed {
-		padding: 20px 16px 10px 16px;
-		flex-shrink: 0;
-		background: var(--bg-soft);
-		z-index: 10;
-	}
-	.brand {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		height: 40px;
-		white-space: nowrap;
-		overflow: hidden;
-		margin-bottom: 12px;
-	}
-	.brand-logo {
-		width: 32px;
-		height: 32px;
-		border-radius: 8px;
-		background: var(--accent-grad);
-		display: grid;
-		place-items: center;
-		color: white;
-		flex-shrink: 0;
-		box-shadow: 0 0 15px var(--primary-soft);
-	}
-	.brand-title {
-		font-weight: 700;
-		font-size: 1.1rem;
-	}
-	.sidebar-content-scroll {
-		flex: 1;
-		overflow-y: auto;
+		padding: 26px 12px 16px;
 		overflow-x: hidden;
-		padding: 0 16px 20px 16px;
-		display: flex;
-		flex-direction: column;
-		gap: 16px;
+		overflow-y: auto;
+		z-index: 50;
+		background: var(--lienzo-riel);
+	}
+	.marca {
+		display: grid;
+		justify-items: start;
+		gap: 2px;
+		padding: 0 4px;
+		border-radius: var(--radio-control);
+		color: var(--tinta);
+	}
+	.marca-icsi {
+		font-family: var(--fuente-marca);
+		font-size: var(--texto-xl);
+		font-weight: 800;
+		line-height: 1.1;
+		letter-spacing: -0.01em;
+		color: var(--accion);
+	}
+	.marca-producto {
+		font-size: 0.625rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 	.nav {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
-		margin-top: 10px;
+		gap: 8px;
 	}
-	.nav-header {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--muted);
-		margin: 16px 0 8px 12px;
-		font-weight: 600;
-		white-space: nowrap;
-	}
+	/* Destino: icono sobre la etiqueta, centrados; el activo con fondo de selección suave. */
 	.nav-item {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		gap: 12px;
-		padding: 10px 14px;
-		border-radius: 10px;
-		color: var(--muted);
-		font-weight: 500;
-		transition: all 0.2s ease;
-		cursor: pointer;
-		white-space: nowrap;
+		gap: 7px;
+		padding: 12px 4px;
+		border-radius: var(--radio-control);
+		color: var(--tinta);
+		font-size: var(--texto-2xs);
+		font-weight: 600;
+		line-height: 1.3;
+		text-align: center;
+		transition:
+			background-color 0.12s var(--curva-salida),
+			color 0.12s var(--curva-salida);
 	}
 	.nav-item:hover {
-		background: var(--hover);
-		color: var(--text);
+		background: var(--superficie-hover);
 	}
-	.nav-item.active {
-		background: var(--primary-soft);
-		color: var(--primary);
+	.nav-item.active,
+	.nav-item.en-seccion {
+		background: var(--accion-suave);
+	}
+	.nav-item.active svg,
+	.nav-item.en-seccion svg {
+		color: var(--accion);
 	}
 	.nav-item svg {
-		flex-shrink: 0;
 		width: 20px;
 		height: 20px;
+		flex-shrink: 0;
+		color: var(--tinta-secundaria);
 	}
-	.sidebar-footer {
-		margin-top: auto;
-		display: flex;
-		gap: 8px;
-		border-top: 1px solid var(--border);
-		padding-top: 16px;
+	.captura-clientes {
+		display: grid;
+		gap: 4px;
+		padding: 0 4px;
 	}
-	.btn-icon {
-		width: 100%;
-		height: var(--alto-control);
+	.titulo-clientes {
+		margin: 0;
+		color: var(--tinta-tenue);
+		font-size: 0.625rem;
+	}
+	.captura-clientes ul {
+		display: grid;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.cliente {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		border-radius: 8px;
-		border: 1px solid var(--border);
+		min-height: 24px;
+		color: var(--accion);
+		font-size: var(--texto-2xs);
+		text-underline-offset: 3px;
+	}
+	.cliente:hover {
+		text-decoration: underline;
+	}
+	.cliente.active {
+		font-weight: 700;
+		text-decoration: underline;
+		text-decoration-thickness: 2px;
+	}
+	.sidebar-footer {
+		display: flex;
+		margin-top: auto;
+		padding: 0 4px;
+	}
+	.btn-icon {
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		border: none;
+		border-radius: var(--radio-control);
 		background: transparent;
-		color: var(--muted);
+		color: var(--tinta-tenue);
 		cursor: pointer;
-		transition: 0.2s;
+		transition:
+			background-color 0.12s var(--curva-salida),
+			color 0.12s var(--curva-salida);
 	}
 	.btn-icon:hover {
-		background: var(--hover);
-		color: var(--text);
-		border-color: var(--muted);
+		background: var(--superficie-hover);
+		color: var(--tinta);
 	}
-
-	/* Estado Colapsado */
-	.sidebar.collapsed .brand {
-		justify-content: center;
+	.btn-icon svg {
+		width: 18px;
+		height: 18px;
 	}
-	.sidebar.collapsed .sidebar-header-fixed {
-		padding: 20px 10px;
+	@media (pointer: coarse) {
+		.cliente {
+			min-height: 44px;
+		}
 	}
-	.sidebar.collapsed .sidebar-content-scroll {
-		padding: 0 10px 20px;
-	}
-	.sidebar.collapsed .nav-item {
-		justify-content: center;
-		padding: 10px;
-	}
-	.sidebar.collapsed .sidebar-footer {
-		flex-direction: column;
-	}
-	.rotate-180 {
-		transform: rotate(180deg);
-	}
-	/* En móvil el menú se abre y cierra desde la cabecera; contraerlo no aplica. */
+	/* Como panel móvil hay ancho de sobra: cada destino es una fila con icono y etiqueta. */
 	@media (max-width: 768px) {
-		.btn-contraer {
-			display: none;
+		.nav {
+			gap: 2px;
+		}
+		.nav-item {
+			flex-direction: row;
+			gap: 12px;
+			min-height: 44px;
+			padding: 8px 12px;
+			font-size: var(--texto-base);
+			text-align: left;
+		}
+		.cliente {
+			font-size: var(--texto-base);
+		}
+		.titulo-clientes {
+			font-size: var(--texto-xs);
 		}
 	}
 </style>

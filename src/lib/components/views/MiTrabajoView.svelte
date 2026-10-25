@@ -5,7 +5,7 @@
 	import { ETIQUETA_OCURRENCIA } from '$lib/dominio/captura';
 	import { fechaEnZona } from '$lib/dominio/fechas';
 	import type { ResumenMes, TrabajoPendiente } from '$lib/dominio/planeacion';
-	import { plural, textoMes } from '$lib/dominio/textos';
+	import { plural, textoMes, textoOracion } from '$lib/dominio/textos';
 
 	type Filtro = 'vencidos' | 'mes' | 'todos';
 
@@ -85,46 +85,59 @@
 <section class="card avance-mes" aria-labelledby="titulo-avance">
 	{#if programasVigentes === 0}
 		<h2 id="titulo-avance" class="view-heading">No hay programas anuales vigentes</h2>
-		<p class="view-note">
+		<p class="view-note sin-programa">
 			Sin programa no se sabe qué toca capturar este mes. Importe el programa anual desde el
 			catálogo del contrato.
 		</p>
 		<a class="boton primario" href={resolve('/catalogo')}>Ir al catálogo</a>
 	{:else}
-		<h2 id="titulo-avance" class="view-heading">
-			{textoMes(hoy, { inicial: true })}: {resumen.cumplidas} de {plural(
-				resumen.programadas,
-				'partida realizada',
-				'partidas realizadas'
-			)}
-		</h2>
-		<div class="barra-avance">
-			<progress
-				max={Math.max(resumen.programadas, 1)}
-				value={resumen.cumplidas}
-				aria-labelledby="titulo-avance"
-			></progress>
-			<span class="porcentaje">{porcentaje} %</span>
+		<div class="lectura">
+			<h2 id="titulo-avance" class="titulo-avance">
+				<span class="mes">{textoMes(hoy, { inicial: true })}:</span>
+				<span class="cifra realizadas">{resumen.cumplidas}</span> de {plural(
+					resumen.programadas,
+					'partida realizada',
+					'partidas realizadas'
+				)}
+			</h2>
+			<span class="porcentaje cifra">{porcentaje} %</span>
 		</div>
+		<progress
+			class="barra-avance"
+			max={Math.max(resumen.programadas, 1)}
+			value={resumen.cumplidas}
+			aria-labelledby="titulo-avance"
+		></progress>
 		<p class="view-note">
 			{plural(programasVigentes, 'programa anual vigente', 'programas anuales vigentes')}.
 		</p>
 	{/if}
-</section>
 
-<ul class="tarjetas" aria-label="Resumen del trabajo">
-	{#each tarjetas as tarjeta (tarjeta.clave)}
-		<li>
-			<a class="card tarjeta" class:peligro={tarjeta.peligro} href={tarjeta.destino}>
-				<span class="icono" aria-hidden="true">
-					{#if tarjeta.clave === 'vencidos'}!{:else if tarjeta.clave === 'mes'}●{:else if tarjeta.clave === 'borradores'}✎{:else}◉{/if}
-				</span>
-				<span class="valor">{tarjeta.valor}</span>
-				<span class="etiqueta">{tarjeta.etiqueta}</span>
-			</a>
-		</li>
-	{/each}
-</ul>
+	<ul class="tarjetas" aria-label="Resumen del trabajo">
+		{#each tarjetas as tarjeta (tarjeta.clave)}
+			<li>
+				<a class="tarjeta" class:peligro={tarjeta.peligro} href={tarjeta.destino}>
+					<span class="valor cifra">{tarjeta.valor}</span>
+					<span class="etiqueta">
+						{#if tarjeta.peligro}<svg
+								class="icono"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+								><path
+									d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
+								/><path d="M12 9v4M12 17h.01" /></svg
+							>{/if}{tarjeta.etiqueta}
+					</span>
+				</a>
+			</li>
+		{/each}
+	</ul>
+</section>
 
 <section id="siguiente-trabajo" class="card" aria-labelledby="titulo-siguiente" tabindex="-1">
 	<div class="cabecera-lista">
@@ -132,7 +145,7 @@
 			{ver ? TITULO_FILTRO[ver] : 'Siguiente trabajo'}
 		</h2>
 		{#if ver}<a class="enlace" href={`${resolve('/')}#siguiente-trabajo`}>Ver lo más urgente</a
-			>{/if}
+			>{:else}<span class="view-note">Lo vencido primero; después, lo del mes.</span>{/if}
 	</div>
 
 	{#if filtrados.length === 0}
@@ -140,7 +153,17 @@
 			<!-- Con un filtro vacío no se dice «al día»: puede haber trabajo de otro tipo. -->
 			<p class="view-note">No hay {TITULO_FILTRO[ver].toLowerCase()} por ahora.</p>
 		{:else if programasVigentes > 0}
-			<p class="al-dia"><span aria-hidden="true">✓</span> El trabajo programado está al día.</p>
+			<p class="al-dia">
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg
+				> El trabajo programado está al día.
+			</p>
 			<div class="acciones-vacio">
 				<a class="boton primario" href={resolve('/captura')}>Ir a Capturar</a>
 				{#if borradores > 0}
@@ -158,10 +181,23 @@
 				<li class="elemento">
 					<div class="datos">
 						<span class="estado estado-{t.estado}">
-							<span aria-hidden="true">{t.estado === 'vencido' ? '!' : '●'}</span>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+								><circle cx="12" cy="12" r="9" />{#if t.estado === 'vencido'}<path
+										d="M12 8v5M12 16.5h.01"
+									/>{:else}<path d="M12 7v5l3 2" />{/if}</svg
+							>
 							{t.estado === 'vencido' ? 'Vencido' : 'Pendiente'} · {textoMes(t.mes)}
 						</span>
-						<span class="partida"><strong>Partida {t.numero}</strong> {t.actividad}</span>
+						<span class="partida"
+							><strong>Partida {t.numero}</strong> {textoOracion(t.actividad)}</span
+						>
 						<span class="view-note">{t.sitio}{t.faltan > 1 ? ` · faltan ${t.faltan}` : ''}</span>
 					</div>
 					<div class="acciones">
@@ -173,9 +209,10 @@
 								title={borrador.titulo}>Continuar borrador{detalle ? ` (${detalle})` : ''}</a
 							>
 						{/each}
+						<!-- Una columna de botones rellenos competiría consigo misma: la acción de fila es
+						     secundaria y solo «Continuar borrador» (retomar trabajo empezado) se destaca. -->
 						<a
-							class="boton"
-							class:primario={t.borradores.length === 0}
+							class="boton contorno"
 							href={captura(t)}
 							aria-label={`Capturar partida ${t.numero} de ${textoMes(t.mes)}`}>Capturar</a
 						>
@@ -195,101 +232,136 @@
 <!-- eslint-enable svelte/no-navigation-without-resolve -->
 
 <style>
-	.avance-mes .view-heading {
-		margin-bottom: 8px;
-	}
-	.barra-avance {
+	/* Lectura del mes: la cifra realizada manda; los contadores van debajo, en la misma pieza. */
+	.lectura {
 		display: flex;
-		align-items: center;
-		gap: 12px;
-		margin-bottom: 8px;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 16px;
 	}
-	.barra-avance progress {
-		flex: 1;
-		height: 14px;
-		accent-color: var(--primary);
+	.titulo-avance {
+		margin: 0;
+		font-size: var(--texto-md);
+		font-weight: 500;
+		color: var(--tinta-secundaria);
+	}
+	.mes {
+		color: var(--tinta);
+		font-weight: 600;
+	}
+	.realizadas {
+		font-size: var(--texto-xl);
+		font-weight: 700;
+		color: var(--tinta);
+		letter-spacing: -0.02em;
 	}
 	.porcentaje {
+		font-size: var(--texto-md);
 		font-weight: 600;
+		white-space: nowrap;
+	}
+	.barra-avance {
+		appearance: none;
+		display: block;
+		width: 100%;
+		height: 6px;
+		margin: 10px 0 8px;
+		border: none;
+		border-radius: 3px;
+		overflow: hidden;
+		background: var(--neutro-fondo);
+		color: var(--accion);
+	}
+	.barra-avance::-webkit-progress-bar {
+		background: var(--neutro-fondo);
+	}
+	.barra-avance::-webkit-progress-value {
+		background: var(--accion);
+	}
+	.barra-avance::-moz-progress-bar {
+		background: var(--accion);
+	}
+	.sin-programa {
+		margin-bottom: 16px;
 	}
 	.tarjetas {
 		display: grid;
-		gap: 16px;
-		grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 4px;
 		list-style: none;
-		margin: 0 0 20px;
-		padding: 0;
+		margin: 16px -12px -8px;
+		padding: 12px 0 0;
+		border-top: 1px solid var(--linea);
 	}
 	.tarjeta {
 		display: grid;
-		grid-template-columns: auto 1fr;
-		grid-template-areas:
-			'icono valor'
-			'icono etiqueta';
-		gap: 0 12px;
-		align-items: center;
-		margin: 0;
-		color: var(--text);
-		border-left: 4px solid var(--border);
+		gap: 2px;
+		padding: 8px 12px;
+		border-radius: var(--radio-control);
+		color: var(--tinta);
+		transition: background-color 0.12s var(--curva-salida);
 	}
 	.tarjeta:hover {
-		border-color: var(--primary);
-	}
-	.tarjeta.peligro {
-		border-left-color: var(--danger);
-		background: var(--danger-bg);
-	}
-	.icono {
-		grid-area: icono;
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		border-radius: 50%;
-		background: var(--neutral-bg);
-		font-weight: 700;
-	}
-	.peligro .icono {
-		background: var(--danger);
-		color: var(--surface);
+		background: var(--superficie-hover);
 	}
 	.valor {
-		grid-area: valor;
-		font-size: 1.6rem;
-		font-weight: 800;
-		line-height: 1.1;
+		font-size: var(--texto-xl);
+		font-weight: 600;
+		line-height: 1.15;
+		letter-spacing: -0.02em;
 	}
 	.etiqueta {
-		grid-area: etiqueta;
-		color: var(--muted);
-		font-size: 0.9rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
+	}
+	.icono {
+		width: 14px;
+		height: 14px;
+		flex-shrink: 0;
 	}
 	.peligro .valor,
 	.peligro .etiqueta {
-		color: var(--danger);
+		color: var(--peligro);
+	}
+	.peligro .etiqueta {
+		font-weight: 600;
+	}
+	.peligro:hover {
+		background: var(--peligro-fondo);
 	}
 	.cabecera-lista {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px 16px;
+		gap: 4px 16px;
 		align-items: baseline;
 		justify-content: space-between;
 	}
+	.cabecera-lista .view-heading {
+		margin-bottom: 8px;
+	}
 	.lista-trabajo {
 		display: grid;
-		gap: 0;
 		list-style: none;
-		margin: 0;
+		margin: 0 -12px;
 		padding: 0;
 	}
 	.elemento {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px 16px;
+		gap: 8px 24px;
 		align-items: center;
 		justify-content: space-between;
-		padding: 12px 0;
-		border-top: 1px solid var(--border);
+		padding: 12px;
+		border-top: 1px solid var(--linea);
+	}
+	.elemento:first-child {
+		border-top-color: transparent;
+	}
+	.elemento:hover {
+		background: var(--superficie-alta);
 	}
 	.datos {
 		display: grid;
@@ -299,15 +371,20 @@
 	}
 	.estado {
 		display: inline-flex;
+		align-items: center;
 		gap: 6px;
-		font-size: 0.85rem;
+		font-size: var(--texto-sm);
 		font-weight: 600;
 	}
+	.estado svg {
+		width: 14px;
+		height: 14px;
+	}
 	.estado-vencido {
-		color: var(--danger);
+		color: var(--peligro);
 	}
 	.estado-pendiente {
-		color: var(--warning);
+		color: var(--info);
 	}
 	.acciones {
 		display: flex;
@@ -315,8 +392,15 @@
 		gap: 8px;
 	}
 	.al-dia {
-		color: var(--success);
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		color: var(--exito);
 		font-weight: 600;
+	}
+	.al-dia svg {
+		width: 16px;
+		height: 16px;
 	}
 	.acciones-vacio {
 		display: flex;
@@ -325,5 +409,11 @@
 	}
 	.restantes {
 		margin: 12px 0 0;
+		color: var(--tinta-tenue);
+	}
+	@media (max-width: 768px) {
+		.tarjetas {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
 	}
 </style>

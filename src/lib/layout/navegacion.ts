@@ -23,13 +23,25 @@ export const routesByView = {
 
 export const titulosPorVista: Record<VistaId, string> = {
 	dashboard: 'Mi trabajo',
-	planeacion: 'Planeación Anual',
+	planeacion: 'Programa anual',
 	cumplimiento: 'Cumplimiento del programa',
-	captura: 'Captura de Reportes',
-	historial: 'Historial Global',
-	catalogo: 'Catálogo de Contratos',
+	captura: 'Capturar reporte',
+	historial: 'Historial de reportes',
+	catalogo: 'Catálogo de contratos',
 	personal: 'Administración de Personal',
 	perfil: 'Mi Perfil'
+};
+
+/** Ceja del encabezado de cada vista: la ruta dentro del producto. */
+const cejasPorVista: Record<VistaId, string> = {
+	dashboard: 'Inicio',
+	planeacion: 'Programa / Anual',
+	cumplimiento: 'Programa / Cumplimiento',
+	captura: 'Capturar / Nuevo reporte',
+	historial: 'Consulta / Historial',
+	catalogo: 'Consulta / Catálogo',
+	personal: 'Administración',
+	perfil: 'Cuenta'
 };
 
 /** Accesos del submenú Captura; todos llevan al mismo flujo filtrado por `?cliente=`. */
@@ -65,5 +77,32 @@ export function tituloDePagina(
 	if (vista === null) return 'ICSI Reportes';
 	if (pathname.split('/')[1] === 'reportes') return tituloReporte?.trim() || 'Reporte';
 	const accesoCliente = vista === 'captura' ? clienteCaptura(cliente) : null;
-	return accesoCliente ? `Captura: ${accesoCliente.etiqueta}` : titulosPorVista[vista];
+	return accesoCliente ? `Capturar reporte: ${accesoCliente.etiqueta}` : titulosPorVista[vista];
+}
+
+export type EncabezadoPagina = { ceja: string | null; titulo: string };
+
+/**
+ * Encabezado que el layout pone sobre la página. El editor y el programa traen el suyo (con estado
+ * y acciones) y devuelven null; el contrato y la partida del catálogo llevan migas en lugar de ceja.
+ */
+export function encabezadoDePagina(
+	pathname: string,
+	cliente: string | null = null,
+	datos: { contrato?: string | null; partida?: string | null } = {}
+): EncabezadoPagina | null {
+	const vista = vistaDesdeRuta(pathname);
+	const [, primero, segundo] = pathname.split('/');
+	if (vista === null || primero === 'reportes' || vista === 'planeacion') return null;
+	if (vista === 'catalogo' && segundo === 'contratos') {
+		return { ceja: null, titulo: datos.contrato ? `Contrato ${datos.contrato}` : 'Contrato' };
+	}
+	if (vista === 'catalogo' && segundo === 'partidas') {
+		return { ceja: null, titulo: datos.partida ? `Partida ${datos.partida}` : 'Nueva partida' };
+	}
+	const accesoCliente = vista === 'captura' ? clienteCaptura(cliente) : null;
+	return {
+		ceja: accesoCliente ? `Capturar / ${accesoCliente.etiqueta}` : cejasPorVista[vista],
+		titulo: titulosPorVista[vista]
+	};
 }

@@ -113,7 +113,7 @@
 	}
 	.titulo-semana {
 		margin: 0;
-		font-size: 1rem;
+		font-size: var(--texto-md);
 	}
 	.numero {
 		font-weight: 700;

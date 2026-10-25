@@ -341,7 +341,23 @@
 			</ul>
 			{#if !soloLectura}
 				<div class="agregar">
-					<label class="boton cargar-fotos">
+					<label class="cargar-fotos">
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.75"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							><path d="M16 5h6M19 2v6" /><path
+								d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"
+							/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /><circle
+								cx="9"
+								cy="9"
+								r="2"
+							/></svg
+						>
 						Agregar fotos{grupo.etiqueta ? ` (${grupo.etiqueta})` : ''}
 						<input
 							class="sr-only"
@@ -351,7 +367,11 @@
 							on:change={(e) => seleccionar(e, grupo.momento)}
 						/>
 					</label>
-					<span class="pista">o arrástrelas aquí</span>
+					<span class="pista"
+						>Opcional · o arrástrelas aquí.{grupo.fotos.length
+							? ''
+							: ' No hay fotos adjuntas.'}</span
+					>
 				</div>
 			{/if}
 		</div>
@@ -406,36 +426,61 @@
 	}
 	.etiqueta-espacio {
 		margin: 0 0 6px;
-		font-size: 0.85rem;
-		letter-spacing: 0.04em;
+		font-size: var(--texto-sm);
+		font-weight: 600;
+		color: var(--tinta-secundaria);
 	}
+	/* «Agregar fotos» como acción en texto con icono; el campo de archivo queda oculto. */
 	.cargar-fotos {
 		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		min-height: var(--objetivo-min);
+		border-radius: var(--radio-control);
+		color: var(--accion);
+		font-weight: 600;
 		cursor: pointer;
 	}
+	.cargar-fotos svg {
+		width: 20px;
+		height: 20px;
+		color: var(--tinta-secundaria);
+	}
+	.cargar-fotos:hover {
+		color: var(--accion-hover);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.cargar-fotos:focus-within {
+		outline: 2px solid var(--foco);
+		outline-offset: 2px;
+	}
+	/* Zona punteada: invita a soltar archivos y resalta en el acento al arrastrar. */
 	.zona-soltar {
-		border: 2px dashed transparent;
-		border-radius: 8px;
-		padding: 4px;
-		transition: border-color 0.15s;
+		border: 1px dashed var(--linea-fuerte);
+		border-radius: var(--radio-control);
+		padding: 12px 14px;
+		transition:
+			border-color 0.15s var(--curva-salida),
+			background-color 0.15s var(--curva-salida);
 	}
 	.zona-soltar:hover {
-		border-color: var(--border);
+		border-color: var(--borde-campo);
 	}
 	.zona-soltar.arrastrando,
 	.zona-soltar.insertar-final {
-		border-color: var(--primary);
-		background: var(--primary-soft);
+		border-color: var(--accion);
+		background: var(--accion-suave);
 	}
 	.agregar {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 4px 12px;
 		align-items: center;
 	}
 	.pista {
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 	.progreso {
 		display: flex;
@@ -443,10 +488,10 @@
 		gap: 8px;
 		align-items: center;
 		margin-top: 8px;
-		font-size: 0.9rem;
+		font-size: var(--texto-sm);
 	}
 	.progreso progress {
 		flex: 1 1 160px;
-		accent-color: var(--primary);
+		accent-color: var(--accion);
 	}
 </style>

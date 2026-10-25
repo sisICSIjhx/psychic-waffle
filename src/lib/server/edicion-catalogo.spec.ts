@@ -7,7 +7,7 @@ let repos: Repositorios;
 
 beforeAll(async () => {
 	repos = crearRepositorios(await crearClientePglite());
-}, 60_000);
+});
 
 afterAll(() => repos.cerrar());
 

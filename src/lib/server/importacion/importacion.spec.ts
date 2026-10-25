@@ -146,7 +146,7 @@ describe('importación sobre la base de datos', () => {
 		await repos.catalogo.asociarSitio(contrato.id, sitio.id);
 		contratoId = contrato.id;
 		sitioId = sitio.id;
-	}, 60_000);
+	});
 
 	afterAll(() => repos.cerrar());
 
@@ -305,7 +305,7 @@ describe('correcciones de la revisión de la fase 4', () => {
 		await repos.catalogo.asociarSitio(contrato.id, sitio.id);
 		contratoId = contrato.id;
 		sitioId = sitio.id;
-	}, 60_000);
+	});
 
 	afterAll(() => repos.cerrar());
 

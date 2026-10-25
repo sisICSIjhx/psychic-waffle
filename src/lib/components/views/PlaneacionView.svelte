@@ -1,7 +1,9 @@
 <!-- Programa anual: lo programado (P) y realizado (R) de cada partida por mes con su estado de
      ejecución y documental, ajustes (reprogramar y no ejecutado), pendientes vencidos y acceso a la
-     captura. Vista anual por omisión, mensual y semanal. -->
+     captura. Vista anual por omisión, mensual y semanal. En la anual, elegir una celda abre un panel
+     con sus datos y acciones (capturar o continuar, ajustar y registrar un realizado externo). -->
 <script lang="ts">
+	import { onMount, tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -9,21 +11,20 @@
 	import { ETIQUETA_PERIODICIDAD } from '$lib/dominio/captura';
 	import {
 		anotacionesCelda,
+		CODIGO_EJECUCION,
+		codigoDocumental,
 		detalleCelda,
 		ejecutado,
-		ETIQUETA_DOCUMENTAL,
 		ETIQUETA_EJECUCION,
 		estadoDocumental,
 		estadoEjecucion,
 		faltan,
-		marcaDocumental,
 		SIMBOLO_EJECUCION,
 		textoDocumental,
 		type EjecucionDelMes,
-		type EstadoDocumental,
 		type EstadoEjecucion
 	} from '$lib/dominio/cumplimiento';
-	import { plural, textoMes } from '$lib/dominio/textos';
+	import { plural, textoMes, textoOracion } from '$lib/dominio/textos';
 	import type {
 		Ajuste,
 		AvancePrograma,
@@ -38,6 +39,7 @@
 	import VistaMensual from '$lib/components/planeacion/VistaMensual.svelte';
 	import VistaSemanal from '$lib/components/planeacion/VistaSemanal.svelte';
 	import { llamarAccion } from '$lib/components/reportes/acciones';
+	import EncabezadoPagina from '$lib/components/ui/EncabezadoPagina.svelte';
 	import { notificaciones } from '$lib/components/ui/notificaciones';
 
 	type Partida = AvancePrograma['partidas'][number];
@@ -69,16 +71,13 @@
 		'no_ejecutado',
 		'extra'
 	];
-	const LEYENDA_DOCUMENTAL: Exclude<EstadoDocumental, 'ninguno'>[] = [
-		'con_reporte',
-		'reporte_en_borrador',
-		'sin_reporte'
+	/** Códigos del documento en la matriz (codigoDocumental). */
+	const LEYENDA_DOCUMENTAL = [
+		{ codigo: 'CR', texto: 'Con reporte (final)' },
+		{ codigo: 'B', texto: 'Borrador' },
+		{ codigo: 'ER', texto: 'En revisión' },
+		{ codigo: 'S', texto: 'Sin reporte' }
 	];
-	const MARCA_LEYENDA: Record<Exclude<EstadoDocumental, 'ninguno'>, string> = {
-		con_reporte: 'Con rep.',
-		reporte_en_borrador: 'Borrador / En rev.',
-		sin_reporte: 'Sin rep.'
-	};
 	const VISTAS = [
 		{ valor: 'anual', texto: 'Anual' },
 		{ valor: 'mensual', texto: 'Mensual' },
@@ -195,72 +194,89 @@
 		};
 
 	$: avisoGeneral = (form?.accion ? null : form) as { mensaje?: string; error?: string } | null;
+
+	/** «Mayo–Septiembre 2026» o, si cambia el año, «Noviembre 2025–Enero 2026». */
+	function rangoDeMeses(desde: string, hasta: string): string {
+		if (desde === hasta) return textoMes(desde, { inicial: true });
+		const mismoAnio = desde.slice(0, 4) === hasta.slice(0, 4);
+		const inicio = textoMes(desde, { inicial: true });
+		return `${mismoAnio ? inicio.split(' ')[0] : inicio}–${textoMes(hasta, { inicial: true })}`;
+	}
+
+	// Celda elegida en la matriz: el panel lateral reúne sus datos y acciones.
+	let seleccion: { partidaId: string; mes: string } | null = null;
+	$: elegida = (() => {
+		if (!seleccion) return null;
+		const partida = partidas.find((p) => p.id === seleccion!.partidaId);
+		const celda = partida?.celdas.find((c) => c.mes === seleccion!.mes);
+		return partida && celda ? { partida, celda } : null;
+	})();
+	let panel: HTMLElement | undefined;
+
+	async function seleccionar(partida: Partida, celda: CeldaPrograma) {
+		const misma = seleccion?.partidaId === partida.id && seleccion.mes === celda.mes;
+		seleccion = misma ? null : { partidaId: partida.id, mes: celda.mes };
+		if (misma) return;
+		await tick();
+		panel?.focus();
+	}
+
+	async function cerrarPanel() {
+		const anterior = seleccion;
+		seleccion = null;
+		await tick();
+		if (anterior) document.getElementById(`celda-${anterior.partidaId}-${anterior.mes}`)?.focus();
+	}
+
+	/** La matriz se desplaza a lo ancho con la partida fija; el pie dice hacia dónde hay más meses. */
+	let contenedorTabla: HTMLDivElement | undefined;
+	let desborda = false;
+	let alFinal = false;
+	function medirTabla() {
+		if (!contenedorTabla) return;
+		const { scrollLeft, scrollWidth, clientWidth } = contenedorTabla;
+		desborda = scrollWidth > clientWidth + 1;
+		alFinal = scrollLeft + clientWidth >= scrollWidth - 1;
+	}
+	function desplazarTabla() {
+		contenedorTabla?.scrollTo({
+			left: alFinal ? 0 : contenedorTabla.scrollWidth,
+			behavior: 'smooth'
+		});
+	}
+	onMount(() => {
+		const observador = new ResizeObserver(medirTabla);
+		if (contenedorTabla) observador.observe(contenedorTabla);
+		return () => observador.disconnect();
+	});
+	$: if (contenedorTabla && (elegida || !elegida)) tick().then(medirTabla);
+
+	// Registro de un realizado hecho fuera del sistema; el panel lo abre con la partida y el mes elegidos.
+	let registroAbierto = false;
+	let manualPartida = '';
+	let manualMes = '';
+	async function registrarExterno(partidaId?: string, mes?: string) {
+		manualPartida = partidaId ?? partidas[0]?.id ?? '';
+		manualMes = mes ?? meses.find((m) => m.slice(0, 7) === hoy.slice(0, 7)) ?? meses[0] ?? '';
+		registroAbierto = true;
+		await tick();
+		document.getElementById('manual-cantidad')?.focus();
+	}
 </script>
 
-<section class="card" aria-labelledby="titulo-planeacion">
-	<h2 id="titulo-planeacion" class="view-heading">Programa anual de mantenimiento</h2>
-	{#if contratos.length === 0}
-		<p class="view-note">
-			No hay contratos. Regístrelos e importe su programa en el
-			<a class="enlace" href={resolve('/catalogo')}>catálogo</a>.
-		</p>
-	{:else}
-		<form method="GET" class="filtros">
-			<div class="form-group">
-				<label for="contrato">Contrato</label>
-				<select id="contrato" name="contrato" on:change={enviarAlCambiar}>
-					{#each contratos as c (c.id)}
-						<option value={c.id} selected={c.id === contrato?.id}
-							>{c.cliente?.nombre ?? ''} · {c.numero}</option
-						>
-					{/each}
-				</select>
-			</div>
-			<div class="form-group">
-				<label for="sitio">Sitio</label>
-				<select id="sitio" name="sitio" on:change={enviarAlCambiar}>
-					{#each sitios as s (s.id)}
-						<option value={s.id} selected={s.id === sitio?.id}>{s.clave} {s.nombre}</option>
-					{/each}
-				</select>
-			</div>
-			{#if programas.length > 1}
-				<div class="form-group">
-					<label for="programa">Programa</label>
-					<select id="programa" name="programa" on:change={enviarAlCambiar}>
-						{#each programas as p (p.id)}
-							<option value={p.id} selected={p.id === programa?.id}
-								>{p.periodoInicio} a {p.periodoFin}</option
-							>
-						{/each}
-					</select>
-				</div>
-			{/if}
-			<div class="form-group">
-				<label for="distribucion">Distribución</label>
-				<select id="distribucion" name="distribucion" on:change={enviarAlCambiar}>
-					<option value="">Todas</option>
-					<option value="produccion" selected={filtro.distribucion === 'produccion'}
-						>Producción</option
-					>
-					<option value="mantenimiento" selected={filtro.distribucion === 'mantenimiento'}
-						>Mantenimiento</option
-					>
-				</select>
-			</div>
-			<div class="form-group">
-				<label for="periodicidad">Periodicidad</label>
-				<select id="periodicidad" name="periodicidad" on:change={enviarAlCambiar}>
-					<option value="">Todas</option>
-					{#each Object.entries(ETIQUETA_PERIODICIDAD) as [valor, etiqueta] (valor)}
-						<option value={valor} selected={filtro.periodicidad === valor}>{etiqueta}</option>
-					{/each}
-				</select>
-			</div>
-			{#if vista !== 'anual'}<input type="hidden" name="vista" value={vista} />{/if}
-			{#if vista !== 'anual' && mesVista}<input type="hidden" name="mes" value={mesVista} />{/if}
-			<noscript><button class="boton" type="submit">Filtrar</button></noscript>
-		</form>
+<!-- Esc cierra el panel de la celda (si no hay un diálogo abierto encima). -->
+<svelte:window
+	on:keydown={(e) => e.key === 'Escape' && elegida && !dialogoAbierto && cerrarPanel()}
+/>
+
+<EncabezadoPagina
+	ceja={`Programa / ${VISTAS.find((v) => v.valor === vista)?.texto ?? 'Anual'}`}
+	titulo="Programa anual"
+	descripcion={programa
+		? `Ciclo ${rangoDeMeses(programa.periodoInicio, programa.periodoFin)}`
+		: null}
+>
+	<svelte:fragment slot="acciones">
 		{#if programa}
 			<nav class="selector-vista" aria-label="Vista de la planeación">
 				<!-- enlaceVista aplica resolve() a la ruta; los filtros van en la consulta. -->
@@ -275,8 +291,72 @@
 				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			</nav>
 		{/if}
-	{/if}
-</section>
+	</svelte:fragment>
+</EncabezadoPagina>
+
+{#if contratos.length === 0}
+	<p class="view-note">
+		No hay contratos. Regístrelos e importe su programa en el
+		<a class="enlace" href={resolve('/catalogo')}>catálogo</a>.
+	</p>
+{:else}
+	<form method="GET" class="filtros" aria-label="Programa y filtros">
+		<div class="form-group">
+			<label for="contrato">Contrato</label>
+			<select id="contrato" name="contrato" on:change={enviarAlCambiar}>
+				{#each contratos as c (c.id)}
+					<option value={c.id} selected={c.id === contrato?.id}
+						>{c.cliente?.nombre ?? ''} · {c.numero}</option
+					>
+				{/each}
+			</select>
+		</div>
+		<div class="form-group">
+			<label for="sitio">Sitio</label>
+			<select id="sitio" name="sitio" on:change={enviarAlCambiar}>
+				{#each sitios as s (s.id)}
+					<option value={s.id} selected={s.id === sitio?.id}>{s.clave} · {s.nombre}</option>
+				{/each}
+			</select>
+		</div>
+		{#if programas.length > 1}
+			<div class="form-group">
+				<label for="programa">Programa</label>
+				<select id="programa" name="programa" on:change={enviarAlCambiar}>
+					{#each programas as p (p.id)}
+						<option value={p.id} selected={p.id === programa?.id}
+							>{p.periodoInicio} a {p.periodoFin}</option
+						>
+					{/each}
+				</select>
+			</div>
+		{/if}
+		<div class="form-group">
+			<label for="distribucion">Distribución</label>
+			<select id="distribucion" name="distribucion" on:change={enviarAlCambiar}>
+				<option value="">Todas</option>
+				<option value="produccion" selected={filtro.distribucion === 'produccion'}
+					>Producción</option
+				>
+				<option value="mantenimiento" selected={filtro.distribucion === 'mantenimiento'}
+					>Mantenimiento</option
+				>
+			</select>
+		</div>
+		<div class="form-group">
+			<label for="periodicidad">Periodicidad</label>
+			<select id="periodicidad" name="periodicidad" on:change={enviarAlCambiar}>
+				<option value="">Todas</option>
+				{#each Object.entries(ETIQUETA_PERIODICIDAD) as [valor, etiqueta] (valor)}
+					<option value={valor} selected={filtro.periodicidad === valor}>{etiqueta}</option>
+				{/each}
+			</select>
+		</div>
+		{#if vista !== 'anual'}<input type="hidden" name="vista" value={vista} />{/if}
+		{#if vista !== 'anual' && mesVista}<input type="hidden" name="mes" value={mesVista} />{/if}
+		<noscript><button class="boton" type="submit">Filtrar</button></noscript>
+	</form>
+{/if}
 
 {#if contrato && sitio && !programa}
 	<p class="aviso aviso-alerta">
@@ -288,10 +368,28 @@
 
 {#if programa}
 	{#if vencidos.length && vista === 'anual'}
-		<section class="card">
-			<!-- Con muchos vencidos el panel inicia cerrado para no ocultar la matriz. -->
-			<details open={vencidos.length <= 10}>
-				<summary class="view-heading">Pendientes vencidos ({vencidos.length})</summary>
+		<details class="vencidos">
+			<summary>
+				<span class="texto-vencidos"
+					><span aria-hidden="true">!</span>
+					{plural(vencidos.length, 'vencimiento')} · {rangoDeMeses(
+						vencidosPorMes[0].mes,
+						vencidosPorMes[vencidosPorMes.length - 1].mes
+					)}</span
+				>
+				<span class="ver-pendientes"
+					>Ver pendientes <svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg
+					></span
+				>
+			</summary>
+			<div class="lista-vencidos-meses">
 				{#each vencidosPorMes as grupo (grupo.mes)}
 					<h3 class="mes-vencido">
 						{textoMes(grupo.mes, { inicial: true })} ({grupo.pendientes.length})
@@ -299,8 +397,10 @@
 					<ul class="lista-vencidos">
 						{#each grupo.pendientes as v (v.partidaId)}
 							<li>
-								Partida {v.numero}.- {v.actividad}
-								{v.faltan > 1 ? `(faltan ${v.faltan})` : ''}
+								<span
+									>Partida {v.numero}.- {textoOracion(v.actividad)}
+									{v.faltan > 1 ? `(faltan ${v.faltan})` : ''}</span
+								>
 								<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
 								<!-- eslint-disable svelte/no-navigation-without-resolve -->
 								<a
@@ -319,8 +419,8 @@
 						{/each}
 					</ul>
 				{/each}
-			</details>
-		</section>
+			</div>
+		</details>
 	{/if}
 
 	{#if vista === 'mensual' && mesVista}
@@ -350,181 +450,311 @@
 			/>
 		</section>
 	{:else}
-		<section class="card" aria-labelledby="titulo-matriz">
-			<h2 id="titulo-matriz" class="view-heading">
-				Programado (P) y realizado (R) · {textoMes(programa.periodoInicio)} a {textoMes(
-					programa.periodoFin
-				)}
-			</h2>
-			<p class="view-note">
-				{partidas.length} de {totalPartidas} partidas. Elija una celda con algo pendiente para capturar
-				su reporte o ajustarla.
-			</p>
-			<div class="leyenda" aria-label="Leyenda de la matriz" role="group">
-				<p class="eje">Ejecución:</p>
-				<ul>
-					{#each LEYENDA_EJECUCION as estado (estado)}
-						<li>
-							<span class="simbolo muestra {estado}" aria-hidden="true"
-								>{SIMBOLO_EJECUCION[estado]}</span
+		<div class="espacio-programa" class:con-panel={!!elegida}>
+			<section class="matriz-programa" aria-labelledby="titulo-matriz">
+				<div class="cabecera-matriz">
+					<h2 id="titulo-matriz" class="titulo-matriz">
+						{partidas.length} de {plural(totalPartidas, 'partida')} · Programado y realizado
+					</h2>
+					<p class="estado-seleccion" aria-live="polite">
+						{elegida
+							? `Selección: Partida ${elegida.partida.numero} / ${textoMes(elegida.celda.mes, { inicial: true, corto: true })}`
+							: 'Elija una celda para ver sus acciones'}
+					</p>
+				</div>
+				<div class="leyenda" aria-label="Leyenda de la matriz" role="group">
+					<p class="clave-leyenda">
+						P = programado · R = realizado · Cada celda separa cantidades, ejecución y documento.
+					</p>
+					<p>
+						<span class="eje">Ejecución:</span>
+						{#each LEYENDA_EJECUCION.slice(0, 4) as estado, i (estado)}{i ? ' · ' : ''}<span
+								class="muestra {estado}"
+								>{SIMBOLO_EJECUCION[estado]} {CODIGO_EJECUCION[estado]}</span
 							>
-							{ETIQUETA_EJECUCION[estado]}
-						</li>
-					{/each}
-				</ul>
-				<p class="eje">Documental:</p>
-				<ul>
-					{#each LEYENDA_DOCUMENTAL as estado (estado)}
-						<li>
-							<span class="marca {estado}" aria-hidden="true">{MARCA_LEYENDA[estado]}</span>
-							{ETIQUETA_DOCUMENTAL[estado]}{estado === 'con_reporte' ? ' (estado final)' : ''}
-						</li>
-					{/each}
-				</ul>
-			</div>
-			<div class="tabla-desplazable">
-				<table class="matriz">
-					<thead>
-						<tr>
-							<th scope="col" class="columna-partida">Partida</th>
-							{#each meses as mes (mes)}
-								<th scope="col" class:mes-actual={mes.slice(0, 7) === hoy.slice(0, 7)}
-									>{textoMes(mes, { inicial: true, corto: true })}</th
-								>
-							{/each}
-							<th scope="col">Total</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each partidas as p (p.id)}
+							{ETIQUETA_EJECUCION[estado]}{/each}
+					</p>
+					<p>
+						<span class="eje">Otros estados:</span>
+						{#each LEYENDA_EJECUCION.slice(4) as estado, i (estado)}{i ? ' · ' : ''}<span
+								class="muestra {estado}"
+								>{SIMBOLO_EJECUCION[estado]} {CODIGO_EJECUCION[estado]}</span
+							>
+							{ETIQUETA_EJECUCION[estado]}{/each}
+					</p>
+					<p>
+						<span class="eje">Documento:</span>
+						{#each LEYENDA_DOCUMENTAL as marca, i (marca.codigo)}{i ? ' · ' : ''}<span
+								class="muestra-doc">{marca.codigo}</span
+							>
+							{marca.texto}{/each}
+					</p>
+				</div>
+				<div
+					class="tabla-desplazable"
+					bind:this={contenedorTabla}
+					on:scroll={medirTabla}
+					role="region"
+					aria-labelledby="titulo-matriz"
+					tabindex="-1"
+				>
+					<table class="matriz">
+						<thead>
 							<tr>
-								<th scope="row" class="columna-partida">
-									<span class="numero">{p.numero}</span>
-									{p.actividad}
-									<span class="view-note">{ETIQUETA_PERIODICIDAD[p.periodicidad]}</span>
-								</th>
-								{#each p.celdas as celda (celda.mes)}
-									{@const estado = estadoEjecucion(celda, hoy)}
-									{@const documental = estadoDocumental(celda)}
-									{@const falta = faltan(celda)}
-									<td class="celda {estado}" title={ETIQUETA_EJECUCION[estado]}>
-										{#if estado !== 'sin_programa' || celda.ajustes.length}
-											<span class="sr-only">{nombreCelda(p, celda)}</span>
-											<span aria-hidden="true">
-												<span class="estado-corto"
-													><span class="simbolo">{SIMBOLO_EJECUCION[estado]}</span>
-													{ETIQUETA_EJECUCION[estado]}</span
-												>
-												<span class="pr">P {celda.programado ?? '—'}</span>
-												{#each anotacionesCelda(celda) as nota (nota)}<span class="anotacion"
-														>{nota}</span
-													>{/each}
-												<!-- R incluye reportes emitidos, marcas del Excel y realizados manuales. -->
-												<span class="pr">R {celda.realizado}</span>
-												{#if celda.realizadoSinReporte > 0}<span
-														class="anotacion"
-														title="Marcas del Excel o realizados registrados a mano"
-														>{celda.realizadoSinReporte} sin reporte</span
-													>{/if}
-												{#if documental !== 'ninguno'}
-													<span class="marca {documental}">{marcaDocumental(celda)}</span>
-												{/if}
-											</span>
-											{#if celda.reportes.length}
-												<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
-												<!-- eslint-disable svelte/no-navigation-without-resolve -->
-												<a
-													class="reportes-celda"
-													href={`${resolve('/historial')}?${consultaHistorial(p.id, celda.mes)}`}
-													aria-label={`Ver ${plural(celda.reportes.length, 'reporte emitido', 'reportes emitidos')} de la partida ${p.numero} en ${textoMes(celda.mes)}`}
-													>{celda.reportes.length} rep.</a
-												>
-												<!-- eslint-enable svelte/no-navigation-without-resolve -->
-											{/if}
-											{#if falta > 0}
-												<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
-												<!-- eslint-disable svelte/no-navigation-without-resolve -->
-												<a
-													class="capturar"
-													href={`${resolve('/captura')}?${consultaCaptura(p.id, celda.mes, reprogramacionPendiente(celda))}`}
-													aria-label={`Capturar partida ${p.numero} de ${textoMes(celda.mes)}`}
-													>Capturar</a
-												>
-												<!-- eslint-enable svelte/no-navigation-without-resolve -->
-											{/if}
-											{#if falta > 0 || celda.ajustes.length}
+								<th scope="col" class="columna-partida">Partida / periodicidad</th>
+								{#each meses as mes (mes)}
+									<th
+										scope="col"
+										class="columna-mes"
+										class:mes-actual={mes.slice(0, 7) === hoy.slice(0, 7)}
+										>{textoMes(mes, { inicial: true, corto: true }).replace(
+											/ \d{2}(\d{2})$/,
+											' $1'
+										)}</th
+									>
+								{/each}
+								<th scope="col" class="columna-total">Total</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each partidas as p (p.id)}
+								<tr class:fila-elegida={elegida?.partida.id === p.id}>
+									<th scope="row" class="columna-partida">
+										<span class="nombre-partida"
+											><span class="numero">{p.numero}</span> {textoOracion(p.actividad)}</span
+										>
+										<span class="periodicidad">{ETIQUETA_PERIODICIDAD[p.periodicidad]}</span>
+									</th>
+									{#each p.celdas as celda (celda.mes)}
+										{@const estado = estadoEjecucion(celda, hoy)}
+										{@const documental = estadoDocumental(celda)}
+										{@const elegidaAqui =
+											elegida?.partida.id === p.id && elegida.celda.mes === celda.mes}
+										<td class="celda {estado}" class:elegida={elegidaAqui}>
+											{#if estado !== 'sin_programa' || celda.ajustes.length || celda.realizado > 0}
 												<button
+													id={`celda-${p.id}-${celda.mes}`}
 													type="button"
-													class="ajustar"
-													aria-label={`Ajustes de la partida ${p.numero} en ${textoMes(celda.mes)}`}
-													title="Reprogramar o marcar no ejecutado"
-													on:click={() => abrirAjuste(p, celda)}>⋯</button
+													class="boton-celda"
+													aria-pressed={elegidaAqui}
+													title={ETIQUETA_EJECUCION[estado]}
+													on:click={() => seleccionar(p, celda)}
 												>
+													<span class="sr-only">{nombreCelda(p, celda)}</span>
+													<span class="contenido-celda" aria-hidden="true">
+														<!-- R incluye reportes emitidos, marcas del Excel y realizados manuales. -->
+														<span class="pr">P{celda.programado ?? 0} / R{celda.realizado}</span>
+														{#if estado !== 'sin_programa'}
+															<span class="ejecucion"
+																><span class="simbolo">{SIMBOLO_EJECUCION[estado]}</span>
+																{CODIGO_EJECUCION[estado]}</span
+															>
+														{/if}
+														{#each anotacionesCelda(celda) as nota (nota)}<span class="anotacion"
+																>{nota}</span
+															>{/each}
+														{#if celda.realizadoSinReporte > 0}<span class="anotacion"
+																>{celda.realizadoSinReporte} sin reporte</span
+															>{/if}
+														{#if documental !== 'ninguno'}
+															<span class="marca {documental}">{codigoDocumental(celda)}</span>
+														{/if}
+													</span>
+												</button>
 											{/if}
+										</td>
+									{/each}
+									<td class="total">
+										{p.totalRealizado} / {p.totalProgramado}
+										{#if p.diferencia !== null && p.diferencia !== 0}
+											<span
+												class="status-badge por-confirmar"
+												title="La suma de los meses no coincide con la cantidad anual"
+												>Dif. {p.diferencia > 0 ? '+' : ''}{p.diferencia}</span
+											>
 										{/if}
 									</td>
-								{/each}
-								<td class="total">
-									{p.totalRealizado} / {p.totalProgramado}
-									{#if p.diferencia !== null && p.diferencia !== 0}
-										<span
-											class="status-badge por-confirmar"
-											title="La suma de los meses no coincide con la cantidad anual"
-											>Dif. {p.diferencia > 0 ? '+' : ''}{p.diferencia}</span
-										>
-									{/if}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		</section>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+				{#if desborda}
+					<div class="pie-matriz">
+						<span>Partida fija · desplace la tabla para ver todos los meses.</span>
+						<button class="enlace-accion" type="button" on:click={desplazarTabla}
+							>{alFinal ? 'Ir al inicio del ciclo' : 'Ir al final del ciclo'}
+							<svg
+								class:invertida={alFinal}
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg
+							></button
+						>
+					</div>
+				{/if}
+			</section>
+
+			{#if elegida}
+				{@const { partida: p, celda } = elegida}
+				{@const estado = estadoEjecucion(celda, hoy)}
+				{@const falta = faltan(celda)}
+				{@const borrador = celda.reportesAbiertos[0]}
+				{@const notas = [...anotacionesCelda(celda), detalleCelda(celda, hoy)].filter(Boolean)}
+				<aside class="panel-celda" aria-labelledby="titulo-panel" tabindex="-1" bind:this={panel}>
+					<div class="cabecera-panel">
+						<p class="ceja">
+							Selección · Partida {p.numero} / {textoMes(celda.mes, { inicial: true })}
+						</p>
+						<button class="cerrar-panel" type="button" on:click={cerrarPanel}
+							>Cerrar <svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg
+							></button
+						>
+					</div>
+					<h3 id="titulo-panel" class="titulo-panel">{textoOracion(p.actividad)}</h3>
+					<dl class="datos-panel">
+						<div>
+							<dt>Programado</dt>
+							<dd class="cifra grande">{celda.programado ?? 0}</dd>
+						</div>
+						<div>
+							<dt>Realizado</dt>
+							<dd class="cifra grande">{celda.realizado}</dd>
+						</div>
+						<div>
+							<dt>Ejecución</dt>
+							<dd>
+								<span class="simbolo {estado}" aria-hidden="true">{SIMBOLO_EJECUCION[estado]}</span>
+								{ETIQUETA_EJECUCION[estado]}
+							</dd>
+						</div>
+						<div>
+							<dt>Documento</dt>
+							<dd>{textoDocumental(celda) || '—'}</dd>
+						</div>
+					</dl>
+					{#if notas.length}<p class="nota-panel">{notas.join(' · ')}</p>{/if}
+					<div class="acciones-panel">
+						<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
+						<!-- eslint-disable svelte/no-navigation-without-resolve -->
+						{#if borrador}
+							<a class="boton primario" href={resolve('/reportes/[id]', { id: borrador.id })}
+								>Continuar reporte</a
+							>
+							<p class="nota-panel">
+								Continuar abre el {borrador.estado === 'en_revision'
+									? 'reporte en revisión'
+									: 'borrador'}
+								de {textoMes(celda.mes)}; no registra ejecución.
+							</p>
+						{:else if falta > 0}
+							<a
+								class="boton primario"
+								href={`${resolve('/captura')}?${consultaCaptura(p.id, celda.mes, reprogramacionPendiente(celda))}`}
+								aria-label={`Capturar partida ${p.numero} de ${textoMes(celda.mes)}`}
+								>Capturar reporte</a
+							>
+						{/if}
+						{#if celda.reportes.length}
+							<a
+								class="enlace"
+								href={`${resolve('/historial')}?${consultaHistorial(p.id, celda.mes)}`}
+								aria-label={`Ver ${plural(celda.reportes.length, 'reporte emitido', 'reportes emitidos')} de la partida ${p.numero} en ${textoMes(celda.mes)}`}
+								>Ver {plural(celda.reportes.length, 'reporte emitido', 'reportes emitidos')}</a
+							>
+						{/if}
+						<!-- eslint-enable svelte/no-navigation-without-resolve -->
+						{#if falta > 0 || celda.ajustes.length}
+							<button
+								type="button"
+								class="boton contorno"
+								aria-label={`Ajustes de la partida ${p.numero} en ${textoMes(celda.mes)}`}
+								on:click={() => abrirAjuste(p, celda)}>Ajustar programa</button
+							>
+							<p class="nota-panel">Al ajustar: reprogramar o marcar no ejecutado.</p>
+						{/if}
+						<button
+							class="enlace-accion"
+							type="button"
+							on:click={() => registrarExterno(p.id, celda.mes)}
+							>Registrar realizado externo <svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg
+							></button
+						>
+					</div>
+				</aside>
+			{/if}
+		</div>
 	{/if}
 
-	<section class="card" aria-labelledby="titulo-manual">
-		<details>
-			<summary id="titulo-manual" class="view-heading"
-				>Registrar un realizado hecho fuera del sistema</summary
+	<section class="registro-externo" aria-labelledby="titulo-manual">
+		<details bind:open={registroAbierto}>
+			<summary id="titulo-manual"
+				>Registrar realizado externo <svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg
+				></summary
 			>
-			<p class="view-note">
-				Para trabajos documentados con un reporte anterior (por ejemplo, en Word). Cuenta en el
-				realizado sin crear un reporte emitido.
-			</p>
-			<Aviso form={avisoGeneral} />
-			<form method="POST" action="?/registrarRealizado" use:enhance class="form-grid">
-				<input type="hidden" name="programaId" value={programa.id} />
-				<div class="form-group">
-					<label for="manual-partida">Partida</label>
-					<select id="manual-partida" name="partidaId" required>
-						{#each partidas as p (p.id)}
-							<option value={p.id}>{p.numero}.- {p.actividad}</option>
-						{/each}
-					</select>
-				</div>
-				<div class="form-group">
-					<label for="manual-mes">Mes</label>
-					<select id="manual-mes" name="mes" required>
-						{#each meses as mes (mes)}
-							<option value={mes} selected={mes.slice(0, 7) === hoy.slice(0, 7)}
-								>{textoMes(mes, { inicial: true })}</option
-							>
-						{/each}
-					</select>
-				</div>
-				<div class="form-group">
-					<label for="manual-cantidad">Cantidad</label>
-					<input id="manual-cantidad" name="cantidad" type="number" min="1" step="1" value="1" />
-				</div>
-				<div class="form-group">
-					<label for="manual-nota">Nota (obligatoria)</label>
-					<input id="manual-nota" name="nota" required placeholder="Reporte Word de mayo" />
-				</div>
-				<div class="form-group acciones-formulario">
-					<button class="boton primario" type="submit">Registrar</button>
-				</div>
-			</form>
+			<div class="card cuerpo-registro">
+				<p class="view-note">
+					Para trabajos documentados con un reporte anterior (por ejemplo, en Word). Cuenta en el
+					realizado sin crear un reporte emitido.
+				</p>
+				<Aviso form={avisoGeneral} />
+				<form method="POST" action="?/registrarRealizado" use:enhance class="form-grid">
+					<input type="hidden" name="programaId" value={programa.id} />
+					<div class="form-group">
+						<label for="manual-partida">Partida</label>
+						<select id="manual-partida" name="partidaId" required bind:value={manualPartida}>
+							{#each partidas as p (p.id)}
+								<option value={p.id}>{p.numero}.- {textoOracion(p.actividad)}</option>
+							{/each}
+						</select>
+					</div>
+					<div class="form-group">
+						<label for="manual-mes">Mes</label>
+						<select id="manual-mes" name="mes" required bind:value={manualMes}>
+							{#each meses as mes (mes)}
+								<option value={mes}>{textoMes(mes, { inicial: true })}</option>
+							{/each}
+						</select>
+					</div>
+					<div class="form-group">
+						<label for="manual-cantidad">Cantidad</label>
+						<input id="manual-cantidad" name="cantidad" type="number" min="1" step="1" value="1" />
+					</div>
+					<div class="form-group">
+						<label for="manual-nota">Nota (obligatoria)</label>
+						<input id="manual-nota" name="nota" required placeholder="Reporte Word de mayo" />
+					</div>
+					<div class="form-group acciones-formulario">
+						<button class="boton primario" type="submit">Registrar</button>
+					</div>
+				</form>
+			</div>
 		</details>
+		<p class="nota-registro">No crea un reporte emitido.</p>
 	</section>
 
 	{#if ajuste}
@@ -545,12 +775,86 @@
 <style>
 	.filtros {
 		display: grid;
-		gap: 12px;
-		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		gap: 0 20px;
+		grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+		margin-bottom: 8px;
+	}
+	@media (min-width: 1100px) {
+		.filtros {
+			grid-template-columns: 2fr 2fr repeat(auto-fit, minmax(150px, 1fr));
+		}
+	}
+	/* Selector de vista como pestañas: la actual con fondo suave y subrayado en el acento. */
+	.selector-vista {
+		display: inline-flex;
+	}
+	.opcion-vista {
+		display: inline-flex;
+		align-items: center;
+		min-height: 40px;
+		padding: 4px 14px;
+		color: var(--tinta-secundaria);
+		transition: background-color 0.12s var(--curva-salida);
+	}
+	.opcion-vista + .opcion-vista {
+		border-left: 1px solid var(--linea);
+	}
+	.opcion-vista:hover {
+		background: var(--superficie-hover);
+		color: var(--tinta);
+	}
+	.opcion-vista[aria-current='page'] {
+		background: var(--accion-suave);
+		color: var(--tinta);
+		font-weight: 600;
+		box-shadow: inset 0 -2px 0 var(--accion);
+	}
+
+	/* Vencimientos: una franja de alerta que despliega la lista por mes. */
+	.vencidos {
+		margin: 8px 0 28px;
+		border-radius: var(--radio-panel);
+		background: var(--alerta-fondo);
+	}
+	.vencidos summary {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px 16px;
+		align-items: center;
+		justify-content: space-between;
+		min-height: 48px;
+		padding: 10px 16px;
+		list-style: none;
+		cursor: pointer;
+	}
+	.vencidos summary::-webkit-details-marker {
+		display: none;
+	}
+	.texto-vencidos {
+		color: var(--alerta);
+		font-weight: 600;
+	}
+	.ver-pendientes {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		color: var(--accion);
+		font-weight: 600;
+	}
+	.ver-pendientes svg {
+		width: 15px;
+		height: 15px;
+		transition: transform 0.15s var(--curva-salida);
+	}
+	.vencidos[open] .ver-pendientes svg {
+		transform: rotate(90deg);
+	}
+	.lista-vencidos-meses {
+		padding: 0 16px 16px;
 	}
 	.mes-vencido {
-		margin: 12px 0 4px;
-		font-size: 0.9rem;
+		margin: 12px 0 6px;
+		font-size: var(--texto-base);
 	}
 	.lista-vencidos {
 		margin: 0;
@@ -558,174 +862,393 @@
 		display: grid;
 		gap: 4px;
 	}
+	.lista-vencidos li > * + * {
+		margin-left: 8px;
+	}
+
+	/* Espacio de programación: matriz y, con una celda elegida, el panel a la derecha. */
+	.espacio-programa {
+		display: grid;
+		gap: 20px;
+		align-items: start;
+	}
+	@media (min-width: 1100px) {
+		.espacio-programa.con-panel {
+			grid-template-columns: minmax(0, 1fr) 300px;
+		}
+	}
+	.matriz-programa {
+		min-width: 0;
+	}
+	.cabecera-matriz {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 16px;
+		align-items: baseline;
+		justify-content: space-between;
+	}
+	.titulo-matriz {
+		margin: 0;
+		font-size: var(--texto-campo);
+		font-weight: 400;
+	}
+	.estado-seleccion {
+		margin: 0;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
+	}
+	.leyenda {
+		display: grid;
+		gap: 4px;
+		margin: 16px 0 20px;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
+	}
+	.leyenda p {
+		margin: 0;
+	}
+	.leyenda .clave-leyenda {
+		color: var(--tinta);
+		font-weight: 600;
+	}
+	.leyenda .eje {
+		margin-right: 2px;
+	}
+	.muestra {
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.muestra-doc {
+		font-weight: 600;
+	}
+
+	/* Matriz: una sola superficie comparativa; el color va en el texto del estado, no en la celda. */
 	.matriz {
-		font-size: 0.82rem;
-		border-collapse: collapse;
+		border-collapse: separate;
+		border-spacing: 0;
+		font-size: var(--texto-xs);
+		background: var(--superficie);
 	}
 	.matriz th,
 	.matriz td {
-		border: 1px solid var(--border);
-		padding: 4px 6px;
-		vertical-align: top;
+		padding: 0;
+		border-bottom: 1px solid var(--linea);
+		vertical-align: middle;
 	}
-	/* Meses y periodicidad en formato de oración, no en las mayúsculas de los encabezados. */
-	.matriz th {
-		text-transform: none;
-		letter-spacing: normal;
+	.matriz thead th {
+		height: 44px;
+		padding: 0 8px;
+		background: var(--superficie-alta);
+		border-bottom-color: var(--linea-fuerte);
+		color: var(--tinta);
+		font-size: var(--texto-base);
+		text-align: center;
+	}
+	.matriz thead th.columna-partida {
+		padding-left: 12px;
+		font-size: var(--texto-xs);
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		text-align: left;
+	}
+	/* Mes en curso: fondo de selección y texto en el acento. */
+	.matriz thead th.mes-actual {
+		background: var(--accion-suave);
+		color: var(--accion);
 	}
 	.columna-partida {
 		position: sticky;
 		left: 0;
 		z-index: 1;
-		background: var(--card-bg, var(--bg));
-		min-width: 220px;
-		max-width: 320px;
+		min-width: 240px;
+		max-width: 300px;
+		background: var(--superficie);
 		text-align: left;
 		font-weight: 400;
 	}
+	tbody .columna-partida {
+		padding: 14px 12px;
+		box-shadow: inset -1px 0 0 var(--linea);
+	}
+	.nombre-partida {
+		display: block;
+		font-size: var(--texto-base);
+		line-height: 1.4;
+	}
 	.numero {
-		font-weight: 700;
 		margin-right: 4px;
 	}
-	.mes-actual {
-		outline: 2px solid var(--primary);
-		outline-offset: -2px;
+	.periodicidad {
+		display: block;
+		margin-top: 4px;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
 	}
-	.selector-vista {
-		display: inline-flex;
-		margin-top: 12px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		overflow: hidden;
+	.columna-mes {
+		min-width: 84px;
 	}
-	.opcion-vista {
-		display: inline-flex;
-		align-items: center;
-		min-height: var(--objetivo-min);
-		padding: 4px 14px;
-		color: var(--text);
-		text-decoration: none;
+	.matriz tbody tr:hover > td,
+	.matriz tbody tr:hover > th {
+		background: var(--superficie);
 	}
-	.opcion-vista + .opcion-vista {
-		border-left: 1px solid var(--border);
-	}
-	.opcion-vista[aria-current='page'] {
-		background: var(--primary);
-		color: var(--on-primary);
-		font-weight: 600;
-	}
-	.leyenda {
-		display: grid;
-		grid-template-columns: max-content minmax(0, 1fr);
-		gap: 6px 12px;
-		align-items: center;
-		margin: 8px 0 12px;
-		font-size: 0.85rem;
-	}
-	.leyenda .eje {
-		margin: 0;
-		font-weight: 600;
-	}
-	.leyenda ul {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px 16px;
-		list-style: none;
-		margin: 0;
-		padding: 0;
-	}
-	.leyenda li {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	}
-	.muestra {
-		display: inline-grid;
-		place-items: center;
-		width: 22px;
-		height: 22px;
-		border: 1px solid var(--border);
-		border-radius: 4px;
-	}
-	.simbolo {
-		font-weight: 700;
+	.matriz tbody tr.fila-elegida > td,
+	.matriz tbody tr.fila-elegida > th {
+		background: var(--accion-suave);
 	}
 	.celda {
-		min-width: 64px;
 		text-align: center;
 	}
-	.pr {
-		display: block;
-		white-space: nowrap;
-	}
-	.estado-corto {
-		display: block;
-		white-space: nowrap;
-		font-size: 0.78rem;
-	}
-	.anotacion {
-		display: block;
-		white-space: nowrap;
-		font-size: 0.75rem;
-		font-weight: 600;
-	}
-	/* Colores de ejecución: siempre acompañan al símbolo y al texto. */
-	.ejecutado {
-		background: color-mix(in srgb, var(--success) 16%, transparent);
-	}
-	.vencido,
-	.no_ejecutado {
-		background: color-mix(in srgb, var(--danger) 18%, transparent);
-	}
-	.pendiente,
-	.extra {
-		background: color-mix(in srgb, var(--primary) 14%, transparent);
-	}
-	.reprogramado {
-		background: color-mix(in srgb, var(--warning) 18%, transparent);
-	}
-	/* Marca documental: borde y texto, sin depender del fondo de la celda. */
-	.marca {
-		display: inline-block;
-		margin-top: 2px;
-		padding: 0 4px;
-		border: 1px solid currentColor;
-		border-radius: 4px;
-		font-size: 0.72rem;
-		white-space: nowrap;
-	}
-	.marca.con_reporte {
-		font-weight: 700;
-	}
-	.marca.sin_reporte {
-		border-style: dashed;
-	}
-	.ajustar {
-		min-width: 28px;
-		min-height: 24px;
-		margin-left: 2px;
-		padding: 0 4px;
-		border: 1px solid var(--border);
-		border-radius: 4px;
-		background: var(--surface);
-		color: var(--text);
+	/* «relative» contiene el nombre .sr-only de la celda dentro del botón. */
+	.boton-celda {
+		position: relative;
+		display: grid;
+		place-items: center;
+		width: 100%;
+		min-height: 92px;
+		padding: 8px 4px;
+		border: 2px solid transparent;
+		background: none;
+		color: var(--tinta);
+		font-size: var(--texto-xs);
 		cursor: pointer;
 	}
-	/* Sobre el fondo de color el texto atenuado no alcanza 4.5:1. */
-	.celda .view-note {
-		color: inherit;
+	.boton-celda:hover {
+		background: var(--superficie-hover);
 	}
-	.capturar,
-	.reportes-celda {
-		display: inline-flex;
-		align-items: center;
-		min-height: 24px;
-		padding: 0 4px;
-		font-size: 0.8rem;
-		text-decoration: underline;
+	.boton-celda:focus-visible {
+		outline-offset: -4px;
+	}
+	.celda.elegida .boton-celda {
+		border-color: var(--accion);
+		background: var(--superficie);
+	}
+	.contenido-celda {
+		display: grid;
+		gap: 4px;
+		justify-items: center;
+	}
+	.pr {
+		white-space: nowrap;
+	}
+	.ejecucion {
+		font-size: var(--texto-base);
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.anotacion {
+		white-space: nowrap;
+		font-weight: 600;
+		color: var(--tinta-secundaria);
+	}
+	.marca {
+		color: var(--tinta-tenue);
+		white-space: nowrap;
+	}
+	.marca.reporte_en_borrador {
+		color: var(--accion);
+		font-weight: 700;
+	}
+	/* Colores de ejecución: siempre acompañan al símbolo y al código. */
+	.ejecutado .ejecucion,
+	.extra .ejecucion,
+	.muestra.ejecutado,
+	.muestra.extra,
+	.simbolo.ejecutado,
+	.simbolo.extra {
+		color: var(--exito);
+	}
+	.vencido .ejecucion,
+	.reprogramado .ejecucion,
+	.muestra.vencido,
+	.muestra.reprogramado,
+	.simbolo.vencido,
+	.simbolo.reprogramado {
+		color: var(--alerta);
+	}
+	.no_ejecutado .ejecucion,
+	.muestra.no_ejecutado,
+	.simbolo.no_ejecutado {
+		color: var(--peligro);
+	}
+	.pendiente .ejecucion,
+	.muestra.pendiente,
+	.simbolo.pendiente {
+		color: var(--accion);
+	}
+	.programado .ejecucion,
+	.muestra.programado,
+	.simbolo.programado {
+		color: var(--tinta-secundaria);
 	}
 	.total {
+		padding: 0 12px;
 		white-space: nowrap;
 		text-align: center;
+	}
+	.columna-total {
+		min-width: 72px;
+	}
+	.pie-matriz {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px 16px;
+		align-items: center;
+		justify-content: space-between;
+		padding: 10px 0;
+		border-bottom: 3px solid var(--linea);
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
+	}
+	.enlace-accion {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		min-height: var(--objetivo-min);
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--accion);
+		font-size: var(--texto-base);
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.enlace-accion:hover {
+		color: var(--accion-hover);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.enlace-accion svg {
+		width: 15px;
+		height: 15px;
+	}
+	.enlace-accion svg.invertida {
+		transform: rotate(180deg);
+	}
+
+	/* Panel de la celda elegida: datos y acciones cerca de la selección. */
+	.panel-celda {
+		display: grid;
+		gap: 16px;
+		padding: 22px;
+		border-radius: var(--radio-panel);
+		background: var(--accion-suave);
+	}
+	@media (min-width: 1100px) {
+		.panel-celda {
+			position: sticky;
+			top: 0;
+		}
+	}
+	.cabecera-panel {
+		display: flex;
+		gap: 12px;
+		align-items: flex-start;
+		justify-content: space-between;
+	}
+	.cerrar-panel {
+		display: inline-flex;
+		flex-shrink: 0;
+		align-items: center;
+		gap: 4px;
+		min-height: var(--objetivo-min);
+		margin-top: -6px;
+		padding: 0 4px;
+		border: 0;
+		border-radius: var(--radio-control);
+		background: none;
+		color: var(--accion);
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.cerrar-panel:hover {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.cerrar-panel svg {
+		width: 14px;
+		height: 14px;
+	}
+	.titulo-panel {
+		margin: 0;
+		font-size: var(--texto-lg);
+		font-weight: 400;
+		line-height: 1.35;
+	}
+	.datos-panel {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 14px 16px;
+		margin: 0;
+	}
+	.datos-panel dt {
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
+	}
+	.datos-panel dd {
+		margin: 2px 0 0;
+		font-size: var(--texto-campo);
+	}
+	.datos-panel dd.grande {
+		font-size: var(--texto-xl);
+		line-height: 1.2;
+	}
+	.acciones-panel {
+		display: grid;
+		gap: 10px;
+		justify-items: start;
+	}
+	.nota-panel {
+		margin: 0;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
+	}
+
+	/* Registro externo al pie: enlace que despliega el formulario. */
+	.registro-externo {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px 24px;
+		align-items: flex-start;
+		justify-content: space-between;
+		margin-top: 28px;
+	}
+	.registro-externo details {
+		flex: 1 1 100%;
+		order: 1;
+	}
+	.registro-externo details[open] {
+		order: 0;
+	}
+	.registro-externo summary {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		min-height: var(--objetivo-min);
+		color: var(--accion);
+		font-weight: 600;
+		list-style: none;
+	}
+	.registro-externo summary::-webkit-details-marker {
+		display: none;
+	}
+	.registro-externo summary svg {
+		width: 15px;
+		height: 15px;
+	}
+	.registro-externo details[open] summary svg {
+		transform: rotate(90deg);
+	}
+	.registro-externo details:not([open]) {
+		flex: 0 1 auto;
+		order: 0;
+	}
+	.cuerpo-registro {
+		margin: 12px 0 0;
+	}
+	.nota-registro {
+		margin: 8px 0 0;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
 	}
 </style>

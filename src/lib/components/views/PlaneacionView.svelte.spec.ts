@@ -121,13 +121,17 @@ function montar(cambios: Record<string, unknown> = {}) {
 	});
 }
 
+/** Elige la celda de la partida 7 en el mes dado; el panel lateral muestra sus acciones. */
+const elegirCelda = (mes: string) =>
+	page.getByRole('button', { name: new RegExp(`^Partida 7, ${mes}`) }).click();
+
 const clases = (contenedor: HTMLElement) =>
 	[...contenedor.querySelectorAll('tbody .celda')].map((c) =>
 		[...c.classList].find((clase) => clase !== 'celda' && !clase.startsWith('s-'))
 	);
 
 describe('PlaneacionView: matriz anual', () => {
-	it('muestra ambos estados con símbolo y texto y abre la captura de junio', async () => {
+	it('muestra ambos estados con símbolo y código y abre la captura de junio desde el panel', async () => {
 		const { container } = montar();
 		expect(clases(container)).toEqual(['ejecutado', 'vencido', 'pendiente']);
 		const celdas = [...container.querySelectorAll('tbody .celda')];
@@ -135,15 +139,22 @@ describe('PlaneacionView: matriz anual', () => {
 		expect(celdas[1].querySelector('.sr-only')?.textContent).toBe(
 			'Partida 7, junio 2026: programado 1, ejecutado 0, Vencido, Sin reporte'
 		);
-		expect(celdas[0].querySelector('.marca')?.textContent).toBe('Con rep.');
+		expect(celdas[0].querySelector('.marca')?.textContent).toBe('CR');
+		expect(celdas.map((c) => c.querySelector('.pr')?.textContent)).toEqual([
+			'P1 / R2',
+			'P1 / R0',
+			'P1 / R0'
+		]);
 		const leyenda = page.getByRole('group', { name: 'Leyenda de la matriz' });
 		await expect.element(leyenda).toHaveTextContent(/Ejecución:.*Ejecutado.*Pendiente.*Vencido/);
 		await expect
 			.element(leyenda)
-			.toHaveTextContent(
-				/Documental:.*Con reporte \(estado final\).*Reporte en borrador.*Sin reporte/
-			);
+			.toHaveTextContent(/Documento:.*CR Con reporte \(final\).*B Borrador.*S Sin reporte/);
 
+		await elegirCelda('junio 2026');
+		await expect
+			.element(page.getByRole('complementary', { name: 'Toma de potenciales tubo-suelo' }))
+			.toHaveTextContent(/Programado\s*1\s*Realizado\s*0/);
 		const capturar = page.getByRole('link', { name: 'Capturar partida 7 de junio 2026' });
 		await expect
 			.element(capturar)
@@ -151,11 +162,12 @@ describe('PlaneacionView: matriz anual', () => {
 		await expect
 			.element(capturar)
 			.toHaveAttribute('href', expect.stringContaining('mes=2026-06-01'));
-		await expect.element(page.getByText('Pendientes vencidos (1)')).toBeInTheDocument();
+		await expect.element(page.getByText('1 vencimiento · Junio 2026')).toBeInTheDocument();
 	});
 
 	it('enlaza los reportes emitidos y distingue lo realizado sin reporte', async () => {
 		const { container } = montar();
+		await elegirCelda('mayo 2026');
 		await expect
 			.element(
 				page.getByRole('link', { name: 'Ver 6 reportes emitidos de la partida 7 en mayo 2026' })
@@ -165,12 +177,12 @@ describe('PlaneacionView: matriz anual', () => {
 				expect.stringMatching(/partida=.*&desde=2026-05&hasta=2026-05&estado=emitido/)
 			);
 		const mayo = container.querySelector('tbody .celda') as HTMLElement;
-		expect(mayo.innerText.replace(/\s+/g, ' ')).toContain('R 2');
+		expect(mayo.innerText.replace(/\s+/g, ' ')).toContain('R2');
 		expect(mayo.innerText).toContain('1 sin reporte');
 		await expect.element(page.getByLabelText('Periodicidad')).toHaveValue('mensual');
 	});
 
-	it('anota lo reprogramado y solo ofrece «⋯» donde falta algo o hay ajustes', async () => {
+	it('anota lo reprogramado y solo ofrece «Ajustar» donde falta algo o hay ajustes', async () => {
 		const reprogramado = ajuste();
 		const { container } = montar({
 			partidas: [
@@ -185,7 +197,15 @@ describe('PlaneacionView: matriz anual', () => {
 		const celdas = [...container.querySelectorAll('tbody .celda')];
 		expect(celdas[0].textContent).toContain('→ jul');
 		expect(celdas[2].textContent).toContain('+1 desde may');
-		expect(celdas.map((c) => !!c.querySelector('.ajustar'))).toEqual([true, false, true]);
+		const ajustable: boolean[] = [];
+		for (const mes of ['mayo 2026', 'junio 2026', 'julio 2026']) {
+			await elegirCelda(mes);
+			ajustable.push(
+				page.getByRole('button', { name: `Ajustes de la partida 7 en ${mes}` }).elements().length >
+					0
+			);
+		}
+		expect(ajustable).toEqual([true, false, true]);
 		await expect
 			.element(page.getByRole('link', { name: 'Capturar partida 7 de julio 2026' }))
 			.toHaveAttribute('href', expect.stringContaining(`reprogramacion=${reprogramado.id}`));
@@ -193,6 +213,7 @@ describe('PlaneacionView: matriz anual', () => {
 
 	it('el diálogo de ajuste empieza en «Cancelar», ofrece meses posteriores y exige nota con «Otro»', async () => {
 		montar();
+		await page.getByText('1 vencimiento · Junio 2026').click();
 		await page
 			.getByRole('button', {
 				name: 'Reprogramar o marcar no ejecutada la partida 7 de junio 2026'

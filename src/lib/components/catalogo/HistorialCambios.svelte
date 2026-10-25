@@ -105,6 +105,6 @@
 		gap: 12px;
 		align-items: center;
 		margin-top: 8px;
-		font-size: 0.9rem;
+		font-size: var(--texto-base);
 	}
 </style>

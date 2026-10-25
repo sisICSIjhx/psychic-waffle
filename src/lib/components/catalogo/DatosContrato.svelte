@@ -180,23 +180,23 @@
 	}
 	.nota {
 		margin: 2px 0 0;
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 	.fuera,
 	.aviso-formulario {
 		grid-column: 1 / -1;
 		margin: 0;
-		font-size: 0.9rem;
+		font-size: var(--texto-base);
 	}
 	.fuera {
-		color: var(--danger);
+		color: var(--peligro);
 	}
 	.fuera p,
 	.fuera ul {
 		margin: 0;
 	}
 	.aviso-formulario.error {
-		color: var(--danger);
+		color: var(--peligro);
 	}
 </style>

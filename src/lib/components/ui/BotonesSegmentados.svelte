@@ -64,7 +64,16 @@
 			on:click={() => elegir(i)}
 			on:keydown={(e) => alTeclear(e, i)}
 		>
-			{#if i === elegida}<span class="marca" aria-hidden="true">✓</span>{/if}
+			{#if i === elegida}<svg
+					class="marca"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="3"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg
+				>{/if}
 			{opcion.texto}
 		</button>
 	{/each}
@@ -78,11 +87,11 @@
 		max-width: 100%;
 		flex-wrap: wrap;
 		border: 1px solid var(--borde-campo);
-		border-radius: 8px;
+		border-radius: var(--radio-control);
 		overflow: hidden;
 	}
 	.segmentados[aria-invalid='true'] {
-		border-color: var(--danger);
+		border-color: var(--peligro);
 	}
 	.segmento {
 		display: inline-flex;
@@ -92,22 +101,34 @@
 		padding: 6px 12px;
 		border: 0;
 		border-right: 1px solid var(--borde-campo);
-		background: var(--bg);
-		color: var(--text);
+		background: var(--campo-fondo);
+		color: var(--tinta-secundaria);
 		cursor: pointer;
+		transition: background-color 0.12s var(--curva-salida);
+	}
+	.segmento:hover:not(:disabled, [aria-checked='true']) {
+		background: var(--superficie-hover);
+		color: var(--tinta);
 	}
 	.segmento:last-child {
 		border-right: 0;
 	}
 	.segmento[aria-checked='true'] {
-		background: var(--primary-soft);
-		color: var(--primary);
+		background: var(--accion-suave);
+		color: var(--tinta);
 		font-weight: 600;
+		box-shadow: inset 0 -2px 0 var(--accion);
 	}
 	.segmento:focus-visible {
 		outline-offset: -3px;
 	}
 	.segmento:disabled {
+		color: var(--tinta-deshabilitada);
 		cursor: not-allowed;
+	}
+	.marca {
+		width: 14px;
+		height: 14px;
+		color: var(--accion);
 	}
 </style>

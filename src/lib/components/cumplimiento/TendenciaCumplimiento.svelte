@@ -86,10 +86,14 @@
 		</svg>
 		<figcaption class="leyenda">
 			<span
-				><span class="muestra cumplimiento" aria-hidden="true">●</span> Cumplimiento (meta 90 %)</span
+				><svg class="muestra" viewBox="0 0 12 12" aria-hidden="true"
+					><circle class="punto cumplimiento" cx="6" cy="6" r="4" /></svg
+				> Cumplimiento (meta 90 %)</span
 			>
 			<span
-				><span class="muestra efectividad" aria-hidden="true">■</span> Efectividad (meta 80 %)</span
+				><svg class="muestra" viewBox="0 0 12 12" aria-hidden="true"
+					><rect class="punto efectividad" x="2" y="2" width="8" height="8" /></svg
+				> Efectividad (meta 80 %)</span
 			>
 		</figcaption>
 	</figure>
@@ -126,10 +130,10 @@
 		max-width: 720px;
 	}
 	.guia {
-		stroke: var(--border);
+		stroke: var(--linea);
 	}
 	.eje {
-		fill: var(--muted);
+		fill: var(--tinta-tenue);
 		font-size: 11px;
 	}
 	.meta {
@@ -141,14 +145,14 @@
 		stroke-width: 2.5;
 	}
 	.cumplimiento {
-		stroke: var(--primary);
-		fill: var(--primary);
-		color: var(--primary);
+		stroke: var(--accion);
+		fill: var(--accion);
+		color: var(--accion);
 	}
 	.efectividad {
-		stroke: var(--warning);
-		fill: var(--warning);
-		color: var(--warning);
+		stroke: var(--alerta);
+		fill: var(--alerta);
+		color: var(--alerta);
 	}
 	.serie.cumplimiento,
 	.serie.efectividad,
@@ -159,9 +163,16 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 16px;
-		font-size: 0.85rem;
+		color: var(--tinta-secundaria);
+		font-size: var(--texto-sm);
+	}
+	.leyenda > span {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 	}
 	.muestra {
-		font-weight: 700;
+		width: 12px;
+		height: 12px;
 	}
 </style>
