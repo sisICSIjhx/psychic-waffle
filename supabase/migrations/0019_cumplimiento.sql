@@ -97,6 +97,29 @@ alter table public.reportes
 create index if not exists reportes_reprogramacion_idx
 	on public.reportes (reprogramacion_id) where reprogramacion_id is not null;
 
+-- Ejecuciones emitidas de una reprogramación con la unidad de v_ejecuciones_reportes: días distintos en
+-- las diarias y ocurrencias distintas en las demás (varios TAG de la misma ocurrencia cuentan una).
+create or replace function public.ejecuciones_de_ajuste(a public.programa_ajustes)
+returns integer
+language sql
+stable
+as $$
+	select case when t.periodicidad = 'diaria' then (
+		select count(distinct d.dia)
+		from public.reportes e
+		cross join lateral jsonb_array_elements(e.dias_ejecucion) s(segmento)
+		cross join lateral generate_series((s.segmento ->> 'desde')::date, (s.segmento ->> 'hasta')::date,
+			interval '1 day') d(dia)
+		where e.reprogramacion_id = a.id and e.estado = 'emitido'
+	) else (
+		select count(distinct coalesce(e.ocurrencia_tipo || ':' || e.ocurrencia_numero, ''))
+		from public.reportes e
+		where e.reprogramacion_id = a.id and e.estado = 'emitido'
+	) end::integer
+	from public.partidas t
+	where t.id = a.partida_id
+$$;
+
 -- Ajuste con sus reportes ligados: ejecuciones emitidas, borradores y los que impiden anularlo.
 create or replace function public.json_ajuste(a public.programa_ajustes)
 returns jsonb
@@ -107,8 +130,7 @@ as $$
 		'id', a.id, 'programaId', a.programa_id, 'partidaId', a.partida_id, 'tipo', a.tipo,
 		'mesOrigen', a.mes_origen, 'mesDestino', a.mes_destino, 'cantidad', a.cantidad,
 		'motivo', a.motivo, 'nota', a.nota, 'registradoEn', a.registrado_en, 'anuladoEn', a.anulado_en,
-		'ejecuciones', (select count(*) from public.reportes r
-			where r.reprogramacion_id = a.id and r.estado = 'emitido'),
+		'ejecuciones', public.ejecuciones_de_ajuste(a),
 		'borradores', (select count(*) from public.reportes r
 			where r.reprogramacion_id = a.id and r.estado = 'borrador'),
 		'bloqueantes', (select count(*) from public.reportes r

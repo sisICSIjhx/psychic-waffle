@@ -210,6 +210,27 @@ describe('ajustes del programa', () => {
 		});
 	});
 
+	it('cuenta las ejecuciones de un ajuste por unidad: dos TAG de la misma ocurrencia son una', async () => {
+		const b = await base();
+		await repos.programa.guardarMeses(b.programa.id, [
+			{ partidaId: b.mensual.id, mes: '2026-06-01', cantidad: 2 }
+		]);
+		const ajuste = await reprogramar(b, { cantidad: 2 });
+		for (let i = 0; i < 2; i++) {
+			await emitir(
+				await servicio.crearReporte({
+					partidaId: b.mensual.id,
+					periodoMes: '2026-10-01',
+					ocurrencia: null,
+					equipoIds: [],
+					reprogramacionId: ajuste.id
+				})
+			);
+		}
+		const octubre = await celda(b, b.mensual.id, '2026-10-01');
+		expect(octubre.ajustes[0]).toMatchObject({ cantidad: 2, ejecuciones: 1 });
+	});
+
 	it('anular desliga los borradores sin subir su versión y no se anula dos veces', async () => {
 		const b = await base();
 		const ajuste = await reprogramar(b);

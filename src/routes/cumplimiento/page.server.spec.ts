@@ -59,6 +59,12 @@ describe('carga del tablero de cumplimiento', () => {
 		expect(datos.programas).toHaveLength(2);
 	});
 
+	it('un mes de corte inexistente usa el mes en curso', async () => {
+		for (const corte of ['2026-13', '2026-00']) {
+			expect((await cargar(`corte=${corte}`)).corte).toBe('2026-10-01');
+		}
+	});
+
 	it('sin programas en el corte devuelve la lista vacía', async () => {
 		expect((await cargar('corte=2025-01')).programas).toEqual([]);
 	});

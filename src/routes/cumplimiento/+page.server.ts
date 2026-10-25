@@ -11,7 +11,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	const hoy = fechaEnZona();
 	const mesActual = `${hoy.slice(0, 7)}-01`;
 	const pedido = url.searchParams.get('corte') ?? '';
-	const corteValido = /^\d{4}-\d{2}$/.test(pedido) ? `${pedido}-01` : mesActual;
+	// Solo un mes real (01 a 12); cualquier otro valor usa el mes en curso.
+	const corteValido = /^\d{4}-(0[1-9]|1[0-2])$/.test(pedido) ? `${pedido}-01` : mesActual;
 	// El corte no puede ser posterior al mes en curso.
 	const corteLimitado = corteValido > mesActual;
 	const corte = corteLimitado ? mesActual : corteValido;
