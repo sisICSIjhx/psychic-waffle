@@ -77,7 +77,9 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/tablero-cumplim
   persona envía y emite). Siguen las pruebas con usuarios y archivar el cambio; fases D y E por
   planear. Rediseño visual de toda la interfaz en `feat/rediseno-interfaz` (2026-10-24, sin cambios
   de datos ni reglas), sustituido el 2026-10-25 por el diseño A «Foco operativo»: editor con
-  encabezado fijo y una sección a la vez, y programa anual con celda seleccionable y panel.
+  encabezado fijo y una sección a la vez. El programa anual sigue la «Nueva versión programa anual»
+  de Figma (indicadores del ciclo, búsqueda, celdas-tarjeta con «Visualizar», exportar a CSV y
+  panel de la celda; tokens `--pa-*` propios en claro y oscuro).
 - Cambios de octubre de 2026 (seis cambios OpenSpec apilados, uno por rama): `importacion-programa-anual`
   terminado (Proagro con programa 2026-03 a 2027-02 en EM-30184 y EM-30185 y vigencia ajustada);
   `fechas-ejecucion-multiples` terminado (días en segmentos `dias_ejecucion`; diarias por mes o por

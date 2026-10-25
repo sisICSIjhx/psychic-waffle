@@ -131,25 +131,30 @@ const clases = (contenedor: HTMLElement) =>
 	);
 
 describe('PlaneacionView: matriz anual', () => {
-	it('muestra ambos estados con símbolo y código y abre la captura de junio desde el panel', async () => {
+	it('muestra ambos estados en cada tarjeta y abre la captura de junio desde el panel', async () => {
 		const { container } = montar();
 		expect(clases(container)).toEqual(['ejecutado', 'vencido', 'pendiente']);
 		const celdas = [...container.querySelectorAll('tbody .celda')];
-		expect(celdas.map((c) => c.querySelector('.simbolo')?.textContent)).toEqual(['✓', '!', '●']);
+		const texto = (selector: string) =>
+			celdas.map((c) => c.querySelector(selector)?.textContent?.trim());
+		expect(texto('.linea-celda.estado')).toEqual(['Ejecutado', 'Vencido', 'Pendiente']);
+		expect(texto('.linea-celda.documento')).toEqual(['Con reporte', 'Sin reporte', 'Sin reporte']);
 		expect(celdas[1].querySelector('.sr-only')?.textContent).toBe(
 			'Partida 7, junio 2026: programado 1, ejecutado 0, Vencido, Sin reporte'
 		);
-		expect(celdas[0].querySelector('.marca')?.textContent).toBe('CR');
-		expect(celdas.map((c) => c.querySelector('.pr')?.textContent)).toEqual([
-			'P1 / R2',
-			'P1 / R0',
-			'P1 / R0'
+		// «Visualizar» solo enlaza donde hay reportes; sin reporte queda inactivo.
+		expect(celdas.map((c) => c.querySelector('a.visualizar') !== null)).toEqual([
+			true,
+			false,
+			false
 		]);
-		const leyenda = page.getByRole('group', { name: 'Leyenda de la matriz' });
-		await expect.element(leyenda).toHaveTextContent(/Ejecución:.*Ejecutado.*Pendiente.*Vencido/);
 		await expect
-			.element(leyenda)
-			.toHaveTextContent(/Documento:.*CR Con reporte \(final\).*B Borrador.*S Sin reporte/);
+			.element(page.getByRole('list', { name: 'Leyenda de la matriz' }))
+			.toHaveTextContent(/Ejecutado.*Pendiente.*Programado.*Vencido.*Reprogramado.*No ejecutado/);
+		const indicadores = page.getByRole('region', { name: 'Indicadores del ciclo' });
+		await expect.element(indicadores).toHaveTextContent(/Total programado\s*3 en el ciclo/);
+		await expect.element(indicadores).toHaveTextContent(/Ejecutadas\s*1 33%/);
+		await expect.element(indicadores).toHaveTextContent(/Pendientes\s*1 33%/);
 
 		await elegirCelda('junio 2026');
 		await expect
@@ -162,7 +167,10 @@ describe('PlaneacionView: matriz anual', () => {
 		await expect
 			.element(capturar)
 			.toHaveAttribute('href', expect.stringContaining('mes=2026-06-01'));
-		await expect.element(page.getByText('1 vencimiento · Junio 2026')).toBeInTheDocument();
+		await page.getByRole('button', { name: /^Vencidas/ }).click();
+		await expect
+			.element(page.getByRole('heading', { name: '1 vencimiento · Junio 2026' }))
+			.toBeInTheDocument();
 	});
 
 	it('enlaza los reportes emitidos y distingue lo realizado sin reporte', async () => {
@@ -177,8 +185,12 @@ describe('PlaneacionView: matriz anual', () => {
 				expect.stringMatching(/partida=.*&desde=2026-05&hasta=2026-05&estado=emitido/)
 			);
 		const mayo = container.querySelector('tbody .celda') as HTMLElement;
-		expect(mayo.innerText.replace(/\s+/g, ' ')).toContain('R2');
-		expect(mayo.innerText).toContain('1 sin reporte');
+		expect(mayo.querySelector('.sr-only')?.textContent).toContain('ejecutado 2');
+		await expect
+			.element(
+				page.getByRole('link', { name: 'Visualizar los reportes de la partida 7 de mayo 2026' })
+			)
+			.toHaveAttribute('href', expect.stringMatching(/^\/historial\?.*estado=emitido/));
 		await expect.element(page.getByLabelText('Periodicidad')).toHaveValue('mensual');
 	});
 
@@ -213,7 +225,7 @@ describe('PlaneacionView: matriz anual', () => {
 
 	it('el diálogo de ajuste empieza en «Cancelar», ofrece meses posteriores y exige nota con «Otro»', async () => {
 		montar();
-		await page.getByText('1 vencimiento · Junio 2026').click();
+		await page.getByRole('button', { name: /^Vencidas/ }).click();
 		await page
 			.getByRole('button', {
 				name: 'Reprogramar o marcar no ejecutada la partida 7 de junio 2026'
@@ -234,6 +246,43 @@ describe('PlaneacionView: matriz anual', () => {
 		await expect.element(confirmar).toBeEnabled();
 		await userEvent.keyboard('{Escape}');
 		await expect.element(dialogo).not.toBeInTheDocument();
+	});
+});
+
+describe('PlaneacionView: búsqueda y filtro de la matriz', () => {
+	it('busca por número o actividad sin acentos y filtra por estado', async () => {
+		const { container } = montar({
+			partidas: [
+				partidas[0],
+				partida(8, [
+					celda('2026-05-01', { ejecucionesReportes: 1, realizado: 1 }),
+					celda('2026-06-01', { ejecucionesReportes: 1, realizado: 1 }),
+					celda('2026-07-01', { reportesAbiertos: [{ id: ID(61), estado: 'borrador' }] })
+				])
+			]
+		});
+		const filas = () =>
+			[...container.querySelectorAll('tbody .columna-numero')].map((n) => n.textContent);
+		expect(filas()).toEqual(['7', '8']);
+		await page.getByLabelText('Buscar partidas').fill('potencíales');
+		expect(filas()).toEqual(['7']);
+		await page.getByLabelText('Buscar partidas').fill('zzz');
+		await expect
+			.element(page.getByText('Ninguna partida coincide con la búsqueda o el filtro.'))
+			.toBeInTheDocument();
+		await page.getByRole('button', { name: 'Mostrar todas' }).click();
+		expect(filas()).toEqual(['7', '8']);
+		await page.getByTitle('Filtrar por estado').click();
+		await page.getByRole('button', { name: 'Vencido', exact: true }).click();
+		expect(filas()).toEqual(['7']);
+		// El borrador de julio se visualiza en el editor.
+		await page.getByTitle('Filtrar por estado').click();
+		await page.getByRole('button', { name: 'Todas las partidas' }).click();
+		await expect
+			.element(
+				page.getByRole('link', { name: 'Visualizar el reporte de la partida 8 de julio 2026' })
+			)
+			.toHaveAttribute('href', `/reportes/${ID(61)}`);
 	});
 });
 
