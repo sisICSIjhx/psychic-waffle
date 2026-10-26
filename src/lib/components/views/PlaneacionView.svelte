@@ -20,6 +20,7 @@
 		estadoDocumental,
 		estadoEjecucion,
 		faltan,
+		objetivo,
 		textoDocumental,
 		type EjecucionDelMes,
 		type EstadoEjecucion
@@ -183,6 +184,35 @@
 			default:
 				return anotacionesCelda(c)[0] ?? 'Sin documento';
 		}
+	}
+
+	/**
+	 * Por qué el mes tiene esa cantidad programada: semanal y quincenal cuentan las semanas o quincenas
+	 * marcadas en el programa anual; diaria, los días del mes; el resto, una ejecución por mes marcado.
+	 */
+	function explicacionProgramado(p: Partida, c: CeldaPrograma): string {
+		const n = c.programado ?? 0;
+		const mes = textoMes(c.mes);
+		const periodicidad = ETIQUETA_PERIODICIDAD[p.periodicidad];
+		let base: string;
+		if (p.periodicidad === 'cuando_aplique') {
+			base = 'Cuando aplique: no tiene cantidad fija en el programa anual.';
+		} else if (n <= 0) {
+			base = `${periodicidad}: el programa anual no marca ${mes}.`;
+		} else if (p.periodicidad === 'diaria') {
+			base = `Diaria: ${plural(n, 'día programado', 'días programados')} en ${mes}, uno por día del mes.`;
+		} else if (p.periodicidad === 'semanal') {
+			base = `Semanal: el programa anual marca ${plural(n, 'semana', 'semanas')} en ${mes}; una ejecución por semana.`;
+		} else if (p.periodicidad === 'quincenal') {
+			base = `Quincenal: el programa anual marca ${plural(n, 'quincena', 'quincenas')} en ${mes}; una ejecución por quincena.`;
+		} else {
+			base = `${periodicidad}: el programa anual marca ${mes} con ${plural(n, 'ejecución', 'ejecuciones')}.`;
+		}
+		const meta = esperado(c);
+		const ajustado = objetivo(c) !== n || (c.noEjecutado ?? 0) > 0;
+		return ajustado
+			? `${base} Con los ajustes, el mes espera ${plural(meta, 'ejecución', 'ejecuciones')}.`
+			: base;
 	}
 
 	/** «Visualizar» abre el borrador, el único reporte emitido o la lista de emitidos del mes. */
@@ -1123,10 +1153,16 @@
 							>
 						</div>
 						<h3 id="titulo-panel" class="titulo-panel">{textoOracion(p.actividad)}</h3>
+						<p class="periodicidad-panel">
+							<span class="sr-only">Periodicidad:</span>
+							<span class="insignia-periodicidad">{ETIQUETA_PERIODICIDAD[p.periodicidad]}</span>
+						</p>
 						<dl class="datos-panel">
 							<div>
 								<dt>Programado</dt>
-								<dd class="cifra grande">{celda.programado ?? 0}</dd>
+								<dd class="cifra grande" aria-describedby="explicacion-programado">
+									{celda.programado ?? 0}
+								</dd>
 							</div>
 							<div>
 								<dt>Realizado</dt>
@@ -1144,6 +1180,9 @@
 								<dd>{textoDocumental(celda) || '—'}</dd>
 							</div>
 						</dl>
+						<p id="explicacion-programado" class="explicacion-programado">
+							{explicacionProgramado(p, celda)}
+						</p>
 						{#if notas.length}<p class="nota-panel">{notas.join(' · ')}</p>{/if}
 						<div class="acciones-panel">
 							<!-- resolve() se aplica a la ruta; los filtros van en la consulta. -->
@@ -2388,11 +2427,24 @@
 		font-weight: 400;
 		line-height: 1.35;
 	}
+	.periodicidad-panel {
+		margin: -8px 0 0;
+	}
 	.datos-panel {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 14px 16px;
 		margin: 0;
+	}
+	/* Leyenda del programado: por qué el mes tiene esa cantidad. */
+	.explicacion-programado {
+		margin: 0;
+		padding: 10px 12px;
+		border-radius: 8px;
+		background: var(--pa-hover);
+		color: var(--pa-texto-3);
+		font-size: var(--texto-xs);
+		line-height: 1.5;
 	}
 	.datos-panel dt {
 		color: var(--pa-texto-4);

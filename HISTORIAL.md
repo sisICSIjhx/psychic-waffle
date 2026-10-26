@@ -3,6 +3,13 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-25 — Programa anual: periodicidad y explicación del programado en el panel
+
+- Motivo: el usuario no entendía de dónde salía «0 de 5» (partida 1 de Proagro, abril 2026) y pidió la periodicidad y una leyenda del programado en el panel de la celda. Se verificó en la app: la partida es semanal y el programa importado marca 5 semanas en abril (4 en marzo y mayo); al importar, semanal y quincenal cuentan las marcas del mes, diaria los días del mes y el resto una ejecución por mes marcado (`cantidadesDeMarcas`). Nivel 1: texto y presentación.
+- Alcance: `PlaneacionView.svelte` muestra la insignia de periodicidad bajo la actividad y, tras los datos, `explicacionProgramado` («Semanal: el programa anual marca 5 semanas en abril 2026; una ejecución por semana.»; si hay reprogramaciones o no ejecutados, añade lo que el mes espera tras los ajustes), ligada a la cifra con `aria-describedby`. Pruebas: periodicidad y leyenda mensual, mes sin programa con ajuste y caso semanal.
+- Validación real: `npm run check` 0/0; `eslint src` sin errores; Prettier en lo cambiado; `npm run test` 51 archivos y 396 pruebas; panel revisado en el navegador con la partida 1 de abril 2026.
+- Pendientes: ninguno.
+
 ## 2026-10-25 — Programa anual: «Nueva versión programa anual» en claro y oscuro
 
 - Motivo: el usuario creó en Figma el marco «NUEVA VERSIÓN PROGRAMA ANUAL» (página «03 Propuestas de rediseño», nodo 70:6984), solo en oscuro, y pidió replicarlo con modo claro. Rama `feat/rediseno-interfaz`; respaldo previo de la vista, su prueba y este archivo fuera del repositorio. Nivel 2: presentación e interacción de una vista, sin cambios de datos, contratos ni reglas.

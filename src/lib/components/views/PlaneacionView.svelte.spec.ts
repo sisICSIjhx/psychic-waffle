@@ -157,9 +157,12 @@ describe('PlaneacionView: matriz anual', () => {
 		await expect.element(indicadores).toHaveTextContent(/Pendientes\s*1 33%/);
 
 		await elegirCelda('junio 2026');
+		const panel = page.getByRole('complementary', { name: 'Toma de potenciales tubo-suelo' });
+		await expect.element(panel).toHaveTextContent(/Programado\s*1\s*Realizado\s*0/);
+		await expect.element(panel).toHaveTextContent('Periodicidad: Mensual');
 		await expect
-			.element(page.getByRole('complementary', { name: 'Toma de potenciales tubo-suelo' }))
-			.toHaveTextContent(/Programado\s*1\s*Realizado\s*0/);
+			.element(page.getByText('Mensual: el programa anual marca junio 2026 con 1 ejecución.'))
+			.toBeInTheDocument();
 		const capturar = page.getByRole('link', { name: 'Capturar partida 7 de junio 2026' });
 		await expect
 			.element(capturar)
@@ -221,6 +224,35 @@ describe('PlaneacionView: matriz anual', () => {
 		await expect
 			.element(page.getByRole('link', { name: 'Capturar partida 7 de julio 2026' }))
 			.toHaveAttribute('href', expect.stringContaining(`reprogramacion=${reprogramado.id}`));
+		await expect
+			.element(
+				page.getByText(
+					'Mensual: el programa anual no marca julio 2026. Con los ajustes, el mes espera 1 ejecución.'
+				)
+			)
+			.toBeInTheDocument();
+	});
+
+	it('explica el programado de una partida semanal por las semanas marcadas', async () => {
+		montar({
+			partidas: [
+				partida(
+					7,
+					[celda('2026-05-01'), celda('2026-06-01', { programado: 5 }), celda('2026-07-01')],
+					{
+						periodicidad: 'semanal'
+					}
+				)
+			]
+		});
+		await elegirCelda('junio 2026');
+		await expect
+			.element(
+				page.getByText(
+					'Semanal: el programa anual marca 5 semanas en junio 2026; una ejecución por semana.'
+				)
+			)
+			.toBeInTheDocument();
 	});
 
 	it('el diálogo de ajuste empieza en «Cancelar», ofrece meses posteriores y exige nota con «Otro»', async () => {
