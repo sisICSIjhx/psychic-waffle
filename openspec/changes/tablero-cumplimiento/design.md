@@ -225,9 +225,11 @@ numero: n })` (`src/lib/dominio/captura.ts`): lunes a domingo recortada al mes. 
 cubiertos por emitidos («5 de 7 días»); las demás, los reportes con días de ejecución en la semana.
 Siempre se muestran el estado y lo que falta en el mes; ninguna semana se marca vencida por sí sola.
 
-Actualización del 2026-10-25 (diseño de la vista semanal pedido por el usuario): la vista pasa a una
-matriz de todas las semanas del mes (`?vista=semanal&mes=AAAA-MM-01`; `semana` ya no se usa) con
-`semanasDePartida` en `src/lib/dominio/cumplimiento.ts`. Semanales, quincenales (por la quincena del
+Actualización del 2026-10-25 (diseño pedido por el usuario): la matriz de todas las semanas del mes
+es el formato por omisión de la vista mensual (`?vista=mensual&mes=AAAA-MM-01`; `&formato=lista` da
+la lista por urgencia; `semana` ya no se usa) con `semanasDePartida` en
+`src/lib/dominio/cumplimiento.ts`. La vista semanal queda en rediseño con un aviso que lleva a la
+mensual. Semanales, quincenales (por la quincena del
 último día de la semana) y diarias sí marcan la semana vencida, pendiente o programada según su fecha
 mientras el mes no cumpla lo esperado; con el mes cumplido, la semana sin reporte queda vacía. Las
 demás siguen sin semana planeada: lo que falta (sin lo que cubren los borradores) se ofrece en la

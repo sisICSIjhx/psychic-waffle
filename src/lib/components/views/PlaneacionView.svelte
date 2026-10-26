@@ -61,7 +61,8 @@
 	export let filtro: FiltroPlaneacion = {};
 	export let vista: 'anual' | 'mensual' | 'semanal' = 'anual';
 	export let mesVista: string | null = null;
-	export let semana = 1;
+	/** Formato de la vista mensual: matriz por semanas o lista por urgencia. */
+	export let formato: 'matriz' | 'lista' = 'matriz';
 	export let ejecucionesMes: EjecucionDelMes[] = [];
 	export let form: Record<string, unknown> | null = null;
 
@@ -146,8 +147,8 @@
 	const consultaHistorial = (partidaId: string, mes: string) =>
 		`contrato=${contrato?.id}&sitio=${sitio?.id}&partida=${partidaId}&desde=${mes.slice(0, 7)}&hasta=${mes.slice(0, 7)}&estado=emitido`;
 
-	/** Dirección de la planeación con los filtros actuales y la vista, el mes y la semana dados. */
-	function enlaceVista(otra: string, mes?: string | null, numero?: number): string {
+	/** Dirección de la planeación con los filtros actuales y la vista, el mes y el formato dados. */
+	function enlaceVista(otra: string, mes?: string | null, conFormato = formato): string {
 		const consulta = [
 			contrato ? `contrato=${contrato.id}` : '',
 			sitio ? `sitio=${sitio.id}` : '',
@@ -156,7 +157,7 @@
 			filtro.periodicidad ? `periodicidad=${filtro.periodicidad}` : '',
 			otra !== 'anual' ? `vista=${otra}` : '',
 			otra !== 'anual' && mes ? `mes=${mes}` : '',
-			otra === 'semanal' && numero ? `semana=${numero}` : ''
+			otra === 'mensual' && conFormato === 'lista' ? 'formato=lista' : ''
 		].filter(Boolean);
 		return `${resolve('/planeacion')}${consulta.length ? `?${consulta.join('&')}` : ''}`;
 	}
@@ -476,7 +477,7 @@
 						{#each VISTAS as v (v.valor)}
 							<a
 								class="opcion-vista"
-								href={enlaceVista(v.valor, mesVista, semana)}
+								href={enlaceVista(v.valor, mesVista)}
 								aria-current={vista === v.valor ? 'page' : undefined}
 								><svg
 									viewBox="0 0 24 24"
@@ -652,6 +653,11 @@
 			</div>
 			{#if vista !== 'anual'}<input type="hidden" name="vista" value={vista} />{/if}
 			{#if vista !== 'anual' && mesVista}<input type="hidden" name="mes" value={mesVista} />{/if}
+			{#if vista === 'mensual' && formato === 'lista'}<input
+					type="hidden"
+					name="formato"
+					value="lista"
+				/>{/if}
 			<noscript><button class="boton" type="submit">Filtrar</button></noscript>
 		</form>
 	{/if}
@@ -667,29 +673,22 @@
 
 	{#if programa}
 		{#if vista === 'mensual' && mesVista}
-			<section class="card" aria-labelledby="titulo-mensual">
-				<h2 id="titulo-mensual" class="view-heading">Vista mensual</h2>
-				<VistaMensual
-					{partidas}
-					mes={mesVista}
-					{meses}
-					{hoy}
-					{consultaCaptura}
-					enlaceMes={(mes) => enlaceVista('mensual', mes)}
-					on:ajustar={(e) => abrirAjuste(e.detail.partida, e.detail.celda)}
-				/>
-			</section>
-		{:else if vista === 'semanal' && mesVista}
-			<VistaSemanal
+			<VistaMensual
 				{partidas}
 				mes={mesVista}
 				{meses}
 				{hoy}
+				{formato}
 				ejecuciones={ejecucionesMes}
-				enlaceSemana={(mes, numero) => enlaceVista('semanal', mes, numero)}
+				{consultaCaptura}
+				enlaceMes={(mes) => enlaceVista('mensual', mes)}
+				enlaceFormato={(otro) => enlaceVista('mensual', mesVista, otro)}
 				enlaceReportes={(partidaId, mes) =>
 					`${resolve('/historial')}?${consultaHistorial(partidaId, mes)}`}
+				on:ajustar={(e) => abrirAjuste(e.detail.partida, e.detail.celda)}
 			/>
+		{:else if vista === 'semanal'}
+			<VistaSemanal enlaceMensual={enlaceVista('mensual', mesVista)} />
 		{:else}
 			<section class="indicadores" aria-label="Indicadores del ciclo">
 				<div

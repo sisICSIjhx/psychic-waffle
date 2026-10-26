@@ -1219,7 +1219,7 @@ html[data-theme='dark'] .programa-anual .vencidos {
 	}
 }
 
-/* Vista semanal: misma matriz con una columna por semana (número del año y días del mes). */
+/* Matriz de la vista mensual: una columna por semana (número del año y días del mes). */
 .programa-anual .navegacion-meses {
 	display: flex;
 	flex-wrap: wrap;
@@ -1260,5 +1260,154 @@ html[data-theme='dark'] .programa-anual .vencidos {
 	}
 	.programa-anual .matriz.semanal .columna-periodicidad {
 		left: 300px;
+	}
+}
+
+/* Vista mensual: barra con meses y formato; lista agrupada por estado. */
+.programa-anual .barra-mensual {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 24px;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+.programa-anual .barra-mensual .navegacion-meses {
+	margin-bottom: 0;
+}
+.programa-anual .lista-mensual {
+	display: grid;
+	gap: 8px;
+	padding: 8px 20px 16px;
+	border: 1px solid var(--pa-tarjeta-borde);
+	border-radius: 12px;
+	background: var(--pa-tabla);
+}
+.programa-anual .grupo-lista {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 12px 0 0;
+	color: var(--c-texto);
+	font-size: var(--texto-xs);
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+.programa-anual .grupo-lista .punto {
+	width: 8px;
+	height: 8px;
+}
+.programa-anual .cuenta-grupo {
+	padding: 0 7px;
+	border: 1px solid var(--c-borde);
+	border-radius: 9999px;
+	background: var(--c-fondo);
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0;
+	line-height: 18px;
+}
+.programa-anual .lista-mensual .filas {
+	display: grid;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.programa-anual .fila-lista {
+	display: grid;
+	grid-template-columns: 32px minmax(0, 1fr) 180px 130px 250px;
+	gap: 8px 16px;
+	align-items: center;
+	padding: 12px 0;
+	border-bottom: 1px solid var(--pa-linea-suave);
+}
+.programa-anual .fila-lista:last-child {
+	border-bottom: 0;
+}
+.programa-anual .fila-lista .numero {
+	color: var(--pa-texto-4);
+	font-size: var(--texto-sm);
+	font-weight: 700;
+	text-align: center;
+}
+.programa-anual .actividad-lista {
+	margin: 0;
+	color: var(--pa-texto-2);
+	font-size: var(--texto-sm);
+	line-height: 1.4;
+}
+.programa-anual .meta-lista {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 8px;
+	align-items: center;
+	margin: 4px 0 0;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+.programa-anual .estado-lista {
+	display: grid;
+	gap: 4px;
+	justify-items: start;
+}
+.programa-anual .pastilla {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	border: 1px solid var(--c-borde);
+	border-radius: 9999px;
+	background: var(--c-fondo);
+	color: var(--c-texto);
+	font-size: var(--texto-xs);
+	font-weight: 700;
+}
+.programa-anual .documento-lista {
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+.programa-anual .documento-lista.con_reporte {
+	color: var(--pa-verde-texto);
+}
+.programa-anual .documento-lista.reporte_en_borrador {
+	color: var(--pa-ambar-texto);
+}
+.programa-anual .avance-lista {
+	display: grid;
+	gap: 6px;
+}
+.programa-anual .cifra-avance {
+	color: var(--pa-texto-3);
+	font-size: var(--texto-xs);
+	font-variant-numeric: tabular-nums;
+}
+.programa-anual .acciones-lista {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	justify-content: flex-end;
+}
+.programa-anual .acciones-lista .boton {
+	min-height: 34px;
+	padding: 6px 12px;
+	font-size: var(--texto-sm);
+}
+.programa-anual .lista-vacia {
+	border: 1px solid var(--pa-tarjeta-borde);
+	border-radius: 12px;
+	background: var(--pa-tabla);
+}
+.programa-anual .aviso-semanal {
+	align-items: center;
+}
+@media (max-width: 900px) {
+	.programa-anual .fila-lista {
+		grid-template-columns: 32px minmax(0, 1fr);
+	}
+	.programa-anual .estado-lista,
+	.programa-anual .avance-lista,
+	.programa-anual .acciones-lista {
+		grid-column: 2;
+		justify-content: flex-start;
 	}
 }

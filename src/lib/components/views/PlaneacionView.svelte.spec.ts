@@ -363,9 +363,10 @@ describe('PlaneacionView: vistas mensual y semanal', () => {
 		await expect.element(page.getByRole('table')).toBeInTheDocument();
 	});
 
-	it('la vista mensual ordena por urgencia, ofrece «Continuar borrador» y no pasa del periodo', async () => {
+	it('la lista mensual agrupa por urgencia, ofrece «Continuar borrador» y no pasa del periodo', async () => {
 		montar({
 			vista: 'mensual',
+			formato: 'lista',
 			mesVista: '2026-07-01',
 			partidas: [
 				partida(1, [celda('2026-07-01', { ejecucionesReportes: 1, realizado: 1 })]),
@@ -380,16 +381,34 @@ describe('PlaneacionView: vistas mensual y semanal', () => {
 			.toHaveAttribute('aria-current', 'page');
 		const filas = [...document.querySelectorAll('.filas .numero')].map((n) => n.textContent);
 		expect(filas).toEqual(['2', '3', '1']);
+		expect(
+			[...document.querySelectorAll('.grupo-lista')].map((g) => g.textContent?.trim())
+		).toEqual(['Pendientes 1', 'No ejecutadas 1', 'Ejecutadas 1']);
 		await expect
 			.element(page.getByRole('link', { name: 'Continuar borrador' }))
 			.toHaveAttribute('href', `/reportes/${ID(60)}`);
 		await expect.element(page.getByRole('link', { name: /Junio 2026/ })).toBeInTheDocument();
 		expect(page.getByRole('link', { name: /Agosto/ }).elements()).toHaveLength(0);
+		// El selector de formato vuelve a la matriz sin perder el mes ni los filtros.
+		await expect
+			.element(page.getByRole('link', { name: 'Lista' }))
+			.toHaveAttribute('aria-current', 'page');
+		const matriz = page.getByRole('link', { name: 'Matriz' });
+		await expect.element(matriz).toHaveAttribute('href', expect.stringContaining('mes=2026-07-01'));
+		await expect.element(matriz).not.toHaveAttribute('href', expect.stringContaining('formato'));
 	});
 
-	it('la vista semanal muestra las semanas del mes en matriz y no sale del periodo', async () => {
+	it('la vista semanal queda en rediseño y lleva a la mensual', async () => {
+		montar({ vista: 'semanal', mesVista: '2026-07-01' });
+		await expect.element(page.getByText('Vista semanal en rediseño')).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'Ir a la vista mensual' }))
+			.toHaveAttribute('href', expect.stringMatching(/vista=mensual&mes=2026-07-01/));
+	});
+
+	it('la vista mensual muestra por omisión las semanas del mes en matriz', async () => {
 		const { container } = montar({
-			vista: 'semanal',
+			vista: 'mensual',
 			mesVista: '2026-05-01',
 			partidas: [
 				partida(7, [celda('2026-05-01'), celda('2026-06-01'), celda('2026-07-01')]),
@@ -418,7 +437,10 @@ describe('PlaneacionView: vistas mensual y semanal', () => {
 		expect(page.getByRole('link', { name: /Mes anterior/ }).elements()).toHaveLength(0);
 		await expect
 			.element(page.getByRole('link', { name: /Mes siguiente: Junio 2026/ }))
-			.toHaveAttribute('href', expect.stringMatching(/vista=semanal&mes=2026-06-01/));
+			.toHaveAttribute('href', expect.stringMatching(/vista=mensual&mes=2026-06-01$/));
+		await expect
+			.element(page.getByRole('link', { name: 'Lista' }))
+			.toHaveAttribute('href', expect.stringMatching(/mes=2026-05-01&formato=lista$/));
 		// Mensual con el mes terminado: lo que falta queda vencido en la última semana.
 		await expect
 			.element(

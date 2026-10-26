@@ -201,15 +201,21 @@ estados con símbolo y texto (no solo color) y lo que entra o sale reprogramado,
 
 ### Requirement: Vista mensual de la planeación
 
-Planeación SHALL ofrecer una vista mensual, elegible junto a la anual, que liste para un contrato,
-sitio y mes las partidas con algo programado, reprogramado, ejecutado o en borrador, con ambos estados
-y las acciones «Capturar» o «Continuar borrador», «Reprogramar» y «No ejecutado». SHALL permitir pasar
-al mes anterior o siguiente dentro del periodo y conservar los filtros.
+Planeación SHALL ofrecer una vista mensual, elegible junto a la anual, con las partidas de un
+contrato, sitio y mes que tienen algo programado, reprogramado, ejecutado o en borrador, en dos
+formatos: matriz por semanas (por omisión) y lista agrupada por urgencia con ambos estados, el avance
+y las acciones «Capturar» o «Continuar borrador», ver reportes y ajustar. SHALL permitir cambiar de
+formato y pasar al mes anterior o siguiente del periodo conservando los filtros.
 
 #### Scenario: Abrir la vista mensual
 
 - **WHEN** el usuario elige «Mensual» en Planeación el 21 de octubre de 2026
-- **THEN** la vista muestra octubre de 2026 con sus partidas, cada una con lo que falta y sus dos estados
+- **THEN** la vista muestra la matriz de octubre de 2026 por semanas, con un selector «Matriz / Lista»
+
+#### Scenario: Lista del mes
+
+- **WHEN** el usuario elige «Lista»
+- **THEN** las partidas aparecen agrupadas de vencidas a ejecutadas, con lo que falta y sus dos estados
 
 #### Scenario: Continuar un borrador
 
@@ -226,17 +232,27 @@ al mes anterior o siguiente dentro del periodo y conservar los filtros.
 - **WHEN** el usuario filtra por periodicidad semanal y cambia de la vista anual a la mensual
 - **THEN** la vista mensual muestra solo las partidas semanales
 
-### Requirement: Vista semanal de la planeación
+### Requirement: Matriz mensual por semanas
 
-En una segunda fase, Planeación SHALL ofrecer una vista semanal en matriz: las partidas con trabajo en
-el mes por semanas de lunes a domingo recortadas al mes (como las ocurrencias de la captura), con el
-número de semana del año, los días y la semana en curso resaltada. Cada celda SHALL mostrar el estado
-de la semana (ejecutado, pendiente, programado o vencido), el documento y «Visualizar».
+La matriz de la vista mensual SHALL mostrar las partidas con trabajo en el mes por semanas de lunes a
+domingo recortadas al mes (como las ocurrencias de la captura), con el número de semana del año, los
+días y la semana en curso resaltada. Cada celda SHALL mostrar el estado de la semana (ejecutado,
+pendiente, programado o vencido), el documento y «Visualizar».
 
 #### Scenario: Semana parcial al inicio del mes
 
-- **WHEN** el usuario abre la vista semanal de mayo de 2026
-- **THEN** la primera columna es la semana 18 y abarca del 1 al 3 de mayo
+- **WHEN** el usuario abre la vista mensual de mayo de 2026
+- **THEN** la primera columna de la matriz es la semana 18 y abarca del 1 al 3 de mayo
+
+### Requirement: Vista semanal en rediseño
+
+Mientras llega su diseño, la vista semanal SHALL indicar que está en rediseño y ofrecer el paso a la
+vista mensual del mismo mes con los filtros actuales.
+
+#### Scenario: Abrir la vista semanal
+
+- **WHEN** el usuario elige «Semanal»
+- **THEN** ve el aviso de rediseño y un enlace a la vista mensual
 
 ### Requirement: Estado de cada semana según la periodicidad
 

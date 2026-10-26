@@ -3,6 +3,13 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-25 — La matriz por semanas pasa a la vista mensual; lista mensual rediseñada
+
+- Motivo: el usuario aclaró que la matriz por semanas hecha como «Semanal» corresponde a «Mensual». Eligió conservar la lista mensual detrás de un botón y mejorar su diseño, y dejar «Semanal» pendiente hasta tener su diseño. Nivel 2; respaldo previo fuera del repositorio.
+- Alcance: `VistaSemanal.svelte` pasó a `MatrizMensual.svelte` (solo la tabla; recibe las partidas en el orden del programa). `VistaMensual.svelte` reescrita: tarjeta con título, partidas con trabajo y leyenda; navegación entre meses; selector «Matriz / Lista» (`&formato=lista`, la matriz por omisión); la lista agrupa por estado de lo más urgente a lo ejecutado (grupos con cuenta), y cada fila trae número, actividad, periodicidad y anotaciones, pastilla de estado con el documento, avance «R de N» con barra y acciones «Capturar» o «Continuar borrador», «Ver reporte(s)» y «Ajustar» (antes «⋯»). `VistaSemanal.svelte` es un aviso de rediseño con enlace a la mensual. En el servidor `formato` sustituye a `semana` y los reportes del mes se cargan para la matriz mensual. Estilos de la lista en `programa.css`. OpenSpec: «Vista mensual» con los dos formatos, «Matriz mensual por semanas», «Vista semanal en rediseño» y nota en D14.
+- Validación real: `npm run check` 0/0; `eslint src` sin errores; Prettier en lo cambiado; `npm run spec:check` 9 de 9; `npm run test` 51 archivos y 399 pruebas (lista agrupada y cambio de formato, aviso semanal, matriz mensual por omisión). En el navegador: lista de mayo de 2026 (27 vencidas con un borrador real y 1 ejecutada) con columnas alineadas tras fijar el ancho de acciones; contraste sin textos bajo 4,5:1 en ambos temas (254 textos); matriz como formato por omisión y aviso en la semanal.
+- Pendientes: diseño de la vista semanal.
+
 ## 2026-10-25 — Vista semanal del programa en matriz
 
 - Motivo: el usuario compartió el diseño de la vista semanal (matriz de partidas por semanas con estado, documento y «Visualizar») y pidió generarla. Su imagen marca semanas vencidas, lo que contradecía D14 y el requisito «Vista semanal» del cambio `tablero-cumplimiento` («ninguna semana se marca vencida por sí sola»); se siguió el diseño y se actualizaron requisito y diseño. Nivel 2; respaldo previo de los archivos tocados fuera del repositorio.
