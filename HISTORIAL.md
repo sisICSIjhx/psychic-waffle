@@ -3,6 +3,13 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-10-25 — Vista semanal por días
+
+- Motivo: el usuario compartió el diseño de la vista semanal: matriz de una semana con un día por columna («LUN 12 … JUE 15 (HOY)») y tarjetas de estado, documento y «Visualizar». Sustituye al aviso de rediseño. Nivel 2; respaldo previo fuera del repositorio.
+- Alcance: `diasDePartida` en `src/lib/dominio/cumplimiento.ts`: diarias, cada día según sus reportes y su fecha (vencido, pendiente o programado mientras el mes no se cumple); las demás, sus reportes en los días que cubren y lo que falta de su ocurrencia (semana, quincena del último día o mes, sin contar borradores) en un solo día: hoy, el último día de la ocurrencia si ya pasó o el primero si es futura. `VistaSemanal.svelte` reescrita: tarjeta «Programa semanal · Semana N» con rango, partidas con algo en la semana y leyenda; «Semana anterior/siguiente» entre meses del periodo; columnas por día (lunes a domingo recortada al mes) con hoy resaltado; columnas fijas y tarjetas de la matriz. El servidor vuelve a leer `semana` (sin ella, la vista toma la semana de hoy o la primera) y carga los reportes del mes también para la semanal. Estilos de columnas por día en `programa.css` (112 px mínimo para que la semana quepa a 1440 px). OpenSpec: requisito «Vista semanal por días» y nota en D14.
+- Validación real: `npm run check` 0/0; `eslint src` sin errores; Prettier en lo cambiado; `npm run spec:check` 9 de 9; `npm run test` 51 archivos y 401 pruebas (días de una diaria, oferta en un solo día para semanal, quincenal y mensual; vista semanal con semana de hoy, navegación y estados). En el navegador: semana 43 de octubre de 2026 con el domingo 25 como hoy y la semana completa sin desplazamiento; semana 19 de mayo con un borrador real; contraste sin textos bajo 4,5:1 en ambos temas (262 textos).
+- Pendientes: ninguno.
+
 ## 2026-10-25 — La matriz por semanas pasa a la vista mensual; lista mensual rediseñada
 
 - Motivo: el usuario aclaró que la matriz por semanas hecha como «Semanal» corresponde a «Mensual». Eligió conservar la lista mensual detrás de un botón y mejorar su diseño, y dejar «Semanal» pendiente hasta tener su diseño. Nivel 2; respaldo previo fuera del repositorio.

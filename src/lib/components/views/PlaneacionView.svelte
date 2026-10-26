@@ -63,6 +63,8 @@
 	export let mesVista: string | null = null;
 	/** Formato de la vista mensual: matriz por semanas o lista por urgencia. */
 	export let formato: 'matriz' | 'lista' = 'matriz';
+	/** Semana del mes de la vista semanal (sin ella, la de hoy o la primera). */
+	export let semana: number | null = null;
 	export let ejecucionesMes: EjecucionDelMes[] = [];
 	export let form: Record<string, unknown> | null = null;
 
@@ -147,8 +149,13 @@
 	const consultaHistorial = (partidaId: string, mes: string) =>
 		`contrato=${contrato?.id}&sitio=${sitio?.id}&partida=${partidaId}&desde=${mes.slice(0, 7)}&hasta=${mes.slice(0, 7)}&estado=emitido`;
 
-	/** Dirección de la planeación con los filtros actuales y la vista, el mes y el formato dados. */
-	function enlaceVista(otra: string, mes?: string | null, conFormato = formato): string {
+	/** Dirección de la planeación con los filtros actuales y la vista, el mes, el formato y la semana. */
+	function enlaceVista(
+		otra: string,
+		mes?: string | null,
+		conFormato = formato,
+		numeroSemana?: number
+	): string {
 		const consulta = [
 			contrato ? `contrato=${contrato.id}` : '',
 			sitio ? `sitio=${sitio.id}` : '',
@@ -157,7 +164,8 @@
 			filtro.periodicidad ? `periodicidad=${filtro.periodicidad}` : '',
 			otra !== 'anual' ? `vista=${otra}` : '',
 			otra !== 'anual' && mes ? `mes=${mes}` : '',
-			otra === 'mensual' && conFormato === 'lista' ? 'formato=lista' : ''
+			otra === 'mensual' && conFormato === 'lista' ? 'formato=lista' : '',
+			otra === 'semanal' && numeroSemana ? `semana=${numeroSemana}` : ''
 		].filter(Boolean);
 		return `${resolve('/planeacion')}${consulta.length ? `?${consulta.join('&')}` : ''}`;
 	}
@@ -687,8 +695,18 @@
 					`${resolve('/historial')}?${consultaHistorial(partidaId, mes)}`}
 				on:ajustar={(e) => abrirAjuste(e.detail.partida, e.detail.celda)}
 			/>
-		{:else if vista === 'semanal'}
-			<VistaSemanal enlaceMensual={enlaceVista('mensual', mesVista)} />
+		{:else if vista === 'semanal' && mesVista}
+			<VistaSemanal
+				{partidas}
+				mes={mesVista}
+				{meses}
+				{semana}
+				{hoy}
+				ejecuciones={ejecucionesMes}
+				enlaceSemana={(mes, numero) => enlaceVista('semanal', mes, formato, numero)}
+				enlaceReportes={(partidaId, mes) =>
+					`${resolve('/historial')}?${consultaHistorial(partidaId, mes)}`}
+			/>
 		{:else}
 			<section class="indicadores" aria-label="Indicadores del ciclo">
 				<div

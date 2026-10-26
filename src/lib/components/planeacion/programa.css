@@ -1411,3 +1411,17 @@ html[data-theme='dark'] .programa-anual .vencidos {
 		justify-content: flex-start;
 	}
 }
+
+/* Vista semanal: una columna por día, con hoy resaltado. */
+.programa-anual .matriz.por-dias .fila-anios th {
+	height: 44px;
+}
+.programa-anual .matriz.por-dias .fila-anios th.semana {
+	color: var(--pa-texto-2);
+}
+.programa-anual .matriz.por-dias .fila-anios th.semana.mes-actual {
+	color: var(--pa-mes-actual-texto);
+}
+.programa-anual .matriz.por-dias .celda {
+	min-width: 112px;
+}

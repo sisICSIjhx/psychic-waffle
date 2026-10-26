@@ -244,15 +244,23 @@ pendiente, programado o vencido), el documento y «Visualizar».
 - **WHEN** el usuario abre la vista mensual de mayo de 2026
 - **THEN** la primera columna de la matriz es la semana 18 y abarca del 1 al 3 de mayo
 
-### Requirement: Vista semanal en rediseño
+### Requirement: Vista semanal por días
 
-Mientras llega su diseño, la vista semanal SHALL indicar que está en rediseño y ofrecer el paso a la
-vista mensual del mismo mes con los filtros actuales.
+La vista semanal SHALL mostrar en matriz una semana del mes (lunes a domingo recortada al mes), con un
+día por columna y hoy resaltado, las partidas con algo en esa semana y la navegación a la semana
+anterior y siguiente dentro del periodo. Las diarias SHALL marcar cada día según sus reportes y su
+fecha; las demás, sus reportes en los días que cubren y lo que falta de su ocurrencia en un solo día:
+hoy, el último día de la ocurrencia si ya pasó o el primero si es futura.
 
 #### Scenario: Abrir la vista semanal
 
-- **WHEN** el usuario elige «Semanal»
-- **THEN** ve el aviso de rediseño y un enlace a la vista mensual
+- **WHEN** el usuario elige «Semanal» el miércoles 15 de julio de 2026
+- **THEN** ve la semana 29, del lunes 13 al domingo 19, con el miércoles resaltado como hoy
+
+#### Scenario: Partida mensual pendiente
+
+- **WHEN** una partida mensual sigue pendiente en julio y no tiene reportes
+- **THEN** solo el día de hoy la muestra pendiente «Sin reporte»
 
 ### Requirement: Estado de cada semana según la periodicidad
 

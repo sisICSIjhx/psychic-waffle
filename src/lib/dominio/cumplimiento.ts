@@ -555,6 +555,100 @@ export function semanasDePartida(
 	});
 }
 
+/**
+ * Una celda por día de la semana `semana` (ya recortada al mes) para la vista semanal:
+ * - diaria: cada día es una ejecución; cubierto por un emitido, ejecutado; si no y el mes aún no
+ *   cumple, vencido, pendiente o programado según la fecha del día;
+ * - las demás: los reportes en los días de ejecución que cubren. Lo que falta de su ocurrencia
+ *   (la semana para las semanales, la quincena del último día para las quincenales, el mes para las
+ *   demás, sin contar lo que cubren los borradores) se ofrece en un solo día: hoy si la semana está
+ *   en curso, el último día de la ocurrencia si ya pasó o su primer día si es futura, siempre que
+ *   caiga en la semana.
+ */
+export function diasDePartida(
+	periodicidad: string,
+	celda: CeldaEvaluable | undefined,
+	ejecuciones: readonly EjecucionDelMes[],
+	semana: SemanaDelMes,
+	hoy: string
+): (CeldaSemana | null)[] {
+	const dias = diasEntre(semana.desde, semana.hasta);
+	const pendiente = !!celda && faltan(celda) > 0;
+	const enDia = (dia: string) =>
+		ejecuciones.filter((e) => e.diasEjecucion.some((r) => r.desde <= dia && dia <= r.hasta));
+	const delDia = (dia: string): Rango => ({ desde: dia, hasta: dia });
+
+	if (periodicidad === 'diaria') {
+		return dias.map((dia) => {
+			const reportes = enDia(dia);
+			const documento = documentoDeReportes(reportes);
+			if (documento?.documental === 'con_reporte')
+				return { estado: 'ejecutado', ...documento, reportes, detalle: '' };
+			if (!pendiente && !documento) return null;
+			return {
+				estado: momento(delDia(dia), hoy),
+				...(documento ?? SIN_REPORTE),
+				reportes,
+				detalle: ''
+			};
+		});
+	}
+
+	// Ocurrencia a la que pertenece la semana y sus reportes.
+	const mesInicio = `${semana.desde.slice(0, 8)}01`;
+	const [anio, numeroMes] = mesInicio.split('-').map(Number);
+	const mesFin = `${mesInicio.slice(0, 8)}${String(new Date(Date.UTC(anio, numeroMes, 0)).getUTCDate()).padStart(2, '0')}`;
+	let ocurrencia: Rango = { desde: mesInicio, hasta: mesFin };
+	let propios = [...ejecuciones];
+	let detalle = 'lo que falta en el mes';
+	if (periodicidad === 'semanal') {
+		ocurrencia = semana;
+		propios = ejecuciones.filter(
+			(e) => e.ocurrencia?.tipo === 'semana' && e.ocurrencia.numero === semana.numero
+		);
+		detalle = '';
+	} else if (periodicidad === 'quincenal') {
+		const numero = semana.hasta.slice(8) <= '15' ? 1 : 2;
+		ocurrencia =
+			numero === 1
+				? { desde: mesInicio, hasta: `${mesInicio.slice(0, 8)}15` }
+				: { desde: `${mesInicio.slice(0, 8)}16`, hasta: mesFin };
+		propios = ejecuciones.filter(
+			(e) => e.ocurrencia?.tipo === 'quincena' && e.ocurrencia.numero === numero
+		);
+		detalle = `quincena ${numero}`;
+	}
+	const emitidos = propios.filter((e) => e.estado === 'emitido').length;
+	const enCurso = propios.length - emitidos;
+	const porOfrecer =
+		periodicidad === 'semanal' || periodicidad === 'quincenal'
+			? pendiente && propios.length === 0
+			: !!celda && faltan(celda) > enCurso;
+	const enSemana = (dia: string) => dia >= semana.desde && dia <= semana.hasta;
+	let diaOferta: string | null = null;
+	if (porOfrecer) {
+		if (enSemana(hoy)) diaOferta = hoy > ocurrencia.desde ? hoy : ocurrencia.desde;
+		else if (semana.hasta < hoy) diaOferta = ocurrencia.hasta;
+		else diaOferta = ocurrencia.desde > semana.desde ? ocurrencia.desde : semana.desde;
+		if (!enSemana(diaOferta) || diaOferta > ocurrencia.hasta) diaOferta = null;
+	}
+	// Reportes de la ocurrencia sin días de ejecución: en el primer día de la semana.
+	const sinDias = propios.filter((e) => e.diasEjecucion.length === 0);
+
+	return dias.map((dia, i) => {
+		const reportes = [...enDia(dia), ...(i === 0 ? sinDias : [])];
+		const documento = documentoDeReportes(reportes);
+		if (documento) {
+			const estado =
+				documento.documental === 'con_reporte' ? 'ejecutado' : momento(ocurrencia, hoy);
+			return { estado, ...documento, reportes, detalle };
+		}
+		if (dia === diaOferta)
+			return { estado: momento(delDia(dia), hoy), ...SIN_REPORTE, reportes: [], detalle };
+		return null;
+	});
+}
+
 // Tablero (D12, D13).
 
 /** Programa con su contrato, sitio y avance (la lectura de api_obtener_cumplimiento). */

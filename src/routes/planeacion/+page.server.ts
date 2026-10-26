@@ -57,17 +57,22 @@ export const load: PageServerLoad = async ({ url }) => {
 		meses.find((m) => m.slice(0, 7) === fecha.slice(0, 7)) ??
 		meses[0] ??
 		null;
-	// Vista mensual: matriz por semanas (con los reportes del mes) o lista por urgencia.
+	// Vista mensual: matriz por semanas (con los reportes del mes) o lista por urgencia. Vista
+	// semanal: la semana pedida del mes (sin ella, la vista elige la de hoy) con los mismos reportes.
 	const formato: 'matriz' | 'lista' =
 		url.searchParams.get('formato') === 'lista' ? 'lista' : 'matriz';
+	const semanaPedida = Number(url.searchParams.get('semana'));
+	const semana = Number.isInteger(semanaPedida) && semanaPedida > 0 ? semanaPedida : null;
+	const conReportes = vista === 'semanal' || (vista === 'mensual' && formato === 'matriz');
 	const ejecucionesMes =
-		vista === 'mensual' && formato === 'matriz' && programa && mesVista
+		conReportes && programa && mesVista
 			? await repos.programa.listarEjecucionesMes(programa.id, mesVista)
 			: [];
 	return {
 		vista,
 		mesVista,
 		formato,
+		semana,
 		ejecucionesMes,
 		hoy: fecha,
 		contratos,

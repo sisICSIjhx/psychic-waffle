@@ -5,6 +5,7 @@ import {
 	desglosePorPartida,
 	partidasDelMes,
 	reportesQueFaltan,
+	diasDePartida,
 	semanasDePartida,
 	tablaCumplimiento,
 	tendencia,
@@ -425,5 +426,82 @@ describe('vista mensual y semanal', () => {
 			HOY
 		);
 		expect(resumen(conBorrador)).toEqual([null, 'vencido · Borrador', null, null, null]);
+	});
+
+	const SEMANA = (n: number) => OCTUBRE.find((s) => s.numero === n)!;
+
+	it('marca cada día de una diaria según sus reportes y su fecha', () => {
+		// Semana 4 de octubre: lunes 19 a domingo 25; HOY es el miércoles 21.
+		const diaria = diasDePartida(
+			'diaria',
+			celda('2026-10-01', { programado: 31, ejecucionesReportes: 2 }),
+			[
+				ejecucion({ diasEjecucion: [{ desde: '2026-10-19', hasta: '2026-10-20' }] }),
+				ejecucion({
+					id: 'b',
+					estado: 'borrador',
+					diasEjecucion: [{ desde: '2026-10-21', hasta: '2026-10-21' }]
+				})
+			],
+			SEMANA(4),
+			HOY
+		);
+		expect(resumen(diaria)).toEqual([
+			'ejecutado · Con reporte',
+			'ejecutado · Con reporte',
+			'pendiente · Borrador',
+			'programado · Sin reporte',
+			'programado · Sin reporte',
+			'programado · Sin reporte',
+			'programado · Sin reporte'
+		]);
+	});
+
+	it('ofrece lo que falta de la ocurrencia en un solo día de la semana', () => {
+		const semanal = (n: number, ejecuciones: EjecucionDelMes[] = []) =>
+			resumen(
+				diasDePartida(
+					'semanal',
+					celda('2026-10-01', { programado: 5 }),
+					ejecuciones,
+					SEMANA(n),
+					HOY
+				)
+			);
+		// En curso: hoy; pasada: su último día; futura: su primer día.
+		expect(semanal(4)).toEqual([null, null, 'pendiente · Sin reporte', null, null, null, null]);
+		expect(semanal(2)).toEqual([null, null, null, null, null, null, 'vencido · Sin reporte']);
+		expect(semanal(5)).toEqual(['programado · Sin reporte', null, null, null, null, null]);
+		// Con el reporte de la semana, solo el día que cubre.
+		expect(
+			semanal(4, [
+				ejecucion({
+					ocurrencia: { tipo: 'semana', numero: 4 },
+					diasEjecucion: [{ desde: '2026-10-20', hasta: '2026-10-20' }]
+				})
+			])
+		).toEqual([null, 'ejecutado · Con reporte', null, null, null, null, null]);
+		// Quincenal el martes 13: la semana 12-18 sigue a la quincena 2, que empieza el 16.
+		expect(
+			resumen(
+				diasDePartida(
+					'quincenal',
+					celda('2026-10-01', { programado: 2 }),
+					[],
+					SEMANA(3),
+					'2026-10-13'
+				)
+			)
+		).toEqual([null, null, null, null, 'programado · Sin reporte', null, null]);
+		// Mensual: semana pasada del mes en curso vacía; mes terminado, vencida en su último día.
+		expect(resumen(diasDePartida('mensual', celda('2026-10-01'), [], SEMANA(2), HOY))).toEqual(
+			Array(7).fill(null)
+		);
+		const septiembre = semanasDe('2026-09-01');
+		expect(
+			resumen(
+				diasDePartida('mensual', celda('2026-09-01'), [], septiembre[septiembre.length - 1], HOY)
+			)
+		).toEqual([null, null, 'vencido · Sin reporte']);
 	});
 });

@@ -398,12 +398,64 @@ describe('PlaneacionView: vistas mensual y semanal', () => {
 		await expect.element(matriz).not.toHaveAttribute('href', expect.stringContaining('formato'));
 	});
 
-	it('la vista semanal queda en rediseño y lleva a la mensual', async () => {
-		montar({ vista: 'semanal', mesVista: '2026-07-01' });
-		await expect.element(page.getByText('Vista semanal en rediseño')).toBeInTheDocument();
+	it('la vista semanal muestra por días la semana de hoy y navega semana a semana', async () => {
+		const { container } = montar({
+			vista: 'semanal',
+			mesVista: '2026-07-01',
+			partidas: [
+				partida(7, [celda('2026-05-01'), celda('2026-06-01'), celda('2026-07-01')]),
+				partida(9, [celda('2026-07-01', { programado: 31, ejecucionesReportes: 2 })], {
+					periodicidad: 'diaria'
+				})
+			],
+			ejecucionesMes: [
+				{
+					id: ID(71),
+					partidaId: ID(9),
+					estado: 'emitido',
+					ocurrencia: null,
+					reprogramacionId: null,
+					diasEjecucion: [{ desde: '2026-07-13', hasta: '2026-07-14' }]
+				}
+			]
+		});
+		// HOY es el miércoles 15 de julio: semana 29 del año, del lunes 13 al domingo 19.
 		await expect
-			.element(page.getByRole('link', { name: 'Ir a la vista mensual' }))
-			.toHaveAttribute('href', expect.stringMatching(/vista=mensual&mes=2026-07-01/));
+			.element(page.getByRole('heading', { name: 'Programa semanal · Semana 29' }))
+			.toBeInTheDocument();
+		expect(
+			[...container.querySelectorAll('.por-dias th.semana span[aria-hidden]')].map((t) =>
+				t.textContent?.replace(/\s+/g, ' ').trim()
+			)
+		).toEqual(['lun 13', 'mar 14', 'mié 15 (hoy)', 'jue 16', 'vie 17', 'sáb 18', 'dom 19']);
+		await expect
+			.element(page.getByRole('link', { name: 'Semana anterior' }))
+			.toHaveAttribute('href', expect.stringMatching(/mes=2026-07-01&semana=2$/));
+		await expect
+			.element(page.getByRole('link', { name: 'Semana siguiente' }))
+			.toHaveAttribute('href', expect.stringMatching(/mes=2026-07-01&semana=4$/));
+		const estados = (fila: number) =>
+			[...container.querySelectorAll('.por-dias tbody tr')[fila].querySelectorAll('.celda')].map(
+				(c) => c.querySelector('.linea-celda.estado')?.textContent ?? '—'
+			);
+		// Mensual pendiente: lo que falta se ofrece hoy; diaria: cada día según su reporte y fecha.
+		expect(estados(0)).toEqual(['—', '—', 'Pendiente', '—', '—', '—', '—']);
+		expect(estados(1)).toEqual([
+			'Ejecutado',
+			'Ejecutado',
+			'Pendiente',
+			'Programado',
+			'Programado',
+			'Programado',
+			'Programado'
+		]);
+		await expect
+			.element(
+				page.getByText(
+					'Partida 7, miércoles 15 de julio de 2026: Pendiente, Sin reporte, lo que falta en el mes'
+				)
+			)
+			.toBeInTheDocument();
 	});
 
 	it('la vista mensual muestra por omisión las semanas del mes en matriz', async () => {
