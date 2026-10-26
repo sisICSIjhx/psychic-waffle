@@ -387,22 +387,58 @@ describe('PlaneacionView: vistas mensual y semanal', () => {
 		expect(page.getByRole('link', { name: /Agosto/ }).elements()).toHaveLength(0);
 	});
 
-	it('la vista semanal muestra la semana parcial y no sale del periodo', async () => {
-		montar({
+	it('la vista semanal muestra las semanas del mes en matriz y no sale del periodo', async () => {
+		const { container } = montar({
 			vista: 'semanal',
 			mesVista: '2026-05-01',
-			semana: 1,
-			partidas: [partida(7, [celda('2026-05-01'), celda('2026-06-01'), celda('2026-07-01')])]
+			partidas: [
+				partida(7, [celda('2026-05-01'), celda('2026-06-01'), celda('2026-07-01')]),
+				partida(8, [celda('2026-05-01', { programado: 5, ejecucionesReportes: 1, realizado: 1 })], {
+					periodicidad: 'semanal'
+				})
+			],
+			ejecucionesMes: [
+				{
+					id: ID(70),
+					partidaId: ID(8),
+					estado: 'emitido',
+					ocurrencia: { tipo: 'semana', numero: 2 },
+					reprogramacionId: null,
+					diasEjecucion: [{ desde: '2026-05-05', hasta: '2026-05-05' }]
+				}
+			]
 		});
+		// Mayo de 2026 empieza en viernes: la semana 18 del año va del 1 al 3.
+		expect(
+			[...container.querySelectorAll('.matriz.semanal thead th.semana')].map((t) => t.textContent)
+		).toEqual(['Semana 18', 'Semana 19', 'Semana 20', 'Semana 21', 'Semana 22']);
 		await expect
-			.element(page.getByText(/Semana 1 de mayo 2026 \(del 1 al 3 de mayo de 2026\)/))
+			.element(page.getByRole('columnheader', { name: 'del 1 al 3 de mayo de 2026' }))
 			.toBeInTheDocument();
-		expect(page.getByRole('link', { name: /Semana anterior/ }).elements()).toHaveLength(0);
+		expect(page.getByRole('link', { name: /Mes anterior/ }).elements()).toHaveLength(0);
 		await expect
-			.element(page.getByRole('link', { name: /Semana siguiente/ }))
-			.toHaveAttribute('href', expect.stringContaining('semana=2'));
+			.element(page.getByRole('link', { name: /Mes siguiente: Junio 2026/ }))
+			.toHaveAttribute('href', expect.stringMatching(/vista=semanal&mes=2026-06-01/));
+		// Mensual con el mes terminado: lo que falta queda vencido en la última semana.
 		await expect
-			.element(page.getByRole('cell', { name: 'Pendiente en el mes' }))
+			.element(
+				page.getByText(
+					'Partida 7, semana 5 (del 25 al 31 de mayo de 2026): Vencido, Sin reporte, lo que falta en el mes'
+				)
+			)
 			.toBeInTheDocument();
+		await expect
+			.element(
+				page.getByRole('link', {
+					name: 'Visualizar el reporte de la partida 8, semana 2 de mayo 2026'
+				})
+			)
+			.toHaveAttribute('href', `/reportes/${ID(70)}`);
+		const semanal = [...container.querySelectorAll('.matriz.semanal tbody tr')][1];
+		expect(
+			[...semanal.querySelectorAll('.celda')].map(
+				(c) => c.querySelector('.linea-celda.estado')?.textContent ?? '—'
+			)
+		).toEqual(['Vencido', 'Ejecutado', 'Vencido', 'Vencido', 'Vencido']);
 	});
 });

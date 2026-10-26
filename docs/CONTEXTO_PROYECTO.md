@@ -79,7 +79,8 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/tablero-cumplim
   de datos ni reglas), sustituido el 2026-10-25 por el diseño A «Foco operativo»: editor con
   encabezado fijo y una sección a la vez. El programa anual sigue la «Nueva versión programa anual»
   de Figma (indicadores del ciclo, búsqueda, celdas-tarjeta con «Visualizar», exportar a CSV y
-  panel de la celda; tokens `--pa-*` propios en claro y oscuro).
+  panel de la celda; estilos y tokens `--pa-*` en `planeacion/programa.css`); la vista semanal usa
+  la misma matriz por semanas del mes (`semanasDePartida`).
 - Cambios de octubre de 2026 (seis cambios OpenSpec apilados, uno por rama): `importacion-programa-anual`
   terminado (Proagro con programa 2026-03 a 2027-02 en EM-30184 y EM-30185 y vigencia ajustada);
   `fechas-ejecucion-multiples` terminado (días en segmentos `dias_ejecucion`; diarias por mes o por

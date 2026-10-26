@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { rangoDelPeriodo } from './captura';
+import { ocurrenciasDelMes, rangoDelPeriodo } from './captura';
 import {
 	anotacionesCelda,
 	desglosePorPartida,
 	partidasDelMes,
 	reportesQueFaltan,
-	semanaDePartida,
+	semanasDePartida,
 	tablaCumplimiento,
 	tendencia,
 	type EjecucionDelMes,
@@ -298,37 +298,132 @@ describe('vista mensual y semanal', () => {
 		...cambios
 	});
 
-	it('arma cada partida en la semana según su periodicidad', () => {
-		// Mayo de 2026 empieza en viernes: la semana 1 va del 1 al 3.
-		const semana1 = rangoDelPeriodo('2026-05-01', { tipo: 'semana', numero: 1 })!;
-		expect(semana1).toEqual({ desde: '2026-05-01', hasta: '2026-05-03' });
-		const semana2 = rangoDelPeriodo('2026-05-01', { tipo: 'semana', numero: 2 })!;
-		const semanal = semanaDePartida(
+	/** Semanas de lunes a domingo del mes, recortadas al mes. */
+	const semanasDe = (mes: string) =>
+		ocurrenciasDelMes('semana', mes).map((numero) => ({
+			numero,
+			...rangoDelPeriodo(mes, { tipo: 'semana', numero })!
+		}));
+	const resumen = (celdas: ReturnType<typeof semanasDePartida>) =>
+		celdas.map((c) => (c ? `${c.estado} · ${c.documento}` : null));
+
+	// Octubre de 2026 empieza en jueves: semanas 1-4, 5-11, 12-18, 19-25 (la de HOY) y 26-31.
+	const OCTUBRE = semanasDe('2026-10-01');
+
+	it('marca cada semana de una partida semanal según su reporte y su fecha', () => {
+		expect(OCTUBRE.map((s) => `${s.desde.slice(8)}-${s.hasta.slice(8)}`)).toEqual([
+			'01-04',
+			'05-11',
+			'12-18',
+			'19-25',
+			'26-31'
+		]);
+		const semanal = semanasDePartida(
 			'semanal',
-			celda('2026-05-01', { programado: 4 }),
+			celda('2026-10-01', { programado: 5, ejecucionesReportes: 1 }),
+			[
+				ejecucion({ ocurrencia: { tipo: 'semana', numero: 2 } }),
+				ejecucion({ id: 'b', estado: 'borrador', ocurrencia: { tipo: 'semana', numero: 4 } })
+			],
+			OCTUBRE,
+			HOY
+		);
+		expect(resumen(semanal)).toEqual([
+			'vencido · Sin reporte',
+			'ejecutado · Con reporte',
+			'vencido · Sin reporte',
+			'pendiente · Borrador',
+			'programado · Sin reporte'
+		]);
+		// Con el mes cumplido, las semanas sin reporte quedan vacías.
+		const cumplida = semanasDePartida(
+			'semanal',
+			celda('2026-10-01', { programado: 1, ejecucionesReportes: 1 }),
 			[ejecucion({ ocurrencia: { tipo: 'semana', numero: 2 } })],
-			2,
-			semana2
+			OCTUBRE,
+			HOY
 		);
-		expect(semanal.texto).toBe('Con reporte');
-		const quincenal = semanaDePartida(
+		expect(resumen(cumplida)).toEqual([null, 'ejecutado · Con reporte', null, null, null]);
+	});
+
+	it('sigue la quincena del último día de la semana y cuenta los días de las diarias', () => {
+		const quincenal = semanasDePartida(
 			'quincenal',
-			celda('2026-05-01', { programado: 2 }),
-			[ejecucion({ estado: 'borrador', ocurrencia: { tipo: 'quincena', numero: 1 } })],
-			2,
-			semana2
+			celda('2026-10-01', { programado: 2, ejecucionesReportes: 1 }),
+			[ejecucion({ ocurrencia: { tipo: 'quincena', numero: 1 } })],
+			OCTUBRE,
+			HOY
 		);
-		expect(quincenal.texto).toBe('Reporte en borrador');
-		const diaria = semanaDePartida(
+		expect(resumen(quincenal)).toEqual([
+			'ejecutado · Con reporte',
+			'ejecutado · Con reporte',
+			'pendiente · Sin reporte',
+			'pendiente · Sin reporte',
+			'pendiente · Sin reporte'
+		]);
+		const diaria = semanasDePartida(
 			'diaria',
-			celda('2026-05-01', { programado: 31 }),
-			[ejecucion({ diasEjecucion: [{ desde: '2026-05-04', hasta: '2026-05-08' }] })],
-			2,
-			semana2
+			celda('2026-10-01', { programado: 31, ejecucionesReportes: 8 }),
+			[ejecucion({ diasEjecucion: [{ desde: '2026-10-01', hasta: '2026-10-08' }] })],
+			OCTUBRE,
+			HOY
 		);
-		expect(diaria.texto).toBe('5 de 7 días');
-		expect(semanaDePartida('mensual', celda('2026-05-01'), [], 2, semana2).texto).toBe(
-			'Pendiente en el mes'
+		expect(resumen(diaria)).toEqual([
+			'ejecutado · Con reporte',
+			'vencido · 4 de 7 días',
+			'vencido · Sin reporte',
+			'pendiente · Sin reporte',
+			'programado · Sin reporte'
+		]);
+	});
+
+	it('no planea semanas de una mensual: lo que falta va en la semana en curso y las siguientes', () => {
+		expect(resumen(semanasDePartida('mensual', celda('2026-10-01'), [], OCTUBRE, HOY))).toEqual([
+			null,
+			null,
+			null,
+			'pendiente · Sin reporte',
+			'programado · Sin reporte'
+		]);
+		// Mes terminado: solo la última semana, vencida.
+		expect(
+			resumen(semanasDePartida('mensual', celda('2026-09-01'), [], semanasDe('2026-09-01'), HOY))
+		).toEqual([null, null, null, null, 'vencido · Sin reporte']);
+		const conReporte = semanasDePartida(
+			'trimestral',
+			celda('2026-10-01', { ejecucionesReportes: 1 }),
+			[ejecucion({ diasEjecucion: [{ desde: '2026-10-13', hasta: '2026-10-13' }] })],
+			OCTUBRE,
+			HOY
 		);
+		expect(resumen(conReporte)).toEqual([null, null, 'ejecutado · Con reporte', null, null]);
+		const sinReporte = semanasDePartida(
+			'mensual',
+			celda('2026-10-01', { realizadoSinReporte: 1 }),
+			[],
+			OCTUBRE,
+			HOY
+		);
+		expect(resumen(sinReporte)).toEqual([
+			null,
+			null,
+			null,
+			null,
+			'ejecutado · Realizado sin reporte'
+		]);
+		// Un borrador en curso ya cubre lo que falta: no se repite en la última semana.
+		const conBorrador = semanasDePartida(
+			'mensual',
+			celda('2026-09-01'),
+			[
+				ejecucion({
+					estado: 'borrador',
+					diasEjecucion: [{ desde: '2026-09-08', hasta: '2026-09-08' }]
+				})
+			],
+			semanasDe('2026-09-01'),
+			HOY
+		);
+		expect(resumen(conBorrador)).toEqual([null, 'vencido · Borrador', null, null, null]);
 	});
 });
