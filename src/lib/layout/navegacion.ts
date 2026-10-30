@@ -28,7 +28,7 @@ export const titulosPorVista: Record<VistaId, string> = {
 	captura: 'Capturar reporte',
 	historial: 'Historial de reportes',
 	catalogo: 'Catálogo de contratos',
-	personal: 'Administración de Personal',
+	personal: 'Personal',
 	perfil: 'Mi Perfil'
 };
 
@@ -84,18 +84,25 @@ export type EncabezadoPagina = { ceja: string | null; titulo: string };
 
 /**
  * Encabezado que el layout pone sobre la página. El editor y el programa traen el suyo (con estado
- * y acciones) y devuelven null; el contrato y la partida del catálogo llevan migas en lugar de ceja.
+ * y acciones) y devuelven null; las páginas internas del catálogo y del personal llevan migas en lugar
+ * de ceja.
  */
 export function encabezadoDePagina(
 	pathname: string,
 	cliente: string | null = null,
-	datos: { contrato?: string | null; partida?: string | null } = {}
+	datos: { contrato?: string | null; partida?: string | null; persona?: string | null } = {}
 ): EncabezadoPagina | null {
 	const vista = vistaDesdeRuta(pathname);
 	const [, primero, segundo] = pathname.split('/');
 	if (vista === null || primero === 'reportes' || vista === 'planeacion') return null;
 	if (vista === 'catalogo' && segundo === 'contratos') {
 		return { ceja: null, titulo: datos.contrato ? `Contrato ${datos.contrato}` : 'Contrato' };
+	}
+	if (vista === 'personal' && segundo) {
+		return { ceja: null, titulo: datos.persona || 'Nueva persona' };
+	}
+	if (vista === 'catalogo' && segundo === 'alcances') {
+		return { ceja: null, titulo: 'Alcances predeterminados' };
 	}
 	if (vista === 'catalogo' && segundo === 'partidas') {
 		return { ceja: null, titulo: datos.partida ? `Partida ${datos.partida}` : 'Nueva partida' };

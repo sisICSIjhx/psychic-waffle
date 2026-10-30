@@ -8,6 +8,7 @@
 	import EncabezadoPagina from '$lib/components/ui/EncabezadoPagina.svelte';
 	import Notificaciones from '$lib/components/ui/Notificaciones.svelte';
 	import { encabezadoDePagina, tituloDePagina, vistaDesdeRuta } from '$lib/layout/navegacion';
+	import { nombreCompleto } from '$lib/dominio/personal';
 	import {
 		CLAVE_TEMA,
 		guardarPreferencia,
@@ -30,10 +31,15 @@
 	$: currentView = vistaDesdeRuta(pathname);
 	$: tituloReporte = ($page.data as { reporte?: { titulo?: string } }).reporte?.titulo ?? null;
 	$: pageTitle = tituloDePagina(pathname, cliente, tituloReporte);
-	$: datosPagina = $page.data as { contrato?: { numero?: string }; partida?: { numero?: string } };
+	$: datosPagina = $page.data as {
+		contrato?: { numero?: string };
+		partida?: { numero?: string };
+		persona?: Parameters<typeof nombreCompleto>[0] | null;
+	};
 	$: encabezado = encabezadoDePagina(pathname, cliente, {
 		contrato: datosPagina.contrato?.numero,
-		partida: datosPagina.partida?.numero
+		partida: datosPagina.partida?.numero,
+		persona: datosPagina.persona ? nombreCompleto(datosPagina.persona) : null
 	});
 
 	onMount(() => {

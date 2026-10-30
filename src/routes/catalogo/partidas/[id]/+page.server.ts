@@ -33,7 +33,11 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			partida: null,
 			contrato,
 			sitio,
-			equipos: await repos.catalogo.listarEquipos(sitio.id)
+			equipos: await repos.catalogo.listarEquipos(sitio.id),
+			predeterminados: await repos.catalogo.listarAlcancesPredeterminados({
+				clienteId: contrato.clienteId,
+				soloActivos: true
+			})
 		};
 	}
 	const partida = await repos.catalogo.obtenerPartida(params.id).catch(() => null);
@@ -42,7 +46,14 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const sitio = (await repos.catalogo.listarSitios(contrato.id)).find(
 		(s) => s.id === partida.sitioId
 	)!;
-	return { partida, contrato, sitio, equipos: await repos.catalogo.listarEquipos(partida.sitioId) };
+	const [equipos, predeterminados] = await Promise.all([
+		repos.catalogo.listarEquipos(partida.sitioId),
+		repos.catalogo.listarAlcancesPredeterminados({
+			clienteId: contrato.clienteId,
+			soloActivos: true
+		})
+	]);
+	return { partida, contrato, sitio, equipos, predeterminados };
 };
 
 export const actions: Actions = {

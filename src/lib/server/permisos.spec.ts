@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type { RolPersonal } from '../dominio/esquemas';
 import { contextoBitacora, puedeEditarCatalogo } from './permisos';
 
-const usuario = (rol: 'administrador' | 'capturista') => ({
+const usuario = (rol: RolPersonal) => ({
 	id: '00000000-0000-4000-8000-000000000001',
 	nombre: 'Persona Ficticia',
 	rol
@@ -21,7 +22,7 @@ describe('permisos del catálogo', () => {
 		expect(puedeEditarCatalogo({ autenticacion: true, usuario: usuario('administrador') })).toBe(
 			true
 		);
-		expect(puedeEditarCatalogo({ autenticacion: true, usuario: usuario('capturista') })).toBe(
+		expect(puedeEditarCatalogo({ autenticacion: true, usuario: usuario('reporteador') })).toBe(
 			false
 		);
 		expect(puedeEditarCatalogo({ autenticacion: true, usuario: null })).toBe(false);

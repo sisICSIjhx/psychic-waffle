@@ -74,6 +74,17 @@ export function rutaMiniatura(rutaOptimizada: string): string {
 	return `${rutaOptimizada.replace(/\.jpe?g$/i, '')}-mini.jpg`;
 }
 
+/**
+ * Ruta local de la versión optimizada. Las fotos en SharePoint solo guardan su URL y su lectura llega
+ * con esa integración (cambio alcances-personal-esquema-bd, D4).
+ */
+export function rutaOptimizadaLocal(foto: Foto): string {
+	if (foto.almacenamiento === 'sharepoint' || !foto.rutaOptimizada) {
+		throw new Error('La foto está en SharePoint y su lectura aún no está conectada.');
+	}
+	return foto.rutaOptimizada;
+}
+
 export class ServicioCaptura {
 	private readonly repos: Repositorios;
 	private readonly archivos: Almacenamiento;
@@ -236,21 +247,17 @@ export class ServicioCaptura {
 	async leerFoto(reporte: Reporte, fotoId: string): Promise<{ datos: Buffer; foto: Foto } | null> {
 		const foto = reporte.alcances.flatMap((a) => a.fotos).find((f) => f.id === fotoId);
 		if (!foto) return null;
-		return { datos: await this.archivos.leer(foto.rutaOptimizada), foto };
+		return { datos: await this.archivos.leer(rutaOptimizadaLocal(foto)), foto };
 	}
 
 	/** Lee la miniatura de una foto del reporte; si falta, la genera desde la optimizada y la guarda. */
 	async leerMiniatura(reporte: Reporte, fotoId: string): Promise<Buffer | null> {
 		const foto = reporte.alcances.flatMap((a) => a.fotos).find((f) => f.id === fotoId);
 		if (!foto) return null;
-		const existente = await this.archivos
-			.leer(rutaMiniatura(foto.rutaOptimizada))
-			.catch(() => null);
+		const ruta = rutaOptimizadaLocal(foto);
+		const existente = await this.archivos.leer(rutaMiniatura(ruta)).catch(() => null);
 		if (existente) return existente;
-		return this.guardarMiniatura(
-			foto.rutaOptimizada,
-			await this.archivos.leer(foto.rutaOptimizada)
-		);
+		return this.guardarMiniatura(ruta, await this.archivos.leer(ruta));
 	}
 
 	private async guardarMiniatura(rutaOptimizada: string, optimizada: Uint8Array): Promise<Buffer> {
@@ -350,7 +357,7 @@ export class ServicioCaptura {
 			const fotos = [];
 			for (const foto of alcance.fotos) {
 				fotos.push({
-					datos: await this.archivos.leer(foto.rutaOptimizada),
+					datos: await this.archivos.leer(rutaOptimizadaLocal(foto)),
 					descripcion: foto.descripcion,
 					momento: foto.momento,
 					optimizada: { ancho: foto.ancho, alto: foto.alto },

@@ -22,7 +22,8 @@ describe('Sidebar', () => {
 			['Proagro', '/captura?cliente=proagro'],
 			['Virtual', '/captura?cliente=virtual'],
 			['Historial', '/historial'],
-			['Catálogo', '/catalogo']
+			['Catálogo', '/catalogo'],
+			['Personal', '/personal']
 		];
 		for (const [nombre, ruta] of esperados) {
 			await expect
@@ -30,8 +31,7 @@ describe('Sidebar', () => {
 				.toHaveAttribute('href', ruta);
 		}
 		expect(page.getByRole('link', { name: 'Prosasa' }).elements()).toHaveLength(0);
-		// Sin pantallas vacías: Personal y Mi Perfil vuelven con la autenticación.
-		expect(page.getByRole('link', { name: 'Personal' }).elements()).toHaveLength(0);
+		// Sin pantallas vacías: Mi Perfil vuelve con la autenticación.
 		expect(page.getByRole('link', { name: 'Mi Perfil' }).elements()).toHaveLength(0);
 		await expect
 			.element(page.getByRole('link', { name: 'ICSI Reportes' }))

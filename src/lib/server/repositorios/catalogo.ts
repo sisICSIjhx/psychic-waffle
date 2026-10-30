@@ -1,6 +1,8 @@
 // Repositorio del catálogo: clientes, contratos, sitios, partidas, equipos y firmantes.
 import { z } from 'zod';
 import {
+	esquemaAlcancePredeterminado,
+	esquemaAlcancePredeterminadoEntrada,
 	esquemaCliente,
 	esquemaContrato,
 	esquemaEquipo,
@@ -13,6 +15,8 @@ import {
 	esquemaResultadoEdicion,
 	esquemaResumenSitio,
 	esquemaSitio,
+	type AlcancePredeterminado,
+	type AlcancePredeterminadoEntrada,
 	type Cliente,
 	type Contrato,
 	type Equipo,
@@ -178,6 +182,28 @@ export class RepositorioCatalogo {
 
 	async listarSitios(contratoId?: string): Promise<Sitio[]> {
 		return z.array(esquemaSitio).parse(await this.sql.llamar('api_listar_sitios', { contratoId }));
+	}
+
+	/** Biblioteca de alcances de un proyecto (cliente); con `soloActivos`, la que se ofrece. */
+	async listarAlcancesPredeterminados(
+		filtro: { clienteId?: string; soloActivos?: boolean } = {}
+	): Promise<AlcancePredeterminado[]> {
+		return z
+			.array(esquemaAlcancePredeterminado)
+			.parse(await this.sql.llamar('api_listar_alcances_predeterminados', filtro));
+	}
+
+	async guardarAlcancePredeterminado(
+		alcance: AlcancePredeterminadoEntrada
+	): Promise<AlcancePredeterminado> {
+		const entrada = esquemaAlcancePredeterminadoEntrada.parse(alcance);
+		return esquemaAlcancePredeterminado.parse(
+			await this.sql.llamar('api_guardar_alcance_predeterminado', entrada)
+		);
+	}
+
+	async eliminarAlcancePredeterminado(id: string): Promise<void> {
+		await this.sql.llamar('api_eliminar_alcance_predeterminado', { id });
 	}
 
 	async guardarPartida(partida: PartidaEntrada): Promise<Partida> {

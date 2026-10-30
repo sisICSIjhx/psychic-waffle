@@ -57,6 +57,14 @@ describe('navegación entre vistas', () => {
 			titulo: 'Contrato OC-1'
 		});
 		expect(encabezadoDePagina('/catalogo/partidas/nueva')?.titulo).toBe('Nueva partida');
+		expect(encabezadoDePagina('/personal/nuevo')?.titulo).toBe('Nueva persona');
+		expect(encabezadoDePagina('/personal/1', null, { persona: 'Ana Ficticia' })?.titulo).toBe(
+			'Ana Ficticia'
+		);
+		expect(encabezadoDePagina('/catalogo/alcances')).toEqual({
+			ceja: null,
+			titulo: 'Alcances predeterminados'
+		});
 		expect(encabezadoDePagina('/reportes/123')).toBeNull();
 		expect(encabezadoDePagina('/planeacion')).toBeNull();
 		expect(encabezadoDePagina('/no-existe')).toBeNull();

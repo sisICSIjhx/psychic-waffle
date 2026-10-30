@@ -25,7 +25,8 @@
 		"verificar:datos": "node scripts/verificar-datos-personales.ts",
 		"importar": "node scripts/importar-catalogo.ts",
 		"verificar:indice": "node scripts/verificar-indice-word.ts",
-		"anchos:extraer": "node scripts/extraer-anchos-fuentes.ts"
+		"anchos:extraer": "node scripts/extraer-anchos-fuentes.ts",
+		"bd:script": "node scripts/generar-esquema-bd.ts"
 	},
 	"devDependencies": {
 		"@colbymchenry/codegraph": "1.6.2",

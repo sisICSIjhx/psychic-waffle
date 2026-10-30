@@ -23,6 +23,15 @@ export const MOMENTOS_FOTO = ['antes', 'durante', 'despues'] as const;
 /** Giro de una foto en grados, en el sentido de las agujas del reloj. */
 export const ROTACIONES_FOTO = [0, 90, 180, 270] as const;
 export const TIPOS_OCURRENCIA = ['semana', 'quincena', 'dia'] as const;
+/** Dónde está el archivo de una foto; de SharePoint la base solo guarda la URL. */
+export const ALMACENAMIENTOS_FOTO = ['local', 'sharepoint'] as const;
+export const ROLES_PERSONAL = [
+	'administrador',
+	'lider_administrativo',
+	'lider_operativo',
+	'reporteador'
+] as const;
+export type RolPersonal = (typeof ROLES_PERSONAL)[number];
 
 const id = z.uuid();
 /** Fecha AAAA-MM-DD. */
@@ -190,6 +199,29 @@ export const esquemaHerramienta = z.object({
 	descripcion: z.string().trim().min(1)
 });
 export type Herramienta = z.infer<typeof esquemaHerramienta>;
+
+/** Renglón de la biblioteca de alcances de un proyecto (cliente); se copia a las partidas. */
+export const esquemaAlcancePredeterminado = z.object({
+	id,
+	clienteId: id,
+	tipo: z.enum(TIPOS_ALCANCE),
+	grupo: textoOpcional,
+	texto: z.string(),
+	orden: z.number().int().positive(),
+	activo: z.boolean()
+});
+export type AlcancePredeterminado = z.infer<typeof esquemaAlcancePredeterminado>;
+
+/** Alta (con `clienteId`) o edición (con `id`); la base valida texto, tipo y duplicados. */
+export const esquemaAlcancePredeterminadoEntrada = z.object({
+	id: id.optional(),
+	clienteId: id.optional(),
+	tipo: z.enum(TIPOS_ALCANCE),
+	grupo: textoOpcional.optional(),
+	texto: z.string(),
+	activo: z.boolean().optional()
+});
+export type AlcancePredeterminadoEntrada = z.input<typeof esquemaAlcancePredeterminadoEntrada>;
 
 const camposPartida = {
 	contratoId: id,
@@ -428,13 +460,17 @@ export const esquemaFoto = z.object({
 	orden: z.number().int().positive(),
 	descripcion: z.string(),
 	momento: z.enum(MOMENTOS_FOTO).nullable(),
-	rutaOriginal: z.string(),
-	rutaOptimizada: z.string(),
+	/** Rutas del almacenamiento local; nulas cuando la foto está en SharePoint. */
+	rutaOriginal: textoOpcional,
+	rutaOptimizada: textoOpcional,
 	ancho: z.number().int().positive(),
 	alto: z.number().int().positive(),
 	bytes: z.number().int().positive(),
 	tipoMime: z.string(),
-	rotacion: z.union(ROTACIONES_FOTO.map((r) => z.literal(r))).default(0)
+	rotacion: z.union(ROTACIONES_FOTO.map((r) => z.literal(r))).default(0),
+	almacenamiento: z.enum(ALMACENAMIENTOS_FOTO).optional(),
+	urlOriginal: textoOpcional.optional(),
+	urlOptimizada: textoOpcional.optional()
 });
 export type Foto = z.infer<typeof esquemaFoto>;
 
@@ -650,3 +686,32 @@ export const esquemaFiltroReportes = z
 	})
 	.partial();
 export type FiltroReportes = z.input<typeof esquemaFiltroReportes>;
+
+/** Persona del personal; los proyectos son clientes. Datos personales: nunca en semillas. */
+export const esquemaPersonal = z.object({
+	id,
+	nombre: z.string(),
+	apellidoPaterno: z.string(),
+	apellidoMaterno: textoOpcional,
+	fechaNacimiento: fecha,
+	correo: textoOpcional,
+	rol: z.enum(ROLES_PERSONAL),
+	activo: z.boolean(),
+	actualizadoEn: marcaDeTiempo,
+	proyectos: z.array(z.object({ id, clave: z.string(), nombre: z.string() }))
+});
+export type Personal = z.infer<typeof esquemaPersonal>;
+
+/** Alta o edición; la base valida los obligatorios, la fecha, el correo y los proyectos. */
+export const esquemaPersonalEntrada = z.object({
+	id: id.optional(),
+	nombre: z.string(),
+	apellidoPaterno: z.string(),
+	apellidoMaterno: textoOpcional,
+	fechaNacimiento: z.string(),
+	correo: textoOpcional,
+	rol: z.string(),
+	activo: z.boolean(),
+	clienteIds: z.array(id)
+});
+export type PersonalEntrada = z.input<typeof esquemaPersonalEntrada>;

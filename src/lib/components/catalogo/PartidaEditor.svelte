@@ -2,13 +2,23 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import type { SubmitFunction } from '@sveltejs/kit';
-	import type { Contrato, Equipo, Partida, Sitio } from '$lib/dominio/esquemas';
+	import { agregarPredeterminados } from '$lib/dominio/alcances';
+	import type {
+		AlcancePredeterminado,
+		Contrato,
+		Equipo,
+		Partida,
+		Sitio
+	} from '$lib/dominio/esquemas';
+	import Dialogo from '$lib/components/ui/Dialogo.svelte';
 	import Aviso from './Aviso.svelte';
 
 	export let partida: Partida | null = null;
 	export let contrato: Contrato;
 	export let sitio: Sitio;
 	export let equipos: Equipo[] = [];
+	/** Alcances activos de la biblioteca del proyecto (cliente) del contrato. */
+	export let predeterminados: AlcancePredeterminado[] = [];
 	export let form: { mensaje?: string; error?: string } | null = null;
 
 	const PERIODICIDADES = [
@@ -55,6 +65,22 @@
 		const copia = [...alcances];
 		[copia[indice], copia[destino]] = [copia[destino], copia[indice]];
 		alcances = copia;
+	}
+
+	let dialogoPredeterminados = false;
+	let elegidos: string[] = [];
+
+	function abrirPredeterminados() {
+		elegidos = [];
+		dialogoPredeterminados = true;
+	}
+
+	function agregarElegidos() {
+		const seleccion = predeterminados.filter((p) => elegidos.includes(p.id));
+		alcances = agregarPredeterminados(alcances, seleccion, (p) => ({
+			tipo: p.tipo,
+			texto: p.texto
+		}));
 	}
 
 	function alternarEquipo(id: string, marcado: boolean) {
@@ -264,12 +290,17 @@
 				</li>
 			{/each}
 		</ol>
-		<button
-			type="button"
-			class="boton"
-			on:click={() => (alcances = [...alcances, { tipo: 'alcance', texto: '' }])}
-			>Agregar renglón</button
-		>
+		<div class="botones-alcances">
+			<button
+				type="button"
+				class="boton"
+				on:click={() => (alcances = [...alcances, { tipo: 'alcance', texto: '' }])}
+				>Agregar renglón</button
+			>
+			<button type="button" class="boton" on:click={abrirPredeterminados}
+				>Agregar predeterminados</button
+			>
+		</div>
 
 		<h3 class="subtitulo">3. Herramientas y equipo</h3>
 		<ul class="lista-editable">
@@ -356,3 +387,74 @@
 		<button class="boton primario" type="submit">Guardar partida</button>
 	</div>
 </form>
+
+<Dialogo
+	id="alcances-predeterminados"
+	bind:abierto={dialogoPredeterminados}
+	titulo="Agregar alcances predeterminados"
+	textoConfirmar="Agregar"
+	conConfirmar={predeterminados.length > 0}
+	confirmarDeshabilitado={elegidos.length === 0}
+	on:confirmar={agregarElegidos}
+>
+	{#if predeterminados.length}
+		<p>Se agregan al final de los alcances; los que la partida ya tiene no se repiten.</p>
+		<ul class="predeterminados">
+			{#each predeterminados as alcance (alcance.id)}
+				<li>
+					<label>
+						<input type="checkbox" value={alcance.id} bind:group={elegidos} />
+						<span>
+							{#if alcance.grupo}<span class="grupo">{alcance.grupo} ·</span>{/if}
+							{alcance.texto}
+							{#if alcance.tipo !== 'alcance'}<span class="grupo"
+									>({alcance.tipo === 'nota' ? 'nota' : 'norma'})</span
+								>{/if}
+						</span>
+					</label>
+				</li>
+			{/each}
+		</ul>
+	{:else}
+		<p>
+			{contrato.cliente?.nombre ?? 'El proyecto'} no tiene alcances predeterminados activos.
+			<!-- resolve() ya aplicado a la ruta; el proyecto va en la consulta. -->
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
+			<a
+				class="enlace"
+				href={`${resolve('/catalogo/alcances')}?proyecto=${contrato.cliente?.clave ?? ''}`}
+				>Darlos de alta</a
+			>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+		</p>
+	{/if}
+</Dialogo>
+
+<style>
+	.botones-alcances {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.predeterminados {
+		display: grid;
+		gap: 8px;
+		max-height: 50vh;
+		margin: 0;
+		padding: 0;
+		overflow-y: auto;
+		list-style: none;
+	}
+	.predeterminados label {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		color: var(--tinta);
+	}
+	.predeterminados input {
+		margin-top: 4px;
+	}
+	.grupo {
+		color: var(--tinta-secundaria);
+	}
+</style>

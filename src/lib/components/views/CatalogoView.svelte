@@ -21,6 +21,10 @@
 
 <Aviso {form} />
 
+<div class="toolbar">
+	<a class="boton" href={resolve('/catalogo/alcances')}>Alcances predeterminados</a>
+</div>
+
 <section class="card" aria-labelledby="titulo-contratos">
 	<h2 id="titulo-contratos" class="view-heading">Contratos</h2>
 	{#if contratos.length === 0}

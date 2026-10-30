@@ -309,10 +309,10 @@ describe('miniaturas de las fotos', () => {
 
 	it('genera al cargar una miniatura de 480 px junto a la optimizada', async () => {
 		const { foto } = await conFoto();
-		expect(rutaMiniatura(foto.rutaOptimizada)).toBe(
-			foto.rutaOptimizada.replace(/\.jpg$/, '-mini.jpg')
+		expect(rutaMiniatura(foto.rutaOptimizada!)).toBe(
+			foto.rutaOptimizada!.replace(/\.jpg$/, '-mini.jpg')
 		);
-		const datos = await new AlmacenamientoLocal(carpeta).leer(rutaMiniatura(foto.rutaOptimizada));
+		const datos = await new AlmacenamientoLocal(carpeta).leer(rutaMiniatura(foto.rutaOptimizada!));
 		const { width, height } = await sharp(datos).metadata();
 		expect([width, height]).toEqual([480, 360]);
 	});
@@ -329,18 +329,18 @@ describe('miniaturas de las fotos', () => {
 		});
 		const { reporte, foto } = await conFoto(fallida);
 		expect(reporte.alcances[0].fotos.map((f) => f.id)).toEqual([foto.id]);
-		expect(await existe(rutaMiniatura(foto.rutaOptimizada))).toBe(false);
+		expect(await existe(rutaMiniatura(foto.rutaOptimizada!))).toBe(false);
 
 		// La primera lectura la genera y la conserva para la siguiente.
 		const generada = await servicio.leerMiniatura(reporte, foto.id);
 		expect((await sharp(generada!).metadata()).width).toBe(480);
-		expect(await existe(rutaMiniatura(foto.rutaOptimizada))).toBe(true);
+		expect(await existe(rutaMiniatura(foto.rutaOptimizada!))).toBe(true);
 		expect(await servicio.leerMiniatura(reporte, 'otra')).toBeNull();
 	});
 
 	it('quitar una foto borra sus tres archivos salvo si los comparte una revisión', async () => {
 		const { reporte, foto } = await conFoto();
-		const rutas = [foto.rutaOriginal, foto.rutaOptimizada, rutaMiniatura(foto.rutaOptimizada)];
+		const rutas = [foto.rutaOriginal!, foto.rutaOptimizada!, rutaMiniatura(foto.rutaOptimizada!)];
 		const guardado = aGuardado(reporte);
 		guardado.diasEjecucion = [{ desde: '2026-06-18', hasta: '2026-06-18' }];
 		for (const alcance of guardado.alcances) alcance.estadoVerificacion = 'ok';
@@ -358,9 +358,9 @@ describe('miniaturas de las fotos', () => {
 		// En un borrador que es el único dueño, se borran original, optimizada y miniatura.
 		const otro = await conFoto();
 		const propias = [
-			otro.foto.rutaOriginal,
-			otro.foto.rutaOptimizada,
-			rutaMiniatura(otro.foto.rutaOptimizada)
+			otro.foto.rutaOriginal!,
+			otro.foto.rutaOptimizada!,
+			rutaMiniatura(otro.foto.rutaOptimizada!)
 		];
 		for (const ruta of propias) expect(await existe(ruta)).toBe(true);
 		const vacio = aGuardado(otro.reporte);
@@ -477,7 +477,7 @@ describe('giro en una revisión', () => {
 		const antes = await servicio.generarDocumento(emitido.id);
 		const foto = emitido.alcances[0].fotos[0];
 		const almacen = new AlmacenamientoLocal(carpeta);
-		const optimizada = await almacen.leer(foto.rutaOptimizada);
+		const optimizada = await almacen.leer(foto.rutaOptimizada!);
 
 		const revision = await servicio.crearRevision(emitido.id);
 		const girada = aGuardado(revision);
@@ -487,7 +487,7 @@ describe('giro en una revisión', () => {
 		// El emitido conserva su giro y sus archivos; regenerado, su DOCX lleva la misma imagen.
 		const original = await servicio.obtener(emitido.id);
 		expect(original.alcances[0].fotos[0].rotacion).toBe(0);
-		expect((await almacen.leer(foto.rutaOptimizada)).equals(optimizada)).toBe(true);
+		expect((await almacen.leer(foto.rutaOptimizada!)).equals(optimizada)).toBe(true);
 		await almacen.eliminar(antes.documento.ruta);
 		const despues = await servicio.generarDocumento(emitido.id);
 		expect(despues.documento.id).not.toBe(antes.documento.id);

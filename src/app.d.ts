@@ -6,7 +6,11 @@ declare global {
 		/** Sesión validada por el servidor; vacía mientras no haya autenticación (D10). */
 		interface Locals {
 			autenticacion?: boolean;
-			usuario?: { id: string; nombre: string; rol: 'administrador' | 'capturista' } | null;
+			usuario?: {
+				id: string;
+				nombre: string;
+				rol: import('$lib/dominio/esquemas').RolPersonal;
+			} | null;
 		}
 		// interface PageData {}
 		// interface PageState {}
