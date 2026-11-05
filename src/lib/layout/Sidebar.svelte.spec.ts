@@ -23,6 +23,7 @@ describe('Sidebar', () => {
 			['Virtual', '/captura?cliente=virtual'],
 			['Historial', '/historial'],
 			['Catálogo', '/catalogo'],
+			['Equipos', '/equipos'],
 			['Personal', '/personal']
 		];
 		for (const [nombre, ruta] of esperados) {

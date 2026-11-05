@@ -65,6 +65,14 @@ describe('navegación entre vistas', () => {
 			ceja: null,
 			titulo: 'Alcances predeterminados'
 		});
+		expect(encabezadoDePagina('/equipos')).toEqual({
+			ceja: 'Consulta / Equipos',
+			titulo: 'Catálogo de equipos'
+		});
+		expect(encabezadoDePagina('/equipos/nuevo')?.titulo).toBe('Nuevo equipo');
+		expect(encabezadoDePagina('/equipos/1', null, { equipo: 'PI-1712' })?.titulo).toBe(
+			'Equipo PI-1712'
+		);
 		expect(encabezadoDePagina('/reportes/123')).toBeNull();
 		expect(encabezadoDePagina('/planeacion')).toBeNull();
 		expect(encabezadoDePagina('/no-existe')).toBeNull();

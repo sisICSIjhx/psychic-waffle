@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-28 contra los archivos locales (rama `feat/alcances-personal-bd`).
+Verificado el 2026-11-05 contra los archivos locales (rama `claude/gracious-fermi-mipx0k`).
 
 ## Producto y arquitectura
 
@@ -18,7 +18,7 @@ Verificado el 2026-10-28 contra los archivos locales (rama `feat/alcances-person
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
     resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0020`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0021`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
     `npm run bd:script` genera `supabase/esquema_completo.sql` (todo en un script para una base vacía
     de Supabase; una prueba exige que esté al día). Proyecto = cliente. Fotos: local o SharePoint
     (solo URL en `reporte_fotos`).
@@ -37,7 +37,9 @@ Verificado el 2026-10-28 contra los archivos locales (rama `feat/alcances-person
   contratos y partidas (en `/catalogo/contratos/[id]`, corrección del contrato, sitios y firmantes con
   motivo e historial; `/catalogo/alcances` biblioteca de alcances predeterminados por proyecto, que
   el editor de partida agrega); `/personal` (en el menú) y `/personal/[id]` alta y edición con rol y
-  proyectos; `/perfil` existe pero no está en el menú hasta que haya autenticación.
+  proyectos; `/equipos` (en el menú) catálogo de equipos por proyecto con calibración, importación del
+  Excel y CSV, y `/equipos/[id]` la ficha; `/perfil` existe pero no está en el menú hasta que haya
+  autenticación.
 - Datos locales: sin `.env` se usa PGlite en `storage/pglite`; fotos y documentos en `storage/`
   (ignorado). Supabase se activa con `PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (tarea 3.8,
   pendiente del usuario). PGlite no admite dos procesos: detener el servidor antes de usar los scripts.
@@ -98,6 +100,9 @@ Verificado el 2026-10-28 contra los archivos locales (rama `feat/alcances-person
 - Cambio `alcances-personal-esquema-bd` (2026-10-28, rama `feat/alcances-personal-bd`): alcances
   predeterminados, personal (roles administrador, líder administrativo, líder operativo y
   reporteador) y script único; integración con SharePoint y autenticación pendientes.
+- Cambio `catalogo-equipos-proyecto` (2026-11-05, migración 0021): módulo «Equipos» sobre la tabla
+  `equipos` ampliada (TAG único por sitio y nombre); falta importar el Excel real en la base de
+  trabajo.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); carga del
   histórico antes de usar el tablero; proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
