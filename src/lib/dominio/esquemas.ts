@@ -81,6 +81,69 @@ export const esquemaEquipo = z.object({
 });
 export type Equipo = z.infer<typeof esquemaEquipo>;
 
+/** Estados de un equipo del catálogo; «baja» no cuenta en los indicadores. */
+export const ESTADOS_EQUIPO = [
+	'en_servicio',
+	'fuera_de_servicio',
+	'fuera_de_operacion',
+	'baja'
+] as const;
+export type EstadoEquipo = (typeof ESTADOS_EQUIPO)[number];
+
+/** Campos del catálogo de equipos (Excel) que se capturan; comunes a la ficha y a la importación. */
+const camposCatalogoEquipo = {
+	tag: z.string().trim().min(1),
+	tipo: textoOpcional,
+	marca: textoOpcional,
+	modelo: textoOpcional,
+	numeroSerie: textoOpcional,
+	rango: textoOpcional,
+	resolucion: textoOpcional,
+	clase: textoOpcional,
+	ubicacion: textoOpcional,
+	propietario: textoOpcional,
+	responsable: textoOpcional,
+	critico: z.boolean(),
+	estado: z.enum(ESTADOS_EQUIPO),
+	intervaloMeses: z.number().int().min(1).max(120).nullable(),
+	ultimaCalibracion: fecha.nullable(),
+	proximaCalibracion: fecha.nullable(),
+	proveedor: textoOpcional,
+	notas: textoOpcional
+};
+
+/** Equipo con todos los datos del catálogo, como lo devuelve api_listar_equipos_proyecto. */
+export const esquemaEquipoCatalogo = z.object({
+	id,
+	sitioId: id,
+	sitio: z.object({ id, clave: z.string(), nombre: z.string() }),
+	...camposCatalogoEquipo,
+	orden: z.number().int(),
+	enUso: z.boolean(),
+	actualizadoEn: marcaDeTiempo
+});
+export type EquipoCatalogo = z.infer<typeof esquemaEquipoCatalogo>;
+
+/** Alta (sin `id`) o edición de un equipo del catálogo. */
+export const esquemaEquipoCatalogoEntrada = z.object({
+	id: id.optional(),
+	sitioId: id,
+	...camposCatalogoEquipo
+});
+export type EquipoCatalogoEntrada = z.input<typeof esquemaEquipoCatalogoEntrada>;
+
+/** Renglón leído del Excel: los campos del catálogo y su número de fila. */
+export const esquemaEquipoImportado = z.object({ fila: z.number().int(), ...camposCatalogoEquipo });
+export type EquipoImportado = z.infer<typeof esquemaEquipoImportado>;
+
+export const esquemaResultadoImportacionEquipos = z.object({
+	ensayo: z.boolean(),
+	nuevos: z.number().int(),
+	actualizados: z.number().int(),
+	repetidas: z.array(z.object({ fila: z.number().int().nullable(), tag: z.string().nullable() }))
+});
+export type ResultadoImportacionEquipos = z.infer<typeof esquemaResultadoImportacionEquipos>;
+
 export const esquemaFirmante = z.object({
 	id,
 	contratoId: id,
