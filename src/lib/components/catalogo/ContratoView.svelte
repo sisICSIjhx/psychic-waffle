@@ -180,7 +180,7 @@
 				{/each}
 			</select>
 			<input type="hidden" name="estado" value={estado} />
-			<noscript><button type="submit">Ver</button></noscript>
+			<noscript><button class="boton" type="submit">Ver</button></noscript>
 		</form>
 		<SitiosContrato
 			{sitios}
@@ -216,12 +216,12 @@
 					<option value="todas" selected={estado === 'todas'}>Todas</option>
 					<option value="por_confirmar" selected={estado === 'por_confirmar'}>Por confirmar</option>
 				</select>
-				<noscript><button type="submit">Filtrar</button></noscript>
+				<noscript><button class="boton" type="submit">Filtrar</button></noscript>
 			</form>
 			<form method="GET" action={resolve('/catalogo/partidas/[id]', { id: 'nueva' })}>
 				<input type="hidden" name="contrato" value={contrato.id} />
 				<input type="hidden" name="sitio" value={sitio.id} />
-				<button class="primary" type="submit">Nueva partida</button>
+				<button class="boton primario" type="submit">Nueva partida</button>
 			</form>
 		</div>
 		{#if partidas.length === 0}
@@ -297,7 +297,7 @@
 			<input type="hidden" name="sitioId" value={sitio.id} />
 			<label for="archivo" class="sr-only">Archivo de Excel</label>
 			<input id="archivo" name="archivo" type="file" accept=".xlsx" required />
-			<button class="primary" type="submit">Revisar archivo</button>
+			<button class="boton primario" type="submit">Revisar archivo</button>
 		</form>
 		{#if form?.accion === 'importar' && form?.tipo === 'programa' && form?.resultadoPrograma}
 			<ResumenPrograma

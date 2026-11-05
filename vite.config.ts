@@ -32,7 +32,10 @@ export default defineConfig({
 					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}'],
 					// Las pruebas con PGlite y sharp tardan 1-2 s solas, pero más de 5 s cuando la suite
 					// completa corre en paralelo.
-					testTimeout: 20_000
+					testTimeout: 20_000,
+					// Abrir PGlite y aplicar las migraciones en beforeAll tarda unos segundos solo, pero más
+					// de un minuto cuando corre a la vez que el proyecto client (Chromium).
+					hookTimeout: 180_000
 				}
 			}
 		]

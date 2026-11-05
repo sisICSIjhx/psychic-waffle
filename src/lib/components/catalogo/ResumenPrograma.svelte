@@ -163,7 +163,7 @@
 <style>
 	.advertencia-fila {
 		display: block;
-		font-size: 0.85rem;
+		font-size: var(--texto-sm);
 	}
 	.advertencia-fila + .advertencia-fila {
 		margin-top: 4px;

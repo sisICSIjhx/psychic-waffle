@@ -50,7 +50,7 @@ beforeAll(async () => {
 		partidas[clave] = partida.id;
 		sitios[clave] = sitio.id;
 	}
-}, 60_000);
+});
 
 afterAll(async () => {
 	await repos.cerrar();

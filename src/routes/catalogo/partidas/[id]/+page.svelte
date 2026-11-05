@@ -12,6 +12,7 @@
 		contrato={data.contrato}
 		sitio={data.sitio}
 		equipos={data.equipos}
+		predeterminados={data.predeterminados}
 		{form}
 	/>
 {/key}

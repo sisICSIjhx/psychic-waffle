@@ -95,7 +95,7 @@ describe('TendenciaCumplimiento', () => {
 				{ mes: '2026-06-01', cumplimiento: null, efectividad: null }
 			]
 		});
-		expect(container.querySelectorAll('circle')).toHaveLength(1);
+		expect(container.querySelectorAll('svg[role=img] circle')).toHaveLength(1);
 		const junio = [...container.querySelectorAll('tbody tr')].find((f) =>
 			f.textContent?.includes('Junio')
 		);

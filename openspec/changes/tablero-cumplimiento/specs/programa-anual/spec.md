@@ -201,15 +201,21 @@ estados con símbolo y texto (no solo color) y lo que entra o sale reprogramado,
 
 ### Requirement: Vista mensual de la planeación
 
-Planeación SHALL ofrecer una vista mensual, elegible junto a la anual, que liste para un contrato,
-sitio y mes las partidas con algo programado, reprogramado, ejecutado o en borrador, con ambos estados
-y las acciones «Capturar» o «Continuar borrador», «Reprogramar» y «No ejecutado». SHALL permitir pasar
-al mes anterior o siguiente dentro del periodo y conservar los filtros.
+Planeación SHALL ofrecer una vista mensual, elegible junto a la anual, con las partidas de un
+contrato, sitio y mes que tienen algo programado, reprogramado, ejecutado o en borrador, en dos
+formatos: matriz por semanas (por omisión) y lista agrupada por urgencia con ambos estados, el avance
+y las acciones «Capturar» o «Continuar borrador», ver reportes y ajustar. SHALL permitir cambiar de
+formato y pasar al mes anterior o siguiente del periodo conservando los filtros.
 
 #### Scenario: Abrir la vista mensual
 
 - **WHEN** el usuario elige «Mensual» en Planeación el 21 de octubre de 2026
-- **THEN** la vista muestra octubre de 2026 con sus partidas, cada una con lo que falta y sus dos estados
+- **THEN** la vista muestra la matriz de octubre de 2026 por semanas, con un selector «Matriz / Lista»
+
+#### Scenario: Lista del mes
+
+- **WHEN** el usuario elige «Lista»
+- **THEN** las partidas aparecen agrupadas de vencidas a ejecutadas, con lo que falta y sus dos estados
 
 #### Scenario: Continuar un borrador
 
@@ -226,33 +232,61 @@ al mes anterior o siguiente dentro del periodo y conservar los filtros.
 - **WHEN** el usuario filtra por periodicidad semanal y cambia de la vista anual a la mensual
 - **THEN** la vista mensual muestra solo las partidas semanales
 
-### Requirement: Vista semanal de la planeación
+### Requirement: Matriz mensual por semanas
 
-En una segunda fase, Planeación SHALL ofrecer una vista semanal con semanas de lunes a domingo dentro
-del mes, como las ocurrencias de la captura. Las partidas semanales y quincenales SHALL mostrar el
-reporte de la ocurrencia de la semana; las diarias, los días cubiertos; y las demás, los reportes con
-días de ejecución en la semana, junto con lo que falta en el mes. No SHALL inferirse una semana
-planeada.
+La matriz de la vista mensual SHALL mostrar las partidas con trabajo en el mes por semanas de lunes a
+domingo recortadas al mes (como las ocurrencias de la captura), con el número de semana del año, los
+días y la semana en curso resaltada. Cada celda SHALL mostrar el estado de la semana (ejecutado,
+pendiente, programado o vencido), el documento y «Visualizar».
 
 #### Scenario: Semana parcial al inicio del mes
 
-- **WHEN** el usuario abre la semana 1 de mayo de 2026
-- **THEN** la vista abarca del 1 al 3 de mayo
+- **WHEN** el usuario abre la vista mensual de mayo de 2026
+- **THEN** la primera columna de la matriz es la semana 18 y abarca del 1 al 3 de mayo
+
+### Requirement: Vista semanal por días
+
+La vista semanal SHALL mostrar en matriz una semana del mes (lunes a domingo recortada al mes), con un
+día por columna y hoy resaltado, las partidas con algo en esa semana y la navegación a la semana
+anterior y siguiente dentro del periodo. Las diarias SHALL marcar cada día según sus reportes y su
+fecha; las demás, sus reportes en los días que cubren y lo que falta de su ocurrencia en un solo día:
+hoy, el último día de la ocurrencia si ya pasó o el primero si es futura.
+
+#### Scenario: Abrir la vista semanal
+
+- **WHEN** el usuario elige «Semanal» el miércoles 15 de julio de 2026
+- **THEN** ve la semana 29, del lunes 13 al domingo 19, con el miércoles resaltado como hoy
+
+#### Scenario: Partida mensual pendiente
+
+- **WHEN** una partida mensual sigue pendiente en julio y no tiene reportes
+- **THEN** solo el día de hoy la muestra pendiente «Sin reporte»
+
+### Requirement: Estado de cada semana según la periodicidad
+
+Las semanales SHALL seguir el reporte de la ocurrencia de cada semana; las quincenales, la quincena
+del último día de la semana; las diarias, los días cubiertos por emitidos. Sin reporte y con el mes
+incompleto, la semana SHALL quedar vencida, pendiente o programada según su fecha; con el mes
+cumplido, vacía. Las demás periodicidades no SHALL inferir una semana planeada: muestran sus reportes
+y ofrecen lo que falta del mes en la semana en curso y las siguientes, o en la última si terminó.
 
 #### Scenario: Partida semanal
 
-- **WHEN** una partida semanal tiene un reporte emitido de la semana 2 de mayo
-- **THEN** la semana 2 muestra esa partida «Con reporte» y el resumen del mes indica lo que falta
+- **WHEN** una partida semanal con 5 programadas en octubre tiene un reporte emitido de la semana 2 y
+  hoy es el 21 de octubre
+- **THEN** la semana 2 se muestra ejecutada «Con reporte», las semanas 1 y 3 vencidas «Sin reporte»,
+  la 4 pendiente y la 5 programada
 
 #### Scenario: Partida diaria
 
-- **WHEN** los reportes emitidos de una partida diaria cubren 5 de los 7 días de la semana
-- **THEN** la vista muestra «5 de 7 días» para esa partida
+- **WHEN** los reportes emitidos de una partida diaria cubren 4 de los 7 días de una semana pasada
+- **THEN** esa semana se muestra vencida con «4 de 7 días»
 
 #### Scenario: Partida mensual sin ejecutar
 
-- **WHEN** una partida mensual no tiene días de ejecución en la semana y sigue pendiente en el mes
-- **THEN** la vista la muestra como «Pendiente en el mes» sin marcar vencida la semana
+- **WHEN** una partida mensual sigue pendiente en el mes en curso y no tiene reportes
+- **THEN** las semanas pasadas quedan vacías y lo que falta se ofrece en la semana en curso
+  (pendiente) y las siguientes (programado)
 
 ### Requirement: Pendientes que consideran los ajustes
 

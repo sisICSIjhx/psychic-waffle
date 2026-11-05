@@ -53,7 +53,7 @@
 </script>
 
 <section class="card" aria-labelledby="titulo-historial">
-	<h2 id="titulo-historial" class="view-heading">Reportes registrados</h2>
+	<h2 id="titulo-historial" class="view-heading">Buscar reportes</h2>
 	<form method="GET" class="filtros">
 		<div class="form-group">
 			<label for="cliente">Cliente</label>
@@ -97,7 +97,7 @@
 		</div>
 		<div class="form-group">
 			<label for="tag">TAG</label>
-			<input id="tag" name="tag" value={seleccion.tag} placeholder="PSV-2001" />
+			<input id="tag" name="tag" value={seleccion.tag} placeholder="Ej.: PSV-2001" />
 		</div>
 		<div class="form-group">
 			<label for="estado">Estado</label>
@@ -116,7 +116,7 @@
 			<label for="hasta">Hasta (mes)</label>
 			<input id="hasta" name="hasta" type="month" value={seleccion.hasta} />
 		</div>
-		<div class="form-group acciones-formulario">
+		<div class="acciones-filtro">
 			<button class="boton primario" type="submit">Buscar</button>
 			<a class="boton" href={resolve('/historial')}>Limpiar</a>
 		</div>
@@ -152,7 +152,7 @@
 							</td>
 							<td>{fila.sitioTexto}</td>
 							<td>{fila.tags ?? '—'}</td>
-							<td>{periodo(fila)}</td>
+							<td class="periodo">{periodo(fila)}</td>
 							<td>
 								<InsigniaEstado estado={fila.estado} />
 								{#if fila.revision > 0}<span class="view-note">Rev. {fila.revision}</span>{/if}
@@ -173,6 +173,11 @@
 				</tbody>
 			</table>
 		</div>
+	{:else if resultado.pagina === 1}
+		<p class="view-note vacio">
+			Ningún reporte coincide con la búsqueda. Pruebe con menos filtros o
+			<a class="enlace" href={resolve('/historial')}>vea todos los reportes</a>.
+		</p>
 	{/if}
 	<!-- La paginación se muestra aunque la página quede vacía (p. ej. tras emitir borradores). -->
 	{#if paginas > 1 || resultado.pagina > 1}
@@ -204,8 +209,21 @@
 		gap: 12px;
 		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 	}
+	.acciones-filtro {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		align-items: flex-end;
+		margin-bottom: 12px;
+	}
 	td .view-note {
 		display: block;
+	}
+	.periodo {
+		white-space: nowrap;
+	}
+	.vacio {
+		margin-top: -8px;
 	}
 	.paginacion {
 		display: flex;

@@ -6,14 +6,28 @@
 	export let valor: number | null;
 	export let umbrales: readonly [number, number];
 
-	const ICONO = { rojo: '▼', amarillo: '◆', verde: '●' } as const;
+	// Forma además del color: flecha abajo (bajo la meta), rombo (cerca) y círculo con marca (en meta).
+	const ICONO = {
+		rojo: 'M12 5v14M6 13l6 6 6-6',
+		amarillo: 'M12 3l9 9-9 9-9-9z',
+		verde: 'M20 6 9 17l-5-5'
+	} as const;
 
 	$: estado = semaforo(valor, umbrales);
 </script>
 
 {#if estado}
 	<span class="semaforo {estado}"
-		><span aria-hidden="true">{ICONO[estado]}</span> {TEXTO_SEMAFORO[estado]}</span
+		><svg
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2.5"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+			aria-hidden="true"><path d={ICONO[estado]} /></svg
+		>
+		{TEXTO_SEMAFORO[estado]}</span
 	>
 {/if}
 
@@ -22,22 +36,30 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		padding: 1px 8px;
-		border-radius: 999px;
-		font-size: 0.8rem;
+		padding: 1px 7px;
+		border: 1px solid;
+		border-radius: 3px;
+		font-size: var(--texto-xs);
 		font-weight: 600;
 		white-space: nowrap;
 	}
+	svg {
+		width: 12px;
+		height: 12px;
+	}
 	.rojo {
-		background: var(--danger-bg);
-		color: var(--danger);
+		background: var(--peligro-fondo);
+		border-color: var(--peligro-borde);
+		color: var(--peligro);
 	}
 	.amarillo {
-		background: var(--warning-bg);
-		color: var(--warning);
+		background: var(--alerta-fondo);
+		border-color: var(--alerta-borde);
+		color: var(--alerta);
 	}
 	.verde {
-		background: var(--success-bg);
-		color: var(--success);
+		background: var(--exito-fondo);
+		border-color: var(--exito-borde);
+		color: var(--exito);
 	}
 </style>

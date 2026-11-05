@@ -139,7 +139,16 @@
 			class="navegar anterior"
 			aria-label="Foto anterior"
 			disabled={indice === 0}
-			on:click={() => ir(-1)}>‹</button
+			on:click={() => ir(-1)}
+			><svg
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg
+			></button
 		>
 		<div class="caja" bind:clientWidth={anchoCaja} bind:clientHeight={altoCaja}>
 			{#if foto}
@@ -153,7 +162,16 @@
 			class="navegar siguiente"
 			aria-label="Foto siguiente"
 			disabled={indice >= lista.length - 1}
-			on:click={() => ir(1)}>›</button
+			on:click={() => ir(1)}
+			><svg
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg
+			></button
 		>
 	</div>
 	{#if foto}
@@ -235,11 +253,11 @@
 		width: min(1100px, calc(100vw - 32px));
 		height: min(860px, calc(100vh - 32px));
 		padding: 16px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius);
-		background: var(--surface);
-		color: var(--text);
-		box-shadow: var(--shadow);
+		border: 1px solid var(--linea);
+		border-radius: var(--radio-flotante);
+		background: var(--superficie-flotante);
+		color: var(--tinta);
+		box-shadow: var(--sombra-flotante);
 	}
 	.visor[open] {
 		display: grid;
@@ -247,7 +265,7 @@
 		gap: 12px;
 	}
 	.visor::backdrop {
-		background: rgba(15, 23, 42, 0.75);
+		background: var(--velo);
 	}
 	.encabezado {
 		display: flex;
@@ -261,12 +279,12 @@
 		flex-wrap: wrap;
 		gap: 6px;
 		margin: 0;
-		font-size: 1rem;
+		font-size: var(--texto-md);
 		min-width: 0;
 		overflow-wrap: anywhere;
 	}
 	.contador {
-		color: var(--muted);
+		color: var(--tinta-tenue);
 		font-weight: 500;
 	}
 	.escenario {
@@ -283,8 +301,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-radius: 6px;
-		background: var(--surface-2);
+		border-radius: var(--radio-control);
+		background: var(--superficie-alta);
 	}
 	.giro {
 		display: flex;
@@ -307,15 +325,25 @@
 	.navegar {
 		width: var(--objetivo-min);
 		height: calc(var(--objetivo-min) * 2);
-		border: 1px solid var(--border);
-		border-radius: 6px;
-		background: var(--surface);
-		color: var(--text);
-		font-size: 1.6rem;
+		display: grid;
+		place-items: center;
+		padding: 0;
+		border: 1px solid var(--linea-fuerte);
+		border-radius: var(--radio-control);
+		background: var(--superficie);
+		color: var(--tinta);
 		cursor: pointer;
 	}
+	.navegar:hover:not(:disabled) {
+		background: var(--superficie-hover);
+	}
+	.navegar svg {
+		width: 20px;
+		height: 20px;
+	}
 	.navegar:disabled {
-		opacity: 0.4;
+		border-color: var(--linea);
+		color: var(--tinta-deshabilitada);
 		cursor: not-allowed;
 	}
 	.pie-visor {
@@ -339,9 +367,6 @@
 	.mover .boton {
 		overflow-wrap: anywhere;
 		text-align: left;
-	}
-	.boton.peligro {
-		color: var(--danger);
 	}
 	.estado:empty {
 		display: none;

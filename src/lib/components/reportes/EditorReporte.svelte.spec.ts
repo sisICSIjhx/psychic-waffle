@@ -76,6 +76,22 @@ function reporte(cambios: Partial<Reporte> = {}): Reporte {
 const sinRespuesta: EnviarAccion = vi.fn(async () => ({ ok: true as const, datos: {} }));
 const RUTA = `/reportes/${ID(1)}`;
 
+/** Muestra una sección desde el índice; en pantallas angostas lo despliega antes. */
+async function irA(seccion: string) {
+	const alternar = page.getByRole('button', { name: /^Secciones/ });
+	if ((alternar.element() as HTMLElement).offsetParent) await alternar.click();
+	await page
+		.getByRole('navigation', { name: 'Secciones del reporte' })
+		.getByRole('link', { name: new RegExp(`^${seccion}(,|$)`) })
+		.click();
+}
+
+/** Campo de conclusiones, en su sección. */
+async function conclusiones() {
+	await irA('Conclusiones');
+	return page.getByLabelText('Conclusiones y/o recomendaciones');
+}
+
 describe('EditorReporte', () => {
 	it('pide confirmación para omitir la tabla con estados capturados y los conserva', async () => {
 		render(EditorReporte, {
@@ -84,6 +100,7 @@ describe('EditorReporte', () => {
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
+		await irA('Alcance');
 		const casilla = page.getByRole('checkbox', { name: 'Incluir tabla de verificación' });
 
 		await casilla.click();
@@ -102,7 +119,7 @@ describe('EditorReporte', () => {
 			.toHaveAttribute('aria-checked', 'true');
 	});
 
-	it('al enviar con datos faltantes muestra el resumen enlazado y no cambia el estado', async () => {
+	it('«Completar» lleva al primer dato que falta, marca los errores y no cambia el estado', async () => {
 		const enviar = vi.fn<EnviarAccion>(sinRespuesta);
 		render(EditorReporte, {
 			conImagenes: false,
@@ -119,45 +136,62 @@ describe('EditorReporte', () => {
 			espera: 60_000,
 			enviar
 		});
+		expect(page.getByRole('button', { name: 'Enviar a revisión' }).elements()).toHaveLength(0);
+		await expect.element(page.getByText('Encabezado: 1 dato pendiente')).toBeInTheDocument();
 		await expect
-			.element(page.getByRole('button', { name: 'Faltan 2', exact: true }))
+			.element(page.getByText('Complete Encabezado antes de enviar a revisión.'))
 			.toBeInTheDocument();
 
-		await page.getByRole('button', { name: 'Enviar a revisión' }).click();
-		const titulo = page.getByRole('heading', { name: 'Faltan 2 datos para enviar a revisión' });
-		await expect.element(titulo).toHaveFocus();
+		await page.getByRole('button', { name: 'Completar 2 datos' }).click();
+		await expect.element(page.getByLabelText('Días de ejecución')).toHaveFocus();
+		await expect.element(page.getByText('Capture los días de ejecución.')).toBeInTheDocument();
 		expect(enviar).not.toHaveBeenCalled();
 		await expect.element(page.getByText('Borrador', { exact: true })).toBeInTheDocument();
-		// Tras intentar enviar, cada campo muestra su error junto a él.
+		// Tras pedir completar, cada campo muestra su error junto a él, también en otras secciones.
+		await irA('Alcance');
 		await expect
 			.element(page.getByLabelText('Observaciones'))
 			.toHaveAttribute('aria-invalid', 'true');
+	});
 
-		await page
-			.getByRole('link', { name: 'El alcance 2.1 está «Con observación»: capture la observación.' })
-			.click();
-		await expect.element(page.getByLabelText('Observaciones')).toHaveFocus();
-		await page.getByRole('link', { name: 'Capture los días de ejecución.' }).click();
-		await expect.element(page.getByLabelText(/Días de ejecución/)).toHaveFocus();
+	it('las observaciones del servidor se listan y cada una lleva a su sección', async () => {
+		const enviar = vi.fn<EnviarAccion>(async (accion) =>
+			accion === 'estado'
+				? {
+						ok: false as const,
+						estado: 422,
+						datos: {
+							error: 'El reporte tiene datos pendientes.',
+							observaciones: [{ campo: 'conclusiones', mensaje: 'Revise las conclusiones.' }]
+						}
+					}
+				: { ok: true as const, datos: { reporte: { ...reporte(), version: 4 } } }
+		);
+		render(EditorReporte, { conImagenes: false, reporte: reporte(), espera: 60_000, enviar });
+		await page.getByRole('button', { name: 'Enviar a revisión' }).click();
+		const titulo = page.getByRole('heading', { name: 'Faltan 1 dato para enviar a revisión' });
+		await expect.element(titulo).toHaveFocus();
+		await page.getByRole('link', { name: 'Revise las conclusiones.' }).click();
+		await expect.element(page.getByLabelText('Conclusiones y/o recomendaciones')).toHaveFocus();
 	});
 
 	it('analiza los días escritos, muestra la vista previa y normaliza al salir', async () => {
 		const enviar = vi.fn<EnviarAccion>(sinRespuesta);
 		render(EditorReporte, { conImagenes: false, reporte: reporte(), espera: 60_000, enviar });
-		const dias = page.getByLabelText('Días de ejecución (mayo 2026)');
+		const dias = page.getByLabelText('Días de ejecución');
 		await expect.element(dias).toHaveValue('18');
 		await expect.element(dias).toHaveAttribute('aria-invalid', 'false');
 
 		await dias.fill('15 y 16, 20 al 25');
 		await expect
-			.element(page.getByText('En el documento: 15, 16, 20-25 / MAYO / 2026'))
+			.element(page.getByText('15, 16, 20-25 / MAYO / 2026', { exact: true }))
 			.toBeInTheDocument();
 		await page.getByLabelText('Tipo de mantenimiento').click();
 		await expect.element(dias).toHaveValue('15, 16, 20-25');
 
 		await dias.fill('05-08/ MAYO /2026');
 		await expect
-			.element(page.getByText('En el documento: 05-08 / MAYO / 2026'))
+			.element(page.getByText('05-08 / MAYO / 2026', { exact: true }))
 			.toBeInTheDocument();
 	});
 
@@ -168,7 +202,7 @@ describe('EditorReporte', () => {
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
-		const dias = page.getByLabelText('Días de ejecución (mayo 2026)');
+		const dias = page.getByLabelText('Días de ejecución');
 		await dias.fill('05-08, 07');
 		await expect.element(page.getByText('El día 07 se repite.')).toBeInTheDocument();
 		await expect.element(dias).toHaveAttribute('aria-invalid', 'true');
@@ -176,7 +210,7 @@ describe('EditorReporte', () => {
 		await page.getByLabelText('Tipo de mantenimiento').click();
 		await expect.element(dias).toHaveValue('18, 2O');
 		await expect
-			.element(page.getByRole('button', { name: 'Faltan 1', exact: true }))
+			.element(page.getByRole('button', { name: 'Completar 1 dato' }))
 			.toBeInTheDocument();
 		const boton = page.getByRole('button', { name: 'Descargar DOCX' });
 		await expect.element(boton).toHaveAccessibleDescription('Corrija los días de ejecución');
@@ -239,9 +273,7 @@ describe('EditorReporte', () => {
 			enviar: sinRespuesta
 		});
 		expect(page.getByRole('button', { name: 'Agregar hoy' }).elements()).toHaveLength(0);
-		await expect
-			.element(page.getByText(/Periodo: del 1 al 31 de mayo de 2026/))
-			.toBeInTheDocument();
+		await expect.element(page.getByText(/Del 1 al 31 de mayo de 2026/)).toBeInTheDocument();
 	});
 
 	it('muestra la hora del último guardado y, si falla, permite reintentar sin perder lo escrito', async () => {
@@ -255,7 +287,7 @@ describe('EditorReporte', () => {
 			.mockResolvedValue({ ok: true, datos: { reporte: { ...reporte(), version: 4 } } });
 		render(EditorReporte, { conImagenes: false, reporte: reporte(), espera: 10, enviar });
 
-		await page.getByLabelText('Conclusiones', { exact: true }).fill('Texto nuevo');
+		await (await conclusiones()).fill('Texto nuevo');
 		await expect.element(page.getByText('No se guardó', { exact: true })).toBeInTheDocument();
 		await expect.element(page.getByText(/Sin conexión con el servidor/)).toBeInTheDocument();
 		// Tras un fallo no se reintenta solo en bucle.
@@ -269,7 +301,7 @@ describe('EditorReporte', () => {
 			conclusiones: 'Texto nuevo'
 		});
 		await expect
-			.element(page.getByLabelText('Conclusiones', { exact: true }))
+			.element(page.getByLabelText('Conclusiones y/o recomendaciones'))
 			.toHaveValue('Texto nuevo');
 	});
 
@@ -287,18 +319,21 @@ describe('EditorReporte', () => {
 			enviar: sinRespuesta
 		});
 		const indice = page.getByRole('navigation', { name: 'Secciones del reporte' });
-		await expect.element(indice).toHaveTextContent(/1\. Objetivo.*1 pendiente/);
+		await expect.element(indice).toHaveTextContent(/Objetivo · 1, 1 pendiente/);
 		await expect.element(indice).toHaveTextContent(/Encabezado, completo/);
-		await expect.element(indice).toHaveTextContent(/2\.2 Sin título.*1 pendiente/);
+		await expect.element(indice).toHaveTextContent(/4 de 6 secciones completas/);
 
-		// En pantallas angostas el índice se despliega con su botón.
+		// Los alcances aparecen bajo «Alcance» cuando es la sección abierta.
+		await irA('Alcance');
+		await expect.element(indice).toHaveTextContent(/2\.2 Sin título, 1 pendiente/);
 		const alternar = page.getByRole('button', { name: /^Secciones/ });
 		if ((alternar.element() as HTMLElement).offsetParent) await alternar.click();
 		await indice.getByRole('link', { name: /2\.2 Sin título/ }).click();
 		expect(document.activeElement?.id).toBe(`alcance-${ID(11)}`);
+		await expect.element(page.getByLabelText('Título del alcance 2.2')).toBeInTheDocument();
 	});
 
-	it('las firmas se muestran como resumen con «Editar» y se abren solas si falta un dato', async () => {
+	it('las firmas se editan en su sección y señalan los nombres que faltan', async () => {
 		const enviar = vi.fn<EnviarAccion>(async () => ({
 			ok: true as const,
 			datos: { reporte: { ...reporte(), version: 4 } }
@@ -309,11 +344,9 @@ describe('EditorReporte', () => {
 			espera: 10,
 			enviar
 		});
+		await irA('Firmas');
 		const firmas = page.getByRole('region', { name: 'Firmas' });
-		await expect.element(firmas).toHaveTextContent(/Elaboró\s*Uno/);
-		expect(firmas.getByRole('textbox').elements()).toHaveLength(0);
-
-		await firmas.getByRole('button', { name: 'Editar' }).click();
+		await expect.element(firmas.getByLabelText('Nombre').first()).toHaveValue('Uno');
 		await firmas.getByLabelText('Cargo').first().fill('Supervisor');
 		await vi.waitFor(() => expect(enviar).toHaveBeenCalled());
 		expect(
@@ -329,9 +362,15 @@ describe('EditorReporte', () => {
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
-		const abiertas = page.getByRole('region', { name: 'Firmas' });
-		await expect.element(abiertas).toHaveTextContent('1 pendiente');
-		await expect.element(abiertas.getByLabelText('Nombre').nth(1)).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('navigation', { name: 'Secciones del reporte' }))
+			.toHaveTextContent(/Firmas · 1, 1 pendiente/);
+		await expect.element(page.getByText('Firmas: faltan 1 nombre')).toBeInTheDocument();
+		await irA('Firmas');
+		const pendientes = page.getByRole('region', { name: 'Firmas' });
+		await expect.element(pendientes).toHaveTextContent('Faltan 1 nombre para enviar a revisión');
+		await pendientes.getByRole('link', { name: /Ir a Aprobó/ }).click();
+		await expect.element(pendientes.getByLabelText('Nombre').nth(1)).toHaveFocus();
 	});
 
 	it('autoguarda con la versión vigente y deja de editar ante un conflicto', async () => {
@@ -342,7 +381,7 @@ describe('EditorReporte', () => {
 		}));
 		render(EditorReporte, { conImagenes: false, reporte: reporte(), espera: 10, enviar });
 
-		await page.getByLabelText('Conclusiones', { exact: true }).fill('Texto nuevo');
+		await (await conclusiones()).fill('Texto nuevo');
 		await expect.element(page.getByText('Versión desactualizada')).toBeInTheDocument();
 
 		expect(enviar).toHaveBeenCalledTimes(1);
@@ -355,7 +394,7 @@ describe('EditorReporte', () => {
 		await expect
 			.element(page.getByRole('button', { name: 'Recargar el reporte' }))
 			.toBeInTheDocument();
-		await expect.element(page.getByLabelText('Conclusiones', { exact: true })).toBeDisabled();
+		await expect.element(page.getByLabelText('Conclusiones y/o recomendaciones')).toBeDisabled();
 	});
 
 	it('guarda de inmediato lo pendiente cuando la página va a navegar', async () => {
@@ -370,7 +409,7 @@ describe('EditorReporte', () => {
 			enviar
 		});
 		expect(component.hayCambiosPendientes()).toBe(false);
-		await page.getByLabelText('Conclusiones', { exact: true }).fill('Antes de salir');
+		await (await conclusiones()).fill('Antes de salir');
 		expect(component.hayCambiosPendientes()).toBe(true);
 
 		expect(await component.guardarAhora()).toBe(true);
@@ -389,14 +428,15 @@ describe('EditorReporte', () => {
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
-		await expect.element(page.getByLabelText('Conclusiones', { exact: true })).toBeDisabled();
+		await expect.element(await conclusiones()).toBeDisabled();
 		await expect.element(page.getByRole('button', { name: 'Crear revisión' })).toBeInTheDocument();
 		await expect
 			.element(page.getByRole('link', { name: 'Descargar DOCX' }))
 			.toHaveAttribute('href', `/reportes/${ID(1)}/documento`);
 		// Estado con icono y texto; el mes de la fecha en formato de oración.
 		await expect.element(page.getByText('Emitido', { exact: true })).toBeInTheDocument();
-		await expect.element(page.getByLabelText('Días de ejecución (mayo 2026)')).toBeDisabled();
+		await irA('Encabezado');
+		await expect.element(page.getByLabelText('Días de ejecución')).toBeDisabled();
 	});
 });
 
@@ -449,11 +489,14 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
+		await irA('Alcance');
 		// Solo el alcance con texto previo muestra el campo, aunque esté en OK.
+		expect(page.getByLabelText(/^Observaciones/).elements()).toHaveLength(0);
+		await page.getByRole('button', { name: 'Abrir el alcance 2.2' }).click();
 		await expect
 			.element(page.getByLabelText('Observaciones', { exact: true }))
 			.toHaveValue('Nota previa');
-		expect(page.getByLabelText(/^Observaciones/).elements()).toHaveLength(1);
+		await page.getByRole('button', { name: 'Abrir el alcance 2.1' }).click();
 
 		const primero = page.getByRole('radiogroup', { name: 'Verificación del alcance 2.1' });
 		await primero.getByRole('radio', { name: 'Con observación' }).click();
@@ -473,6 +516,7 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			enviar,
 			plazoDeshacer: 60_000
 		});
+		await irA('Alcance');
 
 		await page.getByRole('button', { name: 'Quitar la Ilustración 2.1.1' }).click();
 		await expect.element(page.getByText('Se quitó la Ilustración 2.1.1.')).toBeInTheDocument();
@@ -482,11 +526,12 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			.toHaveValue('Foto 2');
 
 		// Un autoguardado en ese tiempo todavía la incluye.
-		await page.getByLabelText('Conclusiones', { exact: true }).fill('Otra conclusión');
+		await (await conclusiones()).fill('Otra conclusión');
 		await vi.waitFor(() => expect(enviar).toHaveBeenCalled());
 		expect(enviado(enviar).alcances[0].fotos.map((f: Foto) => f.id)).toEqual([ID(101), ID(102)]);
 
 		await page.getByRole('button', { name: 'Deshacer' }).click();
+		await irA('Alcance');
 		await expect
 			.element(page.getByLabelText('Descripción de la Ilustración 2.1.1'))
 			.toHaveValue('Foto 1');
@@ -504,6 +549,7 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			enviar,
 			plazoDeshacer: 50
 		});
+		await irA('Alcance');
 		await page.getByRole('button', { name: 'Quitar la Ilustración 2.1.2' }).click();
 		await vi.waitFor(() =>
 			expect(enviado(enviar).alcances[0].fotos.map((f: Foto) => f.id)).toEqual([ID(101)])
@@ -523,6 +569,8 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			enviar,
 			plazoDeshacer: 60_000
 		});
+		await irA('Alcance');
+		await page.getByRole('button', { name: 'Abrir el alcance 2.2' }).click();
 		await page.getByRole('button', { name: 'Quitar el alcance 2.2' }).click();
 		expect(component.hayCambiosPendientes()).toBe(true);
 		expect(await component.guardarAhora()).toBe(true);
@@ -537,6 +585,8 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			enviar: enviar2,
 			plazoDeshacer: 60_000
 		});
+		await irA('Alcance');
+		await page.getByRole('button', { name: 'Abrir el alcance 2.2' }).click();
 		await page.getByRole('button', { name: 'Quitar el alcance 2.2' }).click();
 		await page.getByRole('button', { name: 'Enviar a revisión' }).click();
 		await vi.waitFor(() => expect(enviar2).toHaveBeenCalledTimes(2));
@@ -567,6 +617,7 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			};
 		});
 		render(EditorReporte, { conImagenes: false, reporte: reporte(), espera: 60_000, enviar });
+		await irA('Alcance');
 
 		const datos = new DataTransfer();
 		for (const nombre of ['a.jpg', 'b.pdf', 'c.jpg']) {
@@ -636,6 +687,7 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			plazoDeshacer: 60_000,
 			alCerrar
 		});
+		await irA('Alcance');
 		window.dispatchEvent(new PageTransitionEvent('pagehide'));
 		expect(alCerrar).not.toHaveBeenCalled();
 
@@ -649,23 +701,25 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 		).toEqual([ID(102)]);
 	});
 
-	it('una sección abierta por un pendiente no se cierra mientras se escribe', async () => {
+	it('el objetivo se edita en su sección y el encabezado lo resume con un acceso', async () => {
 		render(EditorReporte, {
 			conImagenes: false,
 			reporte: reporte({ objetivo: '' }),
 			espera: 60_000,
 			enviar: sinRespuesta
 		});
-		const objetivo = page.getByLabelText('Objetivo', { exact: true });
+		await irA('Objetivo');
+		const objetivo = page.getByRole('textbox', { name: 'Objetivo', exact: true });
 		await objetivo.fill('Nuevo objetivo');
 		await expect.element(objetivo).toHaveFocus();
-		await page
-			.getByRole('region', { name: '1. Objetivo' })
-			.getByRole('button', { name: 'Listo' })
-			.click();
+		await page.getByRole('button', { name: 'Siguiente: Alcance' }).click();
+		await expect.element(page.getByRole('heading', { name: 'Alcance', level: 2 })).toHaveFocus();
+		await irA('Encabezado');
 		await expect
-			.element(page.getByRole('region', { name: '1. Objetivo' }))
+			.element(page.getByRole('region', { name: 'Encabezado' }))
 			.toHaveTextContent('Nuevo objetivo');
+		await page.getByRole('button', { name: 'Editar objetivo' }).click();
+		await expect.element(page.getByRole('heading', { name: 'Objetivo', level: 2 })).toHaveFocus();
 	});
 
 	it('si el reporte no se pudo guardar antes de subir una foto, la informa como no cargada', async () => {
@@ -675,7 +729,8 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			datos: { error: 'Sin conexión con el servidor; se reintentará al seguir editando.' }
 		}));
 		render(EditorReporte, { conImagenes: false, reporte: reporte(), espera: 60_000, enviar });
-		await page.getByLabelText('Conclusiones', { exact: true }).fill('Cambio sin guardar');
+		await (await conclusiones()).fill('Cambio sin guardar');
+		await irA('Alcance');
 		const datos = new DataTransfer();
 		datos.items.add(new File(['x'], 'a.jpg', { type: 'image/jpeg' }));
 		page
@@ -696,7 +751,7 @@ describe('EditorReporte: verificación, fotos y acciones', () => {
 			.mockResolvedValueOnce({ ok: false, estado: 0, datos: { error: 'Sin conexión' } })
 			.mockResolvedValue({ ok: true, datos: { reporte: { ...reporte(), version: 4 } } });
 		render(EditorReporte, { conImagenes: false, reporte: reporte(), espera: 10, enviar });
-		await page.getByLabelText('Conclusiones', { exact: true }).fill('Escrito sin red');
+		await (await conclusiones()).fill('Escrito sin red');
 		await expect.element(page.getByText('No se guardó', { exact: true })).toBeInTheDocument();
 
 		window.dispatchEvent(new Event('online'));
@@ -786,6 +841,7 @@ describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
 			enviar: sinRespuesta,
 			plazoDeshacer: 60_000
 		});
+		await irA('Alcance');
 		await page.getByRole('button', { name: 'Ampliar la Ilustración 2.1.2' }).click();
 		const vista = page.getByRole('dialog');
 		await expect.element(vista).toHaveTextContent('2 de 3');
@@ -813,6 +869,7 @@ describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
 			espera: 10,
 			enviar
 		});
+		await irA('Alcance');
 		await page.getByRole('button', { name: 'Girar a la derecha la Ilustración 2.1.1' }).click();
 		await vi.waitFor(() =>
 			expect(enviado(enviar).alcances[0].fotos.map((f: Foto) => f.rotacion)).toEqual([90, 0, 0])
@@ -833,6 +890,7 @@ describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
 			enviar: sinRespuesta,
 			plazoDeshacer: 60_000
 		});
+		await irA('Alcance');
 		await page.getByRole('button', { name: 'Ampliar la Ilustración 2.1.1' }).click();
 		await page.getByRole('dialog').getByRole('button', { name: 'Quitar' }).click();
 		await expect.element(page.getByRole('dialog')).not.toBeInTheDocument();
@@ -850,6 +908,7 @@ describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
 			enviar,
 			plazoDeshacer: 60_000
 		});
+		await irA('Alcance');
 		elegirReemplazo(2);
 		await expect.element(page.getByText('Reemplazando…')).toBeInTheDocument();
 		await vi.waitFor(() => expect(enviar.mock.calls.some(([a]) => a === 'fotos')).toBe(true));
@@ -882,6 +941,7 @@ describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
 	it('un archivo rechazado deja intacta la foto anterior', async () => {
 		const { enviar, liberar } = conCarga({ rechazar: true });
 		render(EditorReporte, { conImagenes: false, reporte: tresFotos(), espera: 60_000, enviar });
+		await irA('Alcance');
 		elegirReemplazo(2);
 		liberar();
 		await expect.element(page.getByText('nueva.jpg: El archivo está dañado.')).toBeInTheDocument();
@@ -901,6 +961,7 @@ describe('EditorReporte: vista ampliada y reemplazo de fotos', () => {
 			enviar,
 			plazoDeshacer: 60_000
 		});
+		await irA('Alcance');
 		elegirReemplazo(1);
 		await vi.waitFor(() => expect(enviar.mock.calls.some(([a]) => a === 'fotos')).toBe(true));
 		await page.getByRole('button', { name: 'Quitar la Ilustración 2.1.1' }).click();

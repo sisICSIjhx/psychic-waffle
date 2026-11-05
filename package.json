@@ -25,7 +25,8 @@
 		"verificar:datos": "node scripts/verificar-datos-personales.ts",
 		"importar": "node scripts/importar-catalogo.ts",
 		"verificar:indice": "node scripts/verificar-indice-word.ts",
-		"anchos:extraer": "node scripts/extraer-anchos-fuentes.ts"
+		"anchos:extraer": "node scripts/extraer-anchos-fuentes.ts",
+		"bd:script": "node scripts/generar-esquema-bd.ts"
 	},
 	"devDependencies": {
 		"@colbymchenry/codegraph": "1.6.2",
@@ -59,6 +60,8 @@
 		"vitest-browser-svelte": "^2.0.1"
 	},
 	"dependencies": {
+		"@fontsource-variable/inter": "5.2.8",
+		"@fontsource-variable/manrope": "5.2.8",
 		"@supabase/supabase-js": "2.118.0",
 		"docx-templates": "4.15.0",
 		"heic-decode": "2.1.0",

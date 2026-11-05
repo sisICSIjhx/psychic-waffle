@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-10-21 contra los archivos locales (rama `feat/tablero-cumplimiento`).
+Verificado el 2026-10-28 contra los archivos locales (rama `feat/alcances-personal-bd`).
 
 ## Producto y arquitectura
 
@@ -18,18 +18,26 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/tablero-cumplim
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
     resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0019`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0020`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+    `npm run bd:script` genera `supabase/esquema_completo.sql` (todo en un script para una base vacía
+    de Supabase; una prueba exige que esté al día). Proyecto = cliente. Fotos: local o SharePoint
+    (solo URL en `reporte_fotos`).
   - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
-    notificaciones con deshacer, botones segmentados y selector con búsqueda). Tokens de tema
-    (contraste AA) en `src/app.css`; tema y menú contraído recordados (`layout/preferencias.ts`).
+    notificaciones con deshacer, botones segmentados, selector con búsqueda y `EncabezadoPagina`).
+    Sistema visual «Foco operativo» (propuesta A de Figma, página 03) en `src/app.css`: Inter y
+    Manrope (`@fontsource-variable`), tokens semánticos de ambos temas (contraste AA medido), riel
+    de navegación de 112 px sin cabecera en escritorio, título de cada página en su contenido
+    (`encabezadoDePagina` en `layout/navegacion.ts`), controles de 42 px y radio 6 px; tema
+    recordado (`layout/preferencias.ts`).
 - Rutas: `/` «Mi trabajo» (avance del mes, tarjetas y siguiente trabajo; `?ver=`); `/planeacion`
   matriz P/R con estados de ejecución y documental y ajustes (`?vista=mensual` y `?vista=semanal`);
   `/cumplimiento` tablero de indicadores en el menú; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección
   guiada con búsqueda; `/reportes/[id]` editor (autoguardado, fotos, estados),
   `/reportes/[id]/documento` DOCX y `/reportes/[id]/fotos/[fotoId]` (`?tamano=mini` para la miniatura); `/historial`; `/catalogo` con
   contratos y partidas (en `/catalogo/contratos/[id]`, corrección del contrato, sitios y firmantes con
-  motivo e historial); `/personal` y `/perfil` existen pero no están en el menú hasta que haya
-  autenticación.
+  motivo e historial; `/catalogo/alcances` biblioteca de alcances predeterminados por proyecto, que
+  el editor de partida agrega); `/personal` (en el menú) y `/personal/[id]` alta y edición con rol y
+  proyectos; `/perfil` existe pero no está en el menú hasta que haya autenticación.
 - Datos locales: sin `.env` se usa PGlite en `storage/pglite`; fotos y documentos en `storage/`
   (ignorado). Supabase se activa con `PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (tarea 3.8,
   pendiente del usuario). PGlite no admite dos procesos: detener el servidor antes de usar los scripts.
@@ -71,7 +79,13 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/tablero-cumplim
   trabajo» y captura con selector de partida) del cambio OpenSpec `ux-editor-inicio-captura` en
   `feat/ux-fase-b` y `feat/ux-fase-c`, con todas sus tareas hechas (uso solo en escritorio; la misma
   persona envía y emite). Siguen las pruebas con usuarios y archivar el cambio; fases D y E por
-  planear.
+  planear. Rediseño visual de toda la interfaz en `feat/rediseno-interfaz` (2026-10-24, sin cambios
+  de datos ni reglas), sustituido el 2026-10-25 por el diseño A «Foco operativo»: editor con
+  encabezado fijo y una sección a la vez. El programa anual sigue la «Nueva versión programa anual»
+  de Figma (indicadores del ciclo, búsqueda, celdas-tarjeta con «Visualizar», exportar a CSV y
+  panel de la celda; estilos y tokens `--pa-*` en `planeacion/programa.css`); la vista mensual
+  muestra esa matriz por semanas del mes (`semanasDePartida`, `MatrizMensual`) o una lista por
+  urgencia (`&formato=lista`); la semanal, la matriz de los días de una semana (`diasDePartida`).
 - Cambios de octubre de 2026 (seis cambios OpenSpec apilados, uno por rama): `importacion-programa-anual`
   terminado (Proagro con programa 2026-03 a 2027-02 en EM-30184 y EM-30185 y vigencia ajustada);
   `fechas-ejecucion-multiples` terminado (días en segmentos `dias_ejecucion`; diarias por mes o por
@@ -81,6 +95,9 @@ Verificado el 2026-10-21 contra los archivos locales (rama `feat/tablero-cumplim
   `edicion-contratos-bitacora` terminado (bitácora `cambios_catalogo`, corrección con motivo y aviso
   en el editor; permisos en `src/lib/server/permisos.ts`); `tablero-cumplimiento` terminado (ajustes del programa, vistas mensual y semanal y
   tablero; dominio en `src/lib/dominio/cumplimiento.ts`). Ninguno está archivado.
+- Cambio `alcances-personal-esquema-bd` (2026-10-28, rama `feat/alcances-personal-bd`): alcances
+  predeterminados, personal (roles administrador, líder administrativo, líder operativo y
+  reporteador) y script único; integración con SharePoint y autenticación pendientes.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); carga del
   histórico antes de usar el tablero; proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue

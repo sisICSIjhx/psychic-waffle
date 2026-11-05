@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { plural, textoHaceTiempo, textoMes, textoRango } from './textos';
+import { plural, textoHaceTiempo, textoMes, textoOracion, textoRango } from './textos';
 
 describe('textos de la interfaz', () => {
 	it('concuerda el plural con la cantidad', () => {
@@ -34,5 +34,15 @@ describe('textos de la interfaz', () => {
 		expect(textoHaceTiempo(t, t + 5_000)).toBe('hace 5 s');
 		expect(textoHaceTiempo(t, t + 3 * 60_000)).toBe('hace 3 min');
 		expect(textoHaceTiempo(t, t + 2 * 3_600_000)).toBe('a las 9:05');
+	});
+
+	it('pasa a oración un texto en mayúsculas y conserva siglas y cifras', () => {
+		expect(textoOracion('MANTENIMIENTO PREVENTIVO A RÓTULOS DE IDENTIFICACIÓN EM, VT')).toBe(
+			'Mantenimiento preventivo a rótulos de identificación EM, VT'
+		);
+		expect(textoOracion('ORDEN Y LIMPIEZA DEL DERECHO DE VÍA EN ERM 2 (DDV)')).toBe(
+			'Orden y limpieza del derecho de vía en ERM 2 (DDV)'
+		);
+		expect(textoOracion('Toma de potenciales')).toBe('Toma de potenciales');
 	});
 });

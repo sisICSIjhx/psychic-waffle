@@ -21,6 +21,10 @@
 
 <Aviso {form} />
 
+<div class="toolbar">
+	<a class="boton" href={resolve('/catalogo/alcances')}>Alcances predeterminados</a>
+</div>
+
 <section class="card" aria-labelledby="titulo-contratos">
 	<h2 id="titulo-contratos" class="view-heading">Contratos</h2>
 	{#if contratos.length === 0}
@@ -45,7 +49,7 @@
 							<td>{contrato.cliente?.nombre ?? '—'}</td>
 							<td>{contrato.numero}</td>
 							<td>
-								{contrato.vigenciaInicio} a {contrato.vigenciaFin}
+								<span class="vigencia">{contrato.vigenciaInicio} a {contrato.vigenciaFin}</span>
 								{#if contrato.vigente}<span class="status-badge vigente">Vigente</span>{/if}
 							</td>
 							<td>
@@ -94,3 +98,10 @@
 		</form>
 	</details>
 </div>
+
+<style>
+	/* Las fechas «AAAA-MM-DD» no se parten por los guiones en pantallas angostas. */
+	.vigencia {
+		white-space: nowrap;
+	}
+</style>

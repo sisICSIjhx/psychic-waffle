@@ -141,13 +141,15 @@
 		margin: 12px 0;
 		padding: 0;
 		display: grid;
-		gap: 8px;
 	}
+	/* Filas separadas por una línea: el panel del contrato ya es la caja. */
 	.sitio {
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 8px 12px;
+		padding: 10px 0;
+		border-top: 1px solid var(--linea);
 		min-width: 0;
+	}
+	.sitio:first-child {
+		border-top: none;
 	}
 	.fila {
 		display: flex;
@@ -160,8 +162,8 @@
 		overflow-wrap: anywhere;
 	}
 	.compartido {
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 	.acciones {
 		display: flex;
@@ -173,11 +175,11 @@
 	}
 	.nota {
 		margin: 4px 0 0;
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 	.nota.error {
-		color: var(--danger);
+		color: var(--peligro);
 	}
 	.aviso-compartido {
 		grid-column: 1 / -1;

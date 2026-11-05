@@ -10,18 +10,20 @@ describe('Sidebar', () => {
 	beforeEach(() => document.addEventListener('click', cancelarNavegacion));
 	afterEach(() => document.removeEventListener('click', cancelarNavegacion));
 
-	it('enlaza cada vista con su ruta y la captura por cliente', async () => {
+	it('enlaza cada destino con su ruta y la captura por cliente', async () => {
 		render(Sidebar, { activeView: 'dashboard' });
 
 		const esperados: [string, string][] = [
 			['Mi trabajo', '/'],
-			['Anual', '/planeacion'],
+			['Programa', '/planeacion'],
 			['Cumplimiento', '/cumplimiento'],
+			['Capturar', '/captura'],
 			['Cerritos', '/captura?cliente=cerritos'],
 			['Proagro', '/captura?cliente=proagro'],
 			['Virtual', '/captura?cliente=virtual'],
-			['Historial Global', '/historial'],
-			['Catálogo', '/catalogo']
+			['Historial', '/historial'],
+			['Catálogo', '/catalogo'],
+			['Personal', '/personal']
 		];
 		for (const [nombre, ruta] of esperados) {
 			await expect
@@ -29,10 +31,11 @@ describe('Sidebar', () => {
 				.toHaveAttribute('href', ruta);
 		}
 		expect(page.getByRole('link', { name: 'Prosasa' }).elements()).toHaveLength(0);
-		// Sin pantallas vacías: Personal y Mi Perfil vuelven con la autenticación.
-		expect(page.getByRole('link', { name: 'Personal' }).elements()).toHaveLength(0);
+		// Sin pantallas vacías: Mi Perfil vuelve con la autenticación.
 		expect(page.getByRole('link', { name: 'Mi Perfil' }).elements()).toHaveLength(0);
-		await expect.element(page.getByText('ICSI Reportes')).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('link', { name: 'ICSI Reportes' }))
+			.toHaveAttribute('href', '/');
 	});
 
 	it('marca como activo solo el acceso del cliente elegido', async () => {
@@ -40,7 +43,13 @@ describe('Sidebar', () => {
 
 		await expect.element(page.getByRole('link', { name: 'Proagro' })).toHaveClass(/active/);
 		await expect.element(page.getByRole('link', { name: 'Cerritos' })).not.toHaveClass(/active/);
-		await expect.element(page.getByRole('link', { name: 'Anual' })).not.toHaveClass(/active/);
+		await expect
+			.element(page.getByRole('link', { name: 'Programa', exact: true }))
+			.not.toHaveClass(/active/);
+		// «Capturar» queda resaltado como sección, sin anunciarse como la página actual.
+		await expect
+			.element(page.getByRole('link', { name: 'Capturar', exact: true }))
+			.not.toHaveAttribute('aria-current');
 		// La página activa se anuncia también a los lectores de pantalla.
 		await expect
 			.element(page.getByRole('link', { name: 'Proagro' }))
@@ -53,7 +62,7 @@ describe('Sidebar', () => {
 	it('anuncia la vista activa con aria-current', async () => {
 		render(Sidebar, { activeView: 'historial' });
 		await expect
-			.element(page.getByRole('link', { name: 'Historial Global' }))
+			.element(page.getByRole('link', { name: 'Historial' }))
 			.toHaveAttribute('aria-current', 'page');
 		await expect
 			.element(page.getByRole('link', { name: 'Mi trabajo' }))
@@ -66,7 +75,7 @@ describe('Sidebar', () => {
 		const target = document.body.appendChild(document.createElement('div'));
 		render(Sidebar, { target, props: { activeView: 'dashboard' }, events: { navigate } });
 
-		await page.getByRole('link', { name: 'Historial Global' }).click();
+		await page.getByRole('link', { name: 'Historial' }).click();
 		await page.getByRole('link', { name: 'Virtual' }).click();
 
 		expect(navigate).toHaveBeenCalledTimes(2);

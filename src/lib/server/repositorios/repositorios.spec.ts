@@ -150,7 +150,7 @@ let repos: Repositorios;
 beforeAll(async () => {
 	cliente = await crearClientePglite();
 	repos = crearRepositorios(cliente);
-}, 60_000);
+});
 
 afterAll(async () => {
 	await repos.cerrar();

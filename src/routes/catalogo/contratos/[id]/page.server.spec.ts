@@ -8,7 +8,7 @@ const { actions } = await import('./+page.server');
 
 const capturista = {
 	autenticacion: true,
-	usuario: { id: '00000000-0000-4000-8000-000000000001', nombre: 'Ficticia', rol: 'capturista' }
+	usuario: { id: '00000000-0000-4000-8000-000000000001', nombre: 'Ficticia', rol: 'reporteador' }
 } as const;
 
 function evento(campos: Record<string, string>) {

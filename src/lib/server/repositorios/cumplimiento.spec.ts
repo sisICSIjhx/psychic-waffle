@@ -22,7 +22,7 @@ beforeAll(async () => {
 	repos = crearRepositorios(cliente);
 	carpeta = await mkdtemp(join(tmpdir(), 'cumplimiento-'));
 	servicio = new ServicioCaptura(repos, new AlmacenamientoLocal(carpeta));
-}, 60_000);
+});
 
 afterAll(async () => {
 	await repos.cerrar();

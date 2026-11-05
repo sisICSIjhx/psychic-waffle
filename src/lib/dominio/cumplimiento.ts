@@ -108,6 +108,18 @@ export const SIMBOLO_EJECUCION: Record<EstadoEjecucion, string> = {
 	extra: '+'
 };
 
+/** Código corto del estado de ejecución en la matriz («E», «P», «PR»…); acompaña al símbolo. */
+export const CODIGO_EJECUCION: Record<EstadoEjecucion, string> = {
+	sin_programa: '',
+	programado: 'PR',
+	pendiente: 'P',
+	vencido: 'V',
+	reprogramado: 'RP',
+	no_ejecutado: 'NE',
+	ejecutado: 'E',
+	extra: 'RSP'
+};
+
 export const ETIQUETA_DOCUMENTAL: Record<EstadoDocumental, string> = {
 	ninguno: '',
 	sin_reporte: 'Sin reporte',
@@ -115,15 +127,15 @@ export const ETIQUETA_DOCUMENTAL: Record<EstadoDocumental, string> = {
 	con_reporte: 'Con reporte'
 };
 
-/** Etiqueta corta de la marca documental en la matriz. */
-export function marcaDocumental(c: CeldaEvaluable): string {
+/** Código corto del documento en la matriz: «CR» con reporte, «B» borrador, «ER» en revisión, «S» sin. */
+export function codigoDocumental(c: CeldaEvaluable): string {
 	switch (estadoDocumental(c)) {
 		case 'con_reporte':
-			return 'Con rep.';
+			return 'CR';
 		case 'reporte_en_borrador':
-			return conReporteEnRevision(c) ? 'En rev.' : 'Borrador';
+			return conReporteEnRevision(c) ? 'ER' : 'B';
 		case 'sin_reporte':
-			return 'Sin rep.';
+			return 'S';
 		default:
 			return '';
 	}
@@ -322,7 +334,7 @@ export function partidasDelMes<P extends { numero: string; celdas: CeldaEvaluabl
 		});
 }
 
-// Vista semanal (D14).
+// Vista semanal (D14, ampliada el 2026-10-25 con la matriz de semanas).
 
 export interface EjecucionDelMes {
 	id: string;
@@ -333,12 +345,29 @@ export interface EjecucionDelMes {
 	diasEjecucion: { desde: string; hasta: string }[];
 }
 
-export interface FilaSemana {
-	/** Lo que muestra la semana para la partida: «Con reporte», «5 de 7 días», «Pendiente en el mes». */
-	texto: string;
-	/** Reportes de la partida que caen en la semana. */
-	reportes: EjecucionDelMes[];
+/** Semana del mes: número de ocurrencia (lunes a domingo) y sus días recortados al mes. */
+export interface SemanaDelMes {
+	numero: number;
+	desde: string;
+	hasta: string;
 }
+
+export type EstadoSemana = 'ejecutado' | 'pendiente' | 'programado' | 'vencido';
+export type DocumentalSemana = 'con_reporte' | 'reporte_en_borrador' | 'sin_reporte';
+
+/** Lo que muestra una partida en una semana de la matriz semanal. */
+export interface CeldaSemana {
+	estado: EstadoSemana;
+	/** «Con reporte», «Borrador», «En revisión», «Sin reporte», «3 de 7 días» o «Realizado sin reporte». */
+	documento: string;
+	documental: DocumentalSemana;
+	/** Reportes de la partida que cuentan en la semana («Visualizar»). */
+	reportes: EjecucionDelMes[];
+	/** Aclaración para el nombre accesible: «quincena 2», «lo que falta en el mes». */
+	detalle: string;
+}
+
+type Rango = { desde: string; hasta: string };
 
 function diasEntre(desde: string, hasta: string): string[] {
 	const dias: string[] = [];
@@ -349,63 +378,275 @@ function diasEntre(desde: string, hasta: string): string[] {
 	return dias;
 }
 
-const seTraslapan = (a: { desde: string; hasta: string }, b: { desde: string; hasta: string }) =>
-	a.desde <= b.hasta && b.desde <= a.hasta;
+const seTraslapan = (a: Rango, b: Rango) => a.desde <= b.hasta && b.desde <= a.hasta;
 
-function textoReportes(reportes: EjecucionDelMes[]): string | null {
-	if (reportes.some((r) => r.estado === 'emitido')) return 'Con reporte';
-	if (reportes.some((r) => r.estado === 'en_revision')) return 'Reporte en borrador (en revisión)';
-	if (reportes.length) return 'Reporte en borrador';
+/** Un periodo ya pasó, está en curso o es futuro respecto de hoy. */
+function momento(rango: Rango, hoy: string): EstadoSemana {
+	if (rango.hasta < hoy) return 'vencido';
+	return rango.desde <= hoy ? 'pendiente' : 'programado';
+}
+
+function documentoDeReportes(
+	reportes: readonly EjecucionDelMes[]
+): Pick<CeldaSemana, 'documento' | 'documental'> | null {
+	if (reportes.some((r) => r.estado === 'emitido'))
+		return { documento: 'Con reporte', documental: 'con_reporte' };
+	if (reportes.some((r) => r.estado === 'en_revision'))
+		return { documento: 'En revisión', documental: 'reporte_en_borrador' };
+	if (reportes.length) return { documento: 'Borrador', documental: 'reporte_en_borrador' };
 	return null;
 }
 
+const SIN_REPORTE = { documento: 'Sin reporte', documental: 'sin_reporte' } as const;
+
 /**
- * Lo que muestra la semana `numero` (con días `rango`, ya recortados al mes) para una partida: las
- * semanales, el reporte de esa semana; las quincenales, el de las quincenas que la tocan; las
- * diarias, los días cubiertos por emitidos; las demás, los reportes con días en la semana. Ninguna
- * semana se marca vencida por sí sola: el estado sigue siendo el del mes.
+ * Una celda por semana del mes (null si la partida no tiene trabajo en ella), según la periodicidad:
+ * - semanal: cada semana es una ocurrencia; con reporte emitido, ejecutada; si no y el mes aún no
+ *   cumple lo esperado, vencida, pendiente o programada según la fecha de la semana;
+ * - quincenal: cada semana sigue a la quincena de su último día, con la fecha de la quincena;
+ * - diaria: los días de la semana cubiertos por emitidos («3 de 7 días»); completa, ejecutada;
+ * - las demás (mensual a anual): los reportes con días de ejecución en la semana; lo que falta en el
+ *   mes (sin contar lo que cubren los borradores) se ofrece en la semana en curso y las siguientes,
+ *   o en la última si el mes ya terminó.
+ * Con el mes cumplido, las semanas sin reporte quedan vacías.
  */
-export function semanaDePartida(
+export function semanasDePartida(
 	periodicidad: string,
 	celda: CeldaEvaluable | undefined,
 	ejecuciones: readonly EjecucionDelMes[],
-	numero: number,
-	rango: { desde: string; hasta: string }
-): FilaSemana {
-	const pendienteMes = celda && faltan(celda) > 0 ? 'Pendiente en el mes' : '—';
+	semanas: readonly SemanaDelMes[],
+	hoy: string
+): (CeldaSemana | null)[] {
+	if (!semanas.length) return [];
+	const pendiente = !!celda && faltan(celda) > 0;
+	const mes: Rango = { desde: semanas[0].desde, hasta: semanas[semanas.length - 1].hasta };
+
+	const conReportes = (
+		reportes: EjecucionDelMes[],
+		rango: Rango,
+		detalle = ''
+	): CeldaSemana | null => {
+		const documento = documentoDeReportes(reportes);
+		if (documento) {
+			const estado = documento.documental === 'con_reporte' ? 'ejecutado' : momento(rango, hoy);
+			return { estado, ...documento, reportes, detalle };
+		}
+		return pendiente
+			? { estado: momento(rango, hoy), ...SIN_REPORTE, reportes: [], detalle }
+			: null;
+	};
+
 	if (periodicidad === 'semanal') {
-		const reportes = ejecuciones.filter(
-			(e) => e.ocurrencia?.tipo === 'semana' && e.ocurrencia.numero === numero
+		return semanas.map((s) =>
+			conReportes(
+				ejecuciones.filter(
+					(e) => e.ocurrencia?.tipo === 'semana' && e.ocurrencia.numero === s.numero
+				),
+				s
+			)
 		);
-		return { texto: textoReportes(reportes) ?? 'Sin reporte de la semana', reportes };
 	}
+
 	if (periodicidad === 'quincenal') {
-		const mes = rango.desde.slice(0, 8);
 		const quincenas = [
-			{ numero: 1, desde: `${mes}01`, hasta: `${mes}15` },
-			{ numero: 2, desde: `${mes}16`, hasta: `${mes}31` }
-		].filter((q) => seTraslapan(q, rango));
-		const reportes = ejecuciones.filter(
-			(e) =>
-				e.ocurrencia?.tipo === 'quincena' &&
-				quincenas.some((q) => q.numero === e.ocurrencia!.numero)
-		);
-		return { texto: textoReportes(reportes) ?? pendienteMes, reportes };
+			{ numero: 1, desde: mes.desde, hasta: `${mes.desde.slice(0, 8)}15` },
+			{ numero: 2, desde: `${mes.desde.slice(0, 8)}16`, hasta: mes.hasta }
+		];
+		return semanas.map((s) => {
+			const q = s.hasta <= quincenas[0].hasta ? quincenas[0] : quincenas[1];
+			return conReportes(
+				ejecuciones.filter(
+					(e) => e.ocurrencia?.tipo === 'quincena' && e.ocurrencia.numero === q.numero
+				),
+				q,
+				`quincena ${q.numero}`
+			);
+		});
 	}
-	const enSemana = ejecuciones.filter((e) => e.diasEjecucion.some((s) => seTraslapan(s, rango)));
+
 	if (periodicidad === 'diaria') {
-		const dias = diasEntre(rango.desde, rango.hasta);
-		const cubiertos = new Set(
-			ejecuciones
-				.filter((e) => e.estado === 'emitido')
-				.flatMap((e) => e.diasEjecucion.flatMap((s) => diasEntre(s.desde, s.hasta)))
-		);
-		return {
-			texto: `${dias.filter((d) => cubiertos.has(d)).length} de ${dias.length} días`,
-			reportes: enSemana
-		};
+		const cubiertos = (estados: EjecucionDelMes['estado'][]) =>
+			new Set(
+				ejecuciones
+					.filter((e) => estados.includes(e.estado))
+					.flatMap((e) => e.diasEjecucion.flatMap((r) => diasEntre(r.desde, r.hasta)))
+			);
+		const emitidos = cubiertos(['emitido']);
+		const abiertos = cubiertos(['borrador', 'en_revision']);
+		return semanas.map((s) => {
+			const dias = diasEntre(s.desde, s.hasta);
+			const hechos = dias.filter((d) => emitidos.has(d)).length;
+			const enBorrador = dias.filter((d) => !emitidos.has(d) && abiertos.has(d)).length;
+			const reportes = ejecuciones.filter((e) => e.diasEjecucion.some((r) => seTraslapan(r, s)));
+			const parcial = `${hechos} de ${dias.length} días`;
+			if (hechos === dias.length)
+				return {
+					estado: 'ejecutado',
+					documento: 'Con reporte',
+					documental: 'con_reporte',
+					reportes,
+					detalle: parcial
+				};
+			if (!pendiente) {
+				return hechos > 0
+					? {
+							estado: 'ejecutado',
+							documento: parcial,
+							documental: 'con_reporte',
+							reportes,
+							detalle: ''
+						}
+					: null;
+			}
+			const estado = momento(s, hoy);
+			if (hechos > 0)
+				return {
+					estado,
+					documento: parcial,
+					documental: 'reporte_en_borrador',
+					reportes,
+					detalle: ''
+				};
+			if (enBorrador > 0)
+				return {
+					estado,
+					documento: 'Borrador',
+					documental: 'reporte_en_borrador',
+					reportes,
+					detalle: ''
+				};
+			return { estado, ...SIN_REPORTE, reportes, detalle: '' };
+		});
 	}
-	return { texto: textoReportes(enSemana) ?? pendienteMes, reportes: enSemana };
+
+	// Mensual a anual: la semana no está planeada; lo que falta se puede hacer en cualquier semana.
+	const porSemana = semanas.map((s) =>
+		ejecuciones.filter((e) => e.diasEjecucion.some((r) => seTraslapan(r, s)))
+	);
+	const ninguna = porSemana.every((r) => r.length === 0);
+	const mesPasado = mes.hasta < hoy;
+	// Los borradores ya cubren parte de lo que falta: solo se ofrece el resto.
+	const enCurso = ejecuciones.filter((e) => e.estado !== 'emitido').length;
+	const porOfrecer = !!celda && faltan(celda) > enCurso;
+	return semanas.map((s, i) => {
+		const documento = documentoDeReportes(porSemana[i]);
+		if (documento) {
+			const estado = documento.documental === 'con_reporte' ? 'ejecutado' : momento(mes, hoy);
+			return { estado, ...documento, reportes: porSemana[i], detalle: '' };
+		}
+		const ultima = i === semanas.length - 1;
+		if (porOfrecer) {
+			const detalle = 'lo que falta en el mes';
+			if (mesPasado)
+				return ultima ? { estado: 'vencido', ...SIN_REPORTE, reportes: [], detalle } : null;
+			const estado = momento(s, hoy);
+			return estado === 'vencido' ? null : { estado, ...SIN_REPORTE, reportes: [], detalle };
+		}
+		if (ninguna && ultima && celda && celda.realizadoSinReporte > 0) {
+			return {
+				estado: 'ejecutado',
+				documento: 'Realizado sin reporte',
+				documental: 'sin_reporte',
+				reportes: [],
+				detalle: 'registrado sin reporte emitido'
+			};
+		}
+		return null;
+	});
+}
+
+/**
+ * Una celda por día de la semana `semana` (ya recortada al mes) para la vista semanal:
+ * - diaria: cada día es una ejecución; cubierto por un emitido, ejecutado; si no y el mes aún no
+ *   cumple, vencido, pendiente o programado según la fecha del día;
+ * - las demás: los reportes en los días de ejecución que cubren. Lo que falta de su ocurrencia
+ *   (la semana para las semanales, la quincena del último día para las quincenales, el mes para las
+ *   demás, sin contar lo que cubren los borradores) se ofrece en un solo día: hoy si la semana está
+ *   en curso, el último día de la ocurrencia si ya pasó o su primer día si es futura, siempre que
+ *   caiga en la semana.
+ */
+export function diasDePartida(
+	periodicidad: string,
+	celda: CeldaEvaluable | undefined,
+	ejecuciones: readonly EjecucionDelMes[],
+	semana: SemanaDelMes,
+	hoy: string
+): (CeldaSemana | null)[] {
+	const dias = diasEntre(semana.desde, semana.hasta);
+	const pendiente = !!celda && faltan(celda) > 0;
+	const enDia = (dia: string) =>
+		ejecuciones.filter((e) => e.diasEjecucion.some((r) => r.desde <= dia && dia <= r.hasta));
+	const delDia = (dia: string): Rango => ({ desde: dia, hasta: dia });
+
+	if (periodicidad === 'diaria') {
+		return dias.map((dia) => {
+			const reportes = enDia(dia);
+			const documento = documentoDeReportes(reportes);
+			if (documento?.documental === 'con_reporte')
+				return { estado: 'ejecutado', ...documento, reportes, detalle: '' };
+			if (!pendiente && !documento) return null;
+			return {
+				estado: momento(delDia(dia), hoy),
+				...(documento ?? SIN_REPORTE),
+				reportes,
+				detalle: ''
+			};
+		});
+	}
+
+	// Ocurrencia a la que pertenece la semana y sus reportes.
+	const mesInicio = `${semana.desde.slice(0, 8)}01`;
+	const [anio, numeroMes] = mesInicio.split('-').map(Number);
+	const mesFin = `${mesInicio.slice(0, 8)}${String(new Date(Date.UTC(anio, numeroMes, 0)).getUTCDate()).padStart(2, '0')}`;
+	let ocurrencia: Rango = { desde: mesInicio, hasta: mesFin };
+	let propios = [...ejecuciones];
+	let detalle = 'lo que falta en el mes';
+	if (periodicidad === 'semanal') {
+		ocurrencia = semana;
+		propios = ejecuciones.filter(
+			(e) => e.ocurrencia?.tipo === 'semana' && e.ocurrencia.numero === semana.numero
+		);
+		detalle = '';
+	} else if (periodicidad === 'quincenal') {
+		const numero = semana.hasta.slice(8) <= '15' ? 1 : 2;
+		ocurrencia =
+			numero === 1
+				? { desde: mesInicio, hasta: `${mesInicio.slice(0, 8)}15` }
+				: { desde: `${mesInicio.slice(0, 8)}16`, hasta: mesFin };
+		propios = ejecuciones.filter(
+			(e) => e.ocurrencia?.tipo === 'quincena' && e.ocurrencia.numero === numero
+		);
+		detalle = `quincena ${numero}`;
+	}
+	const emitidos = propios.filter((e) => e.estado === 'emitido').length;
+	const enCurso = propios.length - emitidos;
+	const porOfrecer =
+		periodicidad === 'semanal' || periodicidad === 'quincenal'
+			? pendiente && propios.length === 0
+			: !!celda && faltan(celda) > enCurso;
+	const enSemana = (dia: string) => dia >= semana.desde && dia <= semana.hasta;
+	let diaOferta: string | null = null;
+	if (porOfrecer) {
+		if (enSemana(hoy)) diaOferta = hoy > ocurrencia.desde ? hoy : ocurrencia.desde;
+		else if (semana.hasta < hoy) diaOferta = ocurrencia.hasta;
+		else diaOferta = ocurrencia.desde > semana.desde ? ocurrencia.desde : semana.desde;
+		if (!enSemana(diaOferta) || diaOferta > ocurrencia.hasta) diaOferta = null;
+	}
+	// Reportes de la ocurrencia sin días de ejecución: en el primer día de la semana.
+	const sinDias = propios.filter((e) => e.diasEjecucion.length === 0);
+
+	return dias.map((dia, i) => {
+		const reportes = [...enDia(dia), ...(i === 0 ? sinDias : [])];
+		const documento = documentoDeReportes(reportes);
+		if (documento) {
+			const estado =
+				documento.documental === 'con_reporte' ? 'ejecutado' : momento(ocurrencia, hoy);
+			return { estado, ...documento, reportes, detalle };
+		}
+		if (dia === diaOferta)
+			return { estado: momento(delDia(dia), hoy), ...SIN_REPORTE, reportes: [], detalle };
+		return null;
+	});
 }
 
 // Tablero (D12, D13).

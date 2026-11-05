@@ -36,7 +36,7 @@ describe('BotonesSegmentados', () => {
 		await expect
 			.element(page.getByRole('radio', { name: 'Con observación' }))
 			.toHaveAttribute('aria-checked', 'true');
-		expect(tabulables().map((b) => b.textContent?.trim())).toEqual(['✓ Con observación']);
+		expect(tabulables().map((b) => b.textContent?.trim())).toEqual(['Con observación']);
 	});
 
 	it('las flechas mueven la elección y el foco, con vuelta al inicio', async () => {

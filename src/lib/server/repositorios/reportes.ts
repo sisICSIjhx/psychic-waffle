@@ -27,8 +27,12 @@ export interface FotoNueva {
 	alcanceId: string;
 	/** Versión que conoce quien carga la foto; si no coincide hay conflicto. */
 	version: number;
-	rutaOriginal: string;
-	rutaOptimizada: string;
+	rutaOriginal?: string | null;
+	rutaOptimizada?: string | null;
+	/** Fotos en SharePoint: la base solo guarda sus URL (`https://`). */
+	almacenamiento?: 'local' | 'sharepoint';
+	urlOriginal?: string | null;
+	urlOptimizada?: string | null;
 	ancho: number;
 	alto: number;
 	bytes: number;
@@ -44,7 +48,12 @@ export interface RutasFoto {
 
 const esquemaResultadoGuardado = z.object({
 	reporte: esquemaReporte,
-	fotosEliminadas: z.array(z.object({ rutaOriginal: z.string(), rutaOptimizada: z.string() }))
+	// Las fotos de SharePoint no traen rutas locales: no hay archivos que limpiar aquí.
+	fotosEliminadas: z
+		.array(z.object({ rutaOriginal: z.string().nullable(), rutaOptimizada: z.string().nullable() }))
+		.transform((rutas) =>
+			rutas.filter((r): r is RutasFoto => r.rutaOriginal !== null && r.rutaOptimizada !== null)
+		)
 });
 
 export class RepositorioReportes {

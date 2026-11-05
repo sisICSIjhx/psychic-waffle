@@ -294,17 +294,17 @@
 <style>
 	.foto {
 		position: relative;
-		border: 1px solid var(--border);
-		border-radius: 8px;
+		border: 1px solid var(--linea);
+		border-radius: var(--radio-panel);
 		padding: 8px;
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: 6px;
 		min-width: 0;
-		background: var(--surface);
+		background: var(--superficie);
 	}
 	.foto.agarrada {
-		outline: 2px solid var(--primary);
+		outline: 2px solid var(--accion);
 		outline-offset: 2px;
 	}
 	/* Indicador de inserción: barra de 3 px del lado en el que caería la foto. */
@@ -316,7 +316,7 @@
 		bottom: 0;
 		width: 3px;
 		border-radius: 2px;
-		background: var(--primary);
+		background: var(--accion);
 	}
 	.foto.insertar-antes::before {
 		left: -8px;
@@ -345,8 +345,9 @@
 	.marco {
 		aspect-ratio: 4 / 3;
 		overflow: hidden;
-		border-radius: 4px;
-		background: var(--surface-2);
+		border-radius: 3px;
+		background: var(--superficie-alta);
+		box-shadow: inset 0 0 0 1px var(--contorno-imagen);
 	}
 	.miniatura {
 		display: block;
@@ -406,30 +407,30 @@
 		width: var(--objetivo-min);
 		height: var(--objetivo-min);
 		padding: 0;
-		border: 1px solid var(--border);
-		border-radius: 6px;
-		background: var(--surface);
-		color: var(--text);
-		box-shadow: var(--shadow);
+		border: 1px solid var(--linea);
+		border-radius: var(--radio-control);
+		background: var(--superficie-flotante);
+		color: var(--tinta);
+		box-shadow: var(--sombra-flotante);
 		cursor: pointer;
 	}
 	.icono:hover:not(:disabled),
 	.asa:hover {
-		background: var(--hover);
+		background: var(--superficie-hover);
 	}
 	/* Sobre la foto, el anillo de foco va entre dos bandas del color de superficie: su contraste no
 	   depende de lo clara u oscura que sea la imagen. */
 	.icono:focus-visible {
-		outline: 2px solid var(--primary);
+		outline: 2px solid var(--accion);
 		outline-offset: 2px;
-		box-shadow: 0 0 0 6px var(--surface);
+		box-shadow: 0 0 0 6px var(--superficie);
 	}
 	.icono:disabled {
-		opacity: 0.6;
+		color: var(--tinta-deshabilitada);
 		cursor: not-allowed;
 	}
 	.icono.peligro {
-		color: var(--danger);
+		color: var(--peligro);
 	}
 	.icono svg,
 	.asa svg {
@@ -460,10 +461,10 @@
 		min-width: 180px;
 		max-width: min(260px, calc(100vw - 32px));
 		padding: 4px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		background: var(--surface);
-		box-shadow: var(--shadow);
+		border: 1px solid var(--linea);
+		border-radius: var(--radio-flotante);
+		background: var(--superficie-flotante);
+		box-shadow: var(--sombra-flotante);
 	}
 	.menu[hidden] {
 		display: none;
@@ -472,18 +473,18 @@
 		min-height: var(--objetivo-min);
 		padding: 6px 10px;
 		border: 0;
-		border-radius: 6px;
+		border-radius: var(--radio-control);
 		background: none;
-		color: var(--text);
+		color: var(--tinta);
 		text-align: left;
 		cursor: pointer;
 		overflow-wrap: anywhere;
 	}
 	.menu button:hover:not(:disabled) {
-		background: var(--hover);
+		background: var(--superficie-hover);
 	}
 	.menu button:disabled {
-		color: var(--muted);
+		color: var(--tinta-tenue);
 		cursor: not-allowed;
 	}
 	.menu .espacios {
@@ -494,21 +495,20 @@
 	.menu .espacios button {
 		flex: 1;
 		padding: 4px 6px;
-		border: 1px solid var(--border);
-		font-size: 0.8rem;
+		border: 1px solid var(--linea);
+		font-size: var(--texto-xs);
 		text-align: center;
 	}
 	.menu .espacios button[aria-pressed='true'] {
-		border-color: var(--primary);
-		background: var(--primary-soft);
+		border-color: var(--accion);
+		background: var(--accion-suave);
 		font-weight: 600;
 	}
 	.titulo-menu {
 		margin: 4px 10px 2px;
-		color: var(--muted);
-		font-size: 0.75rem;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
+		font-weight: 600;
 	}
 	.fila-pie {
 		display: flex;
@@ -518,7 +518,7 @@
 	}
 	.pie {
 		margin: 0;
-		font-size: 0.85rem;
+		font-size: var(--texto-sm);
 		font-weight: 600;
 	}
 	.descripcion {
@@ -527,7 +527,7 @@
 	}
 	.reemplazando {
 		margin: 0;
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 </style>

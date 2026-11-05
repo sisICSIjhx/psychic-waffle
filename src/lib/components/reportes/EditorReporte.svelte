@@ -1,7 +1,9 @@
 <!-- Editor del reporte FOR-ICSI-RMT-01: encabezado, TAG, firmantes, alcances con fotos y
      verificación, herramientas y conclusiones. Autoguarda tras una pausa con concurrencia optimista
-     (un conflicto de versión detiene el guardado sin sobrescribir) y controla los estados. Una barra
-     fija resume contexto, guardado y pendientes; el índice lleva a cada sección. -->
+     (un conflicto de versión detiene el guardado sin sobrescribir) y controla los estados. Diseño
+     «Foco operativo»: un encabezado fijo reúne identidad, guardado y la acción principal (completar
+     lo que falta o enviar); el índice conserva el avance y muestra una sección a la vez, y en el
+     alcance se edita un alcance mientras los demás quedan como filas para abrir. -->
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
@@ -11,8 +13,10 @@
 		destinoDeObservacion,
 		ETIQUETA_OCURRENCIA,
 		rangoDelPeriodo,
+		SECCIONES_EDITOR,
 		validarParaRevision,
-		type Observacion
+		type Observacion,
+		type SeccionEditor
 	} from '$lib/dominio/captura';
 	import { ETIQUETA_CAMPO } from '$lib/dominio/bitacora';
 	import { agregarDia, analizarDias, mismosDias, textoDias } from '$lib/dominio/dias-ejecucion';
@@ -24,7 +28,7 @@
 	} from '$lib/dominio/documento';
 	import type { Equipo, Foto, Reporte, ReporteGuardado } from '$lib/dominio/esquemas';
 	import { fechaEnZona } from '$lib/dominio/fechas';
-	import { plural, textoHaceTiempo, textoMes, textoRango } from '$lib/dominio/textos';
+	import { plural, textoHaceTiempo, textoMes, textoOracion, textoRango } from '$lib/dominio/textos';
 	import BotonesSegmentados from '$lib/components/ui/BotonesSegmentados.svelte';
 	import Dialogo from '$lib/components/ui/Dialogo.svelte';
 	import { notificaciones, PLAZO_DESHACER } from '$lib/components/ui/notificaciones';
@@ -39,7 +43,6 @@
 	import FotosAlcance from './FotosAlcance.svelte';
 	import IndiceSecciones from './IndiceSecciones.svelte';
 	import InsigniaEstado from './InsigniaEstado.svelte';
-	import SeccionResumen from './SeccionResumen.svelte';
 
 	export let reporte: Reporte;
 	export let equiposPartida: Equipo[] = [];
@@ -66,14 +69,16 @@
 
 	type EstadoGuardado = 'guardado' | 'pendiente' | 'guardando' | 'conflicto' | 'error';
 	type Momento = 'antes' | 'durante' | 'despues';
-	type EntradaIndice = { id: string; texto: string; pendientes: number; nivel: 0 | 1 };
 
-	const seccion = (id: string, texto: string, pendientes: number): EntradaIndice => ({
-		id,
-		texto,
-		pendientes,
-		nivel: 0
-	});
+	/** Nombre de cada sección en el índice, la navegación y los avisos. */
+	const NOMBRE_SECCION: Record<SeccionEditor, string> = {
+		encabezado: 'Encabezado',
+		firmas: 'Firmas',
+		objetivo: 'Objetivo',
+		alcance: 'Alcance',
+		herramientas: 'Herramientas y equipo',
+		conclusiones: 'Conclusiones'
+	};
 
 	const FUNCIONES = [
 		{ clave: 'elaboro', etiqueta: 'Elaboró' },
@@ -82,8 +87,8 @@
 	] as const;
 	/** Datos que vienen del contrato y la partida; no se editan en el reporte. */
 	const DATOS_CONTRATO = [
-		{ campo: 'usuario', clave: 'usuario', etiqueta: 'Usuario' },
-		{ campo: 'contratoTexto', clave: 'contrato', etiqueta: 'No. contrato / OC' },
+		{ campo: 'usuario', clave: 'usuario', etiqueta: 'Cliente · solo lectura' },
+		{ campo: 'contratoTexto', clave: 'contrato', etiqueta: 'Contrato' },
 		{ campo: 'sitioTexto', clave: 'sitio', etiqueta: 'Sitio' },
 		{ campo: 'periodicidad', clave: 'periodicidad', etiqueta: 'Periodicidad' }
 	] as const;
@@ -189,7 +194,10 @@
 	let mostrarResumen = false;
 	let intentoEnvio = false;
 	let tocados: Record<string, boolean> = {};
-	let abiertas = { firmas: false, objetivo: false };
+	/** Sección a la vista y alcance abierto para editar; los demás alcances quedan plegados. */
+	let seccionActiva: SeccionEditor = 'encabezado';
+	let alcanceAbierto: string | null = reporte.alcances[0]?.id ?? null;
+	let indice: IndiceSecciones | undefined;
 	let tituloResumen: HTMLElement | undefined;
 	let temporizador: ReturnType<typeof setTimeout> | null = null;
 	let cola: Promise<unknown> = Promise.resolve();
@@ -238,26 +246,60 @@
 	$: vistaPrevia =
 		diasValidos && analisisDias.segmentos.length ? fechasEncabezado(analisisDias.segmentos) : '';
 	$: idsEquipos = new Set(reporte.equipos.map((e) => e.id));
-	$: contexto = `${reporte.usuario} › Partida ${reporte.numeroPartida} › ${textoMes(
-		reporte.periodoMes,
-		{ inicial: true }
-	)}${reporte.ocurrencia ? ` · ${ETIQUETA_OCURRENCIA[reporte.ocurrencia.tipo]} ${reporte.ocurrencia.numero}` : ''}${reporte.reprogramadoDesde ? ` · Reprogramado desde ${textoMes(reporte.reprogramadoDesde)}` : ''}`;
-	$: entradasIndice = [
-		seccion('seccion-encabezado', 'Encabezado', completitud.porSeccion.encabezado),
-		seccion('seccion-firmas', 'Firmas', completitud.porSeccion.firmas),
-		seccion('seccion-objetivo', '1. Objetivo', completitud.porSeccion.objetivo),
-		seccion('seccion-alcance', '2. Alcance', completitud.porSeccion.alcance),
-		...visible.alcances.map(
-			(a, i): EntradaIndice => ({
-				id: `alcance-${a.id}`,
-				texto: `2.${i + 1} ${a.titulo.trim() || 'Sin título'}`,
-				pendientes: completitud.porAlcance[a.id] ?? 0,
-				nivel: 1
-			})
-		),
-		seccion('seccion-herramientas', 'Herramientas y equipo', completitud.porSeccion.herramientas),
-		seccion('seccion-conclusiones', 'Conclusiones', completitud.porSeccion.conclusiones)
-	];
+	$: periodo = `${textoMes(reporte.periodoMes, { inicial: true })}${reporte.ocurrencia ? ` · ${ETIQUETA_OCURRENCIA[reporte.ocurrencia.tipo]} ${reporte.ocurrencia.numero}` : ''}`;
+	$: contexto = `Partida ${reporte.numeroPartida} · ${textoOracion(reporte.actividad)}${reporte.reprogramadoDesde ? ` · Reprogramado desde ${textoMes(reporte.reprogramadoDesde)}` : ''}`;
+	$: entradasIndice = SECCIONES_EDITOR.map((s) => ({
+		id: s,
+		texto: NOMBRE_SECCION[s],
+		pendientes: completitud.porSeccion[s]
+	}));
+	$: subentradasIndice = visible.alcances.map((a, i) => ({
+		id: a.id,
+		texto: `2.${i + 1} ${a.titulo.trim() || 'Sin título'}`,
+		pendientes: completitud.porAlcance[a.id] ?? 0
+	}));
+	// El alcance abierto siempre es uno visible: si se quitó, se abre el primero.
+	$: if (!visible.alcances.some((a) => a.id === alcanceAbierto))
+		alcanceAbierto = visible.alcances[0]?.id ?? null;
+	$: siguiente = SECCIONES_EDITOR[SECCIONES_EDITOR.indexOf(seccionActiva) + 1] ?? null;
+	// Primer pendiente en el orden del documento: guía la acción principal y el índice.
+	$: primerPendiente = pendientes[0] ?? null;
+	$: seccionPendiente = primerPendiente
+		? (destinoDeObservacion(primerPendiente, visible)?.seccion ?? null)
+		: null;
+	$: firmasPendientes = completitud.porSeccion.firmas;
+	$: resumenPendiente = !seccionPendiente
+		? 'Sin datos pendientes'
+		: seccionPendiente === 'firmas'
+			? `Firmas: faltan ${plural(firmasPendientes, 'nombre')}`
+			: `${NOMBRE_SECCION[seccionPendiente]}: ${plural(completitud.porSeccion[seccionPendiente], 'dato pendiente', 'datos pendientes')}`;
+	$: textoIrPendiente = !seccionPendiente
+		? ''
+		: seccionPendiente === 'firmas'
+			? firmasPendientes === 1
+				? 'Ir al nombre pendiente'
+				: `Ir a los ${firmasPendientes} nombres`
+			: `Ir a ${NOMBRE_SECCION[seccionPendiente]}`;
+	$: notaAccion =
+		reporte.estado === 'borrador'
+			? !seccionPendiente
+				? 'Todo está completo: puede enviarlo a revisión.'
+				: seccionPendiente === 'firmas'
+					? 'Complete los nombres en Firmas antes de enviar a revisión.'
+					: `Complete ${NOMBRE_SECCION[seccionPendiente]} antes de enviar a revisión.`
+			: reporte.estado === 'en_revision'
+				? 'En revisión: emítalo o regréselo a borrador para corregirlo.'
+				: reporte.estado === 'emitido'
+					? 'Emitido: para corregirlo, cree una revisión.'
+					: 'Sustituido por una revisión posterior.';
+	$: notaGuardado =
+		reporte.estado !== 'borrador'
+			? 'Solo lectura. Descargar DOCX exporta; no cambia el estado.'
+			: estadoGuardado === 'guardado'
+				? 'Los cambios están guardados. Descargar DOCX exporta; no envía el reporte.'
+				: estadoGuardado === 'pendiente' || estadoGuardado === 'guardando'
+					? 'Se guarda solo tras una pausa. Descargar DOCX exporta; no envía el reporte.'
+					: 'Los últimos cambios no se guardaron; revise el aviso.';
 
 	function programar() {
 		estadoGuardado = 'pendiente';
@@ -620,6 +662,12 @@
 		}
 	}
 
+	/** «Completar N datos»: muestra todos los errores y lleva al primer dato que falta. */
+	function completarDatos() {
+		intentoEnvio = true;
+		if (primerPendiente) irAPendiente(primerPendiente);
+	}
+
 	/** Con datos pendientes no se llama al servidor: se muestra qué falta y dónde. */
 	async function enviarARevision() {
 		if (pendientes.length) {
@@ -669,14 +717,25 @@
 	function irAPendiente(observacion: Observacion) {
 		const destino = destinoDeObservacion(observacion, visible);
 		if (!destino) return;
-		if (destino.seccion === 'firmas') abiertas.firmas = true;
-		if (destino.seccion === 'objetivo') abiertas.objetivo = true;
+		seccionActiva = destino.seccion;
+		if (destino.alcanceId) alcanceAbierto = destino.alcanceId;
 		enfocar(destino.campoId);
 	}
 
-	/** Desde el índice: al título de la sección o, en un alcance, al alcance. */
-	function irASeccion(id: string) {
-		enfocar(document.getElementById(`${id}-titulo`) ? `${id}-titulo` : id);
+	/** Desde el índice o «Siguiente»: muestra la sección y enfoca su título o el alcance elegido. */
+	function irASeccion(destino: SeccionEditor, alcanceId?: string) {
+		seccionActiva = destino;
+		if (alcanceId) {
+			alcanceAbierto = alcanceId;
+			enfocar(`alcance-${alcanceId}`);
+		} else {
+			enfocar(`seccion-${destino}-titulo`);
+		}
+	}
+
+	function abrirAlcance(id: string) {
+		alcanceAbierto = id;
+		enfocar(`alcance-${id}`);
 	}
 
 	function marcarTocado(evento: FocusEvent) {
@@ -685,10 +744,13 @@
 	}
 
 	function agregarAlcance() {
+		const id = crypto.randomUUID();
+		alcanceAbierto = id;
+		enfocar(`titulo-alcance-${id}`);
 		reporte.alcances = [
 			...reporte.alcances,
 			{
-				id: crypto.randomUUID(),
+				id,
 				orden: reporte.alcances.length + 1,
 				titulo: '',
 				descripcion: '',
@@ -811,90 +873,137 @@
 	on:drop={evitarAbrirArchivo}
 />
 
-<p class="migas">
-	<a class="enlace" href={resolve('/captura')}>Captura</a> / {reporte.titulo}
-</p>
-
-<section class="card barra-reporte" aria-label="Estado del reporte">
-	<div class="linea-estado">
-		<span class="contexto" title={contexto}>{contexto}</span>
-		<InsigniaEstado estado={reporte.estado} />
-		{#if reporte.revision > 0}<span class="view-note">Rev. {reporte.revision}</span>{/if}
-		{#if reporte.estado === 'borrador'}
-			<span class="guardado guardado-{estadoGuardado}">
-				<span role="status">{TEXTO_GUARDADO[estadoGuardado]}</span>
-				{#if estadoGuardado === 'guardado' && guardadoEn}
-					<span>{textoHaceTiempo(guardadoEn, ahora)}</span>
+<header class="barra-reporte" aria-label="Estado del reporte">
+	<div class="fila-principal">
+		<div class="identidad">
+			<p class="migas">
+				<a class="enlace" href={resolve('/captura')}>Capturar reporte</a> / Edición · Partida {reporte.numeroPartida}
+			</p>
+			<div class="titulo-estado">
+				<h1 class="titulo-reporte" title={reporte.actividad}>{textoOracion(reporte.actividad)}</h1>
+				<span class="periodo">{periodo}</span>
+				<InsigniaEstado estado={reporte.estado} />
+				{#if reporte.revision > 0}<span class="revision">Rev. {reporte.revision}</span>{/if}
+				{#if reporte.estado === 'borrador'}
+					<span class="guardado guardado-{estadoGuardado}">
+						{#if estadoGuardado === 'guardado'}<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg
+							>{/if}
+						<span role="status">{TEXTO_GUARDADO[estadoGuardado]}</span>
+						{#if estadoGuardado === 'guardado' && guardadoEn}
+							<span class="hace">{textoHaceTiempo(guardadoEn, ahora)}</span>
+						{/if}
+					</span>
+					{#if estadoGuardado === 'error'}
+						<button class="boton compacto" type="button" on:click={reintentar}>Reintentar</button>
+					{/if}
 				{/if}
-			</span>
-			{#if estadoGuardado === 'error'}
-				<button class="boton" type="button" on:click={reintentar}>Reintentar</button>
-			{/if}
-		{/if}
-	</div>
-	<div class="acciones-reporte">
-		{#if reporte.estado === 'borrador'}
-			{#if pendientes.length}
-				<button class="boton faltan" type="button" on:click={verPendientes}
-					><span class="marca-faltan" aria-hidden="true">!</span><span class="texto-largo"
-						>Faltan
-					</span>{pendientes.length}</button
+			</div>
+		</div>
+		<div class="acciones-reporte">
+			<!-- Siempre a la vista; sin días de ejecución válidos no hay documento y se dice por qué. -->
+			{#if puedeDescargar}
+				<a
+					class="boton"
+					href={resolve('/reportes/[id]/documento', { id: reporte.id })}
+					on:click={descargar}><span class="texto-largo">Descargar </span>DOCX</a
 				>
 			{:else}
-				<span class="completo"><span aria-hidden="true">✓</span> Completo</span>
+				<span id="motivo-descarga" class="motivo-descarga">{motivoDescarga}</span>
+				<button class="boton" type="button" disabled aria-describedby="motivo-descarga"
+					><span class="texto-largo">Descargar </span>DOCX</button
+				>
 			{/if}
-		{/if}
-		<!-- Siempre a la vista; sin días de ejecución válidos no hay documento y se dice por qué. -->
-		{#if puedeDescargar}
-			<a
-				class="boton"
-				href={resolve('/reportes/[id]/documento', { id: reporte.id })}
-				on:click={descargar}><span class="texto-largo">Descargar </span>DOCX</a
-			>
-		{:else}
-			<span id="motivo-descarga" class="motivo-descarga">{motivoDescarga}</span>
-			<button class="boton" type="button" disabled aria-describedby="motivo-descarga"
-				><span class="texto-largo">Descargar </span>DOCX</button
-			>
-		{/if}
-		{#if reporte.estado === 'borrador'}
-			<button
-				class="boton primario"
-				type="button"
-				disabled={ocupado || estadoGuardado === 'conflicto'}
-				on:click={enviarARevision}>Enviar a revisión</button
-			>
-		{:else if reporte.estado === 'en_revision'}
-			<button
-				class="boton"
-				type="button"
-				disabled={ocupado}
-				on:click={() => accionConGuardado('estado', { estado: 'borrador' })}
-				>Regresar a borrador</button
-			>
-			<button
-				class="boton primario"
-				type="button"
-				disabled={ocupado}
-				on:click={() => (dialogoEmision = true)}>Emitir</button
-			>
-		{:else if reporte.estado === 'emitido'}
-			<button class="boton" type="button" disabled={ocupado} on:click={crearRevision}
-				>Crear revisión</button
-			>
-		{/if}
+			{#if reporte.estado === 'borrador'}
+				{#if pendientes.length}
+					<button
+						class="boton primario"
+						type="button"
+						disabled={ocupado || estadoGuardado === 'conflicto'}
+						on:click={completarDatos}>Completar {plural(pendientes.length, 'dato')}</button
+					>
+				{:else}
+					<button
+						class="boton primario"
+						type="button"
+						disabled={ocupado || estadoGuardado === 'conflicto'}
+						on:click={enviarARevision}>Enviar a revisión</button
+					>
+				{/if}
+			{:else if reporte.estado === 'en_revision'}
+				<button
+					class="boton"
+					type="button"
+					disabled={ocupado}
+					on:click={() => accionConGuardado('estado', { estado: 'borrador' })}
+					>Regresar a borrador</button
+				>
+				<button
+					class="boton primario"
+					type="button"
+					disabled={ocupado}
+					on:click={() => (dialogoEmision = true)}>Emitir</button
+				>
+			{:else if reporte.estado === 'emitido'}
+				<button class="boton" type="button" disabled={ocupado} on:click={crearRevision}
+					>Crear revisión</button
+				>
+			{/if}
+		</div>
 	</div>
-</section>
+	<div class="fila-notas">
+		<p class="nota-guardado">{notaGuardado}</p>
+		<p class="nota-accion">{notaAccion}</p>
+	</div>
+</header>
 
 <div class="cuerpo-editor">
 	<IndiceSecciones
+		bind:this={indice}
 		entradas={entradasIndice}
-		total={pendientes.length}
+		subentradas={subentradasIndice}
+		conSubentradas="alcance"
+		activa={seccionActiva}
+		subactiva={alcanceAbierto ?? ''}
 		conCompletitud={reporte.estado === 'borrador'}
-		on:ir={(e) => irASeccion(e.detail)}
+		{resumenPendiente}
+		{textoIrPendiente}
+		on:ir={(e) => irASeccion(e.detail.seccion as SeccionEditor, e.detail.subentrada)}
+		on:pendiente={completarDatos}
 	/>
 
 	<div class="contenido-editor">
+		<div class="contexto-reporte">
+			<dl class="datos-contrato">
+				{#each DATOS_CONTRATO as dato (dato.clave)}
+					<div class="dato dato-{dato.clave}">
+						<dt class="rotulo-grupo">{dato.etiqueta}</dt>
+						<dd
+							id={`dato-${dato.clave}`}
+							tabindex="-1"
+							aria-describedby={describir(errores, `dato-${dato.clave}`)}
+						>
+							{reporte[dato.campo] || '—'}
+						</dd>
+						<ErrorCampo id={`error-dato-${dato.clave}`} mensaje={errores[`dato-${dato.clave}`]} />
+					</div>
+				{/each}
+			</dl>
+			<p class="contexto" title={contexto}>{contexto}</p>
+			<p class="nota-contrato">
+				Datos del contrato y de la partida; si alguno está mal, corríjalo en el
+				<a class="enlace" href={resolve('/catalogo/contratos/[id]', { id: reporte.contratoId })}
+					>catálogo</a
+				>.
+			</p>
+		</div>
+
 		{#if mensaje}
 			<div class="aviso aviso-error" role="alert">
 				<p>{mensaje}</p>
@@ -991,29 +1100,16 @@
 		<fieldset class="editor-reporte" disabled={!editable} on:focusout={marcarTocado}>
 			<legend class="sr-only">Contenido del reporte</legend>
 
-			<section id="seccion-encabezado" class="card" aria-labelledby="seccion-encabezado-titulo">
-				<h2 id="seccion-encabezado-titulo" class="view-heading" tabindex="-1">Encabezado</h2>
-				<dl class="datos-contrato">
-					{#each DATOS_CONTRATO as dato (dato.clave)}
-						<div>
-							<dt class="etiqueta">{dato.etiqueta}</dt>
-							<dd
-								id={`dato-${dato.clave}`}
-								tabindex="-1"
-								aria-describedby={describir(errores, `dato-${dato.clave}`)}
-							>
-								{reporte[dato.campo] || '—'}
-							</dd>
-							<ErrorCampo id={`error-dato-${dato.clave}`} mensaje={errores[`dato-${dato.clave}`]} />
-						</div>
-					{/each}
-				</dl>
-				<p class="view-note nota-contrato">
-					Vienen del contrato y de la partida; si alguno está mal, corríjalo en el catálogo.
-				</p>
-				<div class="form-grid">
-					<div class="form-group ancho-completo">
-						<label for="titulo">Título</label>
+			{#if seccionActiva === 'encabezado'}
+				<section
+					id="seccion-encabezado"
+					class="card seccion"
+					aria-labelledby="seccion-encabezado-titulo"
+				>
+					<h2 id="seccion-encabezado-titulo" class="titulo-seccion" tabindex="-1">Encabezado</h2>
+					<p class="descripcion-seccion">Cómo se identifica el reporte en el documento.</p>
+					<div class="form-group">
+						<label for="titulo">Título del documento</label>
 						<input
 							id="titulo"
 							bind:value={reporte.titulo}
@@ -1023,347 +1119,528 @@
 						/>
 						<ErrorCampo id="error-titulo" mensaje={errores.titulo} />
 					</div>
-					<div class="form-group campo-dias">
-						<label for="fecha">Días de ejecución ({textoMes(reporte.periodoMes)})</label>
-						<div class="fila-fecha">
-							<input
-								id="fecha"
-								type="text"
-								inputmode="numeric"
-								autocomplete="off"
-								placeholder="15, 16, 20-25"
-								value={textoCampoDias}
-								on:input={escribirDias}
-								on:focus={() => (campoDiasConFoco = true)}
-								on:blur={salirDeDias}
-								aria-invalid={!diasValidos || !!errores.fecha}
-								aria-describedby={describir(
-									diasValidos ? errores : { ...errores, fecha: analisisDias.errores.join(' ') },
-									'fecha',
-									...(rango ? ['ayuda-fecha'] : []),
-									...(vistaPrevia ? ['vista-fecha'] : [])
-								)}
+					<div class="fila-encabezado">
+						<div class="form-group campo-dias">
+							<label for="fecha">Días de ejecución</label>
+							<div class="fila-fecha">
+								<input
+									id="fecha"
+									type="text"
+									inputmode="numeric"
+									autocomplete="off"
+									placeholder="15, 16, 20-25"
+									value={textoCampoDias}
+									on:input={escribirDias}
+									on:focus={() => (campoDiasConFoco = true)}
+									on:blur={salirDeDias}
+									aria-invalid={!diasValidos || !!errores.fecha}
+									aria-describedby={describir(
+										diasValidos ? errores : { ...errores, fecha: analisisDias.errores.join(' ') },
+										'fecha',
+										...(rango ? ['ayuda-fecha'] : []),
+										...(vistaPrevia ? ['vista-fecha'] : [])
+									)}
+								/>
+								{#if hoyEnPeriodo && !hoyIncluido}
+									<button class="boton contorno" type="button" on:click={agregarHoy}
+										>Agregar hoy</button
+									>
+								{/if}
+								{#if rango}
+									<button class="boton contorno" type="button" on:click={todoElPeriodo}
+										>Todo el periodo</button
+									>
+								{/if}
+							</div>
+							{#if rango}<p id="ayuda-fecha" class="ayuda">
+									{textoRango(rango).replace(/^./, (l) => l.toUpperCase())}. Escriba días o rangos:
+									15, 16, 20-25.
+								</p>{/if}
+							<ErrorCampo
+								id="error-fecha"
+								mensaje={diasValidos ? errores.fecha : analisisDias.errores.join(' ')}
 							/>
-							{#if hoyEnPeriodo && !hoyIncluido}
-								<button class="boton" type="button" on:click={agregarHoy}>Agregar hoy</button>
-							{/if}
-							{#if rango}
-								<button class="boton" type="button" on:click={todoElPeriodo}>Todo el periodo</button
-								>
+							{#if vistaPrevia}<p id="vista-fecha" class="vista-documento">
+									<span>En el documento</span> <strong>{vistaPrevia}</strong>
+								</p>{/if}
+						</div>
+						<div class="form-group campo-tipo">
+							<label for="tipo">Tipo de mantenimiento</label>
+							<input
+								id="tipo"
+								bind:value={reporte.tipoMantenimiento}
+								aria-invalid={!!errores.tipo}
+								aria-describedby={describir(errores, 'tipo')}
+							/>
+							<ErrorCampo id="error-tipo" mensaje={errores.tipo} />
+							{#if equiposPartida.length}
+								<fieldset id="tags" class="casillas" aria-describedby={describir(errores, 'tags')}>
+									<legend>TAG ({textoTags(reporte.equipos.map((e) => e.tag))})</legend>
+									{#each equiposPartida as equipo (equipo.id)}
+										<label>
+											<input
+												type="checkbox"
+												checked={idsEquipos.has(equipo.id)}
+												on:change={(e) =>
+													alternarEquipo(equipo, (e.currentTarget as HTMLInputElement).checked)}
+											/>
+											{equipo.tag}
+										</label>
+									{/each}
+								</fieldset>
+								<ErrorCampo id="error-tags" mensaje={errores.tags} />
+							{:else}
+								<p class="ayuda">TAG: {textoTags(reporte.equipos.map((e) => e.tag))}</p>
 							{/if}
 						</div>
-						{#if rango}<p id="ayuda-fecha" class="ayuda">
-								Periodo: {textoRango(rango)}. Escriba días o rangos, por ejemplo 15, 16, 20-25.
-							</p>{/if}
-						{#if vistaPrevia}<p id="vista-fecha" class="ayuda">
-								En el documento: <strong>{vistaPrevia}</strong>
-							</p>{/if}
-						<ErrorCampo
-							id="error-fecha"
-							mensaje={diasValidos ? errores.fecha : analisisDias.errores.join(' ')}
-						/>
 					</div>
-					<div class="form-group">
-						<label for="tipo">Tipo de mantenimiento</label>
-						<input
-							id="tipo"
-							bind:value={reporte.tipoMantenimiento}
-							aria-invalid={!!errores.tipo}
-							aria-describedby={describir(errores, 'tipo')}
-						/>
-						<ErrorCampo id="error-tipo" mensaje={errores.tipo} />
-					</div>
-				</div>
-				{#if equiposPartida.length}
-					<fieldset id="tags" class="casillas" aria-describedby={describir(errores, 'tags')}>
-						<legend>TAG ({textoTags(reporte.equipos.map((e) => e.tag))})</legend>
-						{#each equiposPartida as equipo (equipo.id)}
-							<label>
-								<input
-									type="checkbox"
-									checked={idsEquipos.has(equipo.id)}
-									on:change={(e) =>
-										alternarEquipo(equipo, (e.currentTarget as HTMLInputElement).checked)}
-								/>
-								{equipo.tag}
-							</label>
-						{/each}
-					</fieldset>
-					<ErrorCampo id="error-tags" mensaje={errores.tags} />
-				{:else}
-					<p class="view-note">TAG: {textoTags(reporte.equipos.map((e) => e.tag))}</p>
-				{/if}
-			</section>
-
-			<SeccionResumen
-				id="seccion-firmas"
-				titulo="Firmas"
-				pendientes={completitud.porSeccion.firmas}
-				{editable}
-				bind:abierta={abiertas.firmas}
-			>
-				<ul slot="resumen" class="resumen-firmas">
-					{#each FUNCIONES as funcion (funcion.clave)}
-						{@const firma = reporte.firmantes[funcion.clave]}
-						<li>
-							<span class="etiqueta">{funcion.etiqueta}</span>
-							<span
-								>{firma?.nombre || 'Sin nombre'}{firma?.cargo
-									? ` · ${firma.cargo}`
-									: ''}{firma?.empresa ? ` · ${firma.empresa}` : ''}</span
+					<div class="vistazo">
+						<div class="cabecera-vistazo">
+							<h3 class="subtitulo-seccion">Objetivo</h3>
+							<button class="enlace-accion" type="button" on:click={() => irASeccion('objetivo')}
+								>Editar objetivo <svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg
+								></button
 							>
-						</li>
-					{/each}
-				</ul>
-				<div class="firmas">
-					{#each FUNCIONES as funcion (funcion.clave)}
-						{@const firma = reporte.firmantes[funcion.clave]}
-						{@const campoNombre = `firma-${funcion.clave}-nombre`}
-						{#if firma}
-							<fieldset class="firma">
-								<legend>{funcion.etiqueta}</legend>
-								<label class="etiqueta" for={campoNombre}>Nombre</label>
-								<input
-									id={campoNombre}
-									bind:value={firma.nombre}
-									aria-invalid={!!errores[campoNombre]}
-									aria-describedby={describir(errores, campoNombre)}
-								/>
-								<ErrorCampo id={`error-${campoNombre}`} mensaje={errores[campoNombre]} />
-								<label class="etiqueta" for={`firma-${funcion.clave}-cargo`}>Cargo</label>
-								<input id={`firma-${funcion.clave}-cargo`} bind:value={firma.cargo} />
-								<label class="etiqueta" for={`firma-${funcion.clave}-empresa`}>Empresa</label>
-								<input id={`firma-${funcion.clave}-empresa`} bind:value={firma.empresa} />
-							</fieldset>
-						{/if}
-					{/each}
-				</div>
-			</SeccionResumen>
-
-			<SeccionResumen
-				id="seccion-objetivo"
-				titulo="1. Objetivo"
-				pendientes={completitud.porSeccion.objetivo}
-				{editable}
-				bind:abierta={abiertas.objetivo}
-			>
-				<p slot="resumen" class="resumen-texto">{reporte.objetivo || 'Sin objetivo.'}</p>
-				<label class="sr-only" for="objetivo">Objetivo</label>
-				<textarea
-					id="objetivo"
-					rows="4"
-					bind:value={reporte.objetivo}
-					aria-invalid={!!errores.objetivo}
-					aria-describedby={describir(errores, 'objetivo')}
-				></textarea>
-				<ErrorCampo id="error-objetivo" mensaje={errores.objetivo} />
-			</SeccionResumen>
-
-			<section id="seccion-alcance" class="card" aria-labelledby="seccion-alcance-titulo">
-				<h2 id="seccion-alcance-titulo" class="view-heading" tabindex="-1">2. Alcance</h2>
-				<label class="etiqueta" for="introduccion">Introducción (opcional)</label>
-				<textarea id="introduccion" rows="3" bind:value={reporte.introduccion}></textarea>
-
-				<label class="casilla-verificacion">
-					<input
-						type="checkbox"
-						checked={reporte.incluyeVerificacion}
-						on:change={alternarVerificacion}
-					/>
-					Incluir tabla de verificación
-				</label>
-				{#if confirmarOmitirTabla}
-					<div class="aviso aviso-alerta" role="alertdialog" aria-labelledby="texto-omitir">
-						<p id="texto-omitir">
-							Ya hay estados u observaciones capturados. El documento omitirá la tabla, pero se
-							conservan por si vuelve a activarla.
-						</p>
-						<button
-							class="boton"
-							type="button"
-							on:click={() => {
-								reporte.incluyeVerificacion = false;
-								confirmarOmitirTabla = false;
-							}}>Omitir la tabla</button
-						>
-						<button class="boton" type="button" on:click={() => (confirmarOmitirTabla = false)}
-							>Mantenerla</button
-						>
+						</div>
+						<p class="texto-vistazo">{reporte.objetivo || 'Sin objetivo.'}</p>
 					</div>
-				{/if}
-
-				<ol class="alcances">
-					{#each reporte.alcances as alcance (alcance.id)}
-						{#if !bajas[alcance.id]}
-							{@const numero = numeroAlcance.get(alcance.id) ?? 0}
-							{@const campoTitulo = `titulo-alcance-${alcance.id}`}
-							{@const campoEstado = `estado-${alcance.id}`}
-							{@const campoObservaciones = `observaciones-${alcance.id}`}
-							<li id={`alcance-${alcance.id}`} class="alcance" tabindex="-1">
-								<div class="cabecera-alcance">
-									<label for={campoTitulo}>2.{numero}</label>
-									<input
-										id={campoTitulo}
-										placeholder="Título del alcance"
-										bind:value={alcance.titulo}
-										aria-invalid={!!errores[campoTitulo]}
-										aria-describedby={describir(errores, campoTitulo)}
-									/>
-									<div class="acciones-alcance">
-										<button
-											type="button"
-											class="action-btn"
-											aria-label={`Subir el alcance 2.${numero}`}
-											disabled={numero === 1}
-											on:click={() => moverAlcance(alcance.id, -1)}>↑</button
+				</section>
+			{:else if seccionActiva === 'firmas'}
+				<section id="seccion-firmas" class="card seccion" aria-labelledby="seccion-firmas-titulo">
+					<h2 id="seccion-firmas-titulo" class="titulo-seccion" tabindex="-1">Firmas</h2>
+					<p class="descripcion-seccion">
+						Las tres personas se identifican antes de enviar a revisión.
+					</p>
+					{#if editable && firmasPendientes > 0}
+						<div class="aviso aviso-alerta faltan-nombres">
+							<p class="titulo-aviso">
+								Faltan {plural(firmasPendientes, 'nombre')} para enviar a revisión
+							</p>
+							<p>
+								Su borrador está guardado. Complete solo los nombres señalados{pendientes.length ===
+								firmasPendientes
+									? '; no faltan otras secciones ni fotografías.'
+									: '.'}
+							</p>
+							<p class="enlaces-nombres">
+								{#each FUNCIONES as funcion (funcion.clave)}
+									{#if !reporte.firmantes[funcion.clave]?.nombre.trim()}
+										<a
+											class="enlace"
+											href={`#firma-${funcion.clave}-nombre`}
+											on:click|preventDefault={() => enfocar(`firma-${funcion.clave}-nombre`)}
+											>Ir a {funcion.etiqueta} <span aria-hidden="true">↓</span></a
 										>
-										<button
-											type="button"
-											class="action-btn"
-											aria-label={`Bajar el alcance 2.${numero}`}
-											disabled={numero === visible.alcances.length}
-											on:click={() => moverAlcance(alcance.id, 1)}>↓</button
-										>
-										<button
-											type="button"
-											class="action-btn delete"
-											aria-label={`Quitar el alcance 2.${numero}`}
-											on:click={() => quitarAlcance(alcance)}>Quitar</button
-										>
-									</div>
-								</div>
-								<ErrorCampo id={`error-${campoTitulo}`} mensaje={errores[campoTitulo]} />
-								<label class="sr-only" for={`descripcion-${alcance.id}`}
-									>Descripción del alcance 2.{numero}</label
-								>
-								<textarea
-									id={`descripcion-${alcance.id}`}
-									rows="2"
-									placeholder="Descripción de lo realizado"
-									bind:value={alcance.descripcion}
-								></textarea>
-								<FotosAlcance
-									bind:fotos={alcance.fotos}
-									posicionAlcance={numero}
-									tituloAlcance={alcance.titulo}
-									disposicion={reporte.disposicionFotos}
-									reporteId={conImagenes ? reporte.id : ''}
-									soloLectura={!editable}
-									progreso={cargas[alcance.id] ?? null}
-									ocultas={bajas}
-									{reemplazando}
-									otrosAlcances={visible.alcances
-										.map((a, j) => ({ id: a.id, etiqueta: `2.${j + 1} ${a.titulo}` }))
-										.filter((a) => a.id !== alcance.id)}
-									on:cargar={(e) => cargarFotos(alcance.id, e.detail.archivos, e.detail.momento)}
-									on:mover={(e) => moverFoto(alcance.id, e.detail.fotoId, e.detail.alcanceId)}
-									on:quitar={(e) =>
-										quitarConDeshacer(e.detail.fotoId, `Se quitó la ${e.detail.pie}.`)}
-									on:reemplazar={(e) =>
-										reemplazarFoto(e.detail.fotoId, e.detail.archivo, e.detail.pie)}
-									on:deshacer={(e) => deshacerBaja(e.detail.fotoId)}
-								/>
-								{#if reporte.incluyeVerificacion}
-									{@const conObservacion = alcance.estadoVerificacion === 'con_observacion'}
-									<div class="verificacion">
-										<span class="etiqueta" aria-hidden="true">Verificación</span>
-										<BotonesSegmentados
-											id={campoEstado}
-											etiqueta={`Verificación del alcance 2.${numero}`}
-											opciones={OPCIONES_VERIFICACION}
-											valor={alcance.estadoVerificacion}
-											disabled={!editable}
-											invalido={!!errores[campoEstado]}
-											describedby={describir(errores, campoEstado)}
-											on:change={(e) =>
-												(alcance.estadoVerificacion = e.detail as EstadoVerificacion)}
-										/>
-										<ErrorCampo id={`error-${campoEstado}`} mensaje={errores[campoEstado]} />
-										<!-- Se muestran con «Con observación» o si ya tienen texto: no se oculta lo capturado. -->
-										{#if conObservacion || alcance.observaciones.trim()}
-											<label class="etiqueta" for={campoObservaciones}
-												>Observaciones{conObservacion ? ' (obligatorias)' : ''}</label
-											>
-											<input
-												id={campoObservaciones}
-												bind:value={alcance.observaciones}
-												required={conObservacion}
-												aria-invalid={!!errores[campoObservaciones]}
-												aria-describedby={describir(errores, campoObservaciones)}
-											/>
-											<ErrorCampo
-												id={`error-${campoObservaciones}`}
-												mensaje={errores[campoObservaciones]}
-											/>
+									{/if}
+								{/each}
+							</p>
+						</div>
+					{/if}
+					<div class="firmas">
+						{#each FUNCIONES as funcion (funcion.clave)}
+							{@const firma = reporte.firmantes[funcion.clave]}
+							{@const campoNombre = `firma-${funcion.clave}-nombre`}
+							{#if firma}
+								<fieldset class="firma">
+									<legend class="sr-only">{funcion.etiqueta}</legend>
+									<div class="cabecera-firma" aria-hidden="true">
+										<span class="funcion">{funcion.etiqueta}</span>
+										{#if editable && !firma.nombre.trim()}
+											<span class="nombre-pendiente">1 nombre pendiente</span>
 										{/if}
 									</div>
-								{/if}
-							</li>
-						{/if}
-					{/each}
-				</ol>
-				<button id="agregar-alcance" class="boton" type="button" on:click={agregarAlcance}
-					>Agregar alcance</button
+									<label class="etiqueta" for={campoNombre}>Nombre</label>
+									<input
+										id={campoNombre}
+										bind:value={firma.nombre}
+										aria-invalid={!!errores[campoNombre]}
+										aria-describedby={describir(errores, campoNombre)}
+									/>
+									<ErrorCampo id={`error-${campoNombre}`} mensaje={errores[campoNombre]} />
+									<label class="etiqueta" for={`firma-${funcion.clave}-cargo`}>Cargo</label>
+									<input id={`firma-${funcion.clave}-cargo`} bind:value={firma.cargo} />
+									<label class="etiqueta" for={`firma-${funcion.clave}-empresa`}>Empresa</label>
+									<input id={`firma-${funcion.clave}-empresa`} bind:value={firma.empresa} />
+								</fieldset>
+							{/if}
+						{/each}
+					</div>
+					<p class="nota-seccion">
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"><path d="M18 6 7 17l-5-5M22 10l-7.5 7.5L13 16" /></svg
+						>
+						Guardado no significa listo para enviar: la revisión pide los tres nombres.
+					</p>
+				</section>
+			{:else if seccionActiva === 'objetivo'}
+				<section
+					id="seccion-objetivo"
+					class="card seccion"
+					aria-labelledby="seccion-objetivo-titulo"
 				>
-			</section>
+					<h2 id="seccion-objetivo-titulo" class="titulo-seccion" tabindex="-1">Objetivo</h2>
+					<p class="descripcion-seccion">Propósito del mantenimiento que se reporta.</p>
+					<label class="sr-only" for="objetivo">Objetivo</label>
+					<textarea
+						id="objetivo"
+						rows="5"
+						bind:value={reporte.objetivo}
+						aria-invalid={!!errores.objetivo}
+						aria-describedby={describir(errores, 'objetivo')}
+					></textarea>
+					<ErrorCampo id="error-objetivo" mensaje={errores.objetivo} />
+				</section>
+			{:else if seccionActiva === 'alcance'}
+				<section id="seccion-alcance" class="card seccion" aria-labelledby="seccion-alcance-titulo">
+					<h2 id="seccion-alcance-titulo" class="titulo-seccion" tabindex="-1">Alcance</h2>
+					<p class="descripcion-seccion">
+						{plural(visible.alcances.length, 'alcance')} · Edite el contenido y su verificación.
+					</p>
+					<div class="form-group">
+						<label for="introduccion">Introducción (opcional)</label>
+						<textarea
+							id="introduccion"
+							rows="2"
+							placeholder="Contexto de las actividades, si hace falta."
+							bind:value={reporte.introduccion}
+						></textarea>
+					</div>
 
-			<section id="seccion-herramientas" class="card" aria-labelledby="seccion-herramientas-titulo">
-				<h2 id="seccion-herramientas-titulo" class="view-heading" tabindex="-1">
-					Herramientas y equipo
-				</h2>
-				<ul class="lista-editable">
-					{#each reporte.herramientas as herramienta, i (i)}
-						<li>
-							<label class="sr-only" for={`cantidad-${i}`}>Cantidad</label>
-							<input
-								id={`cantidad-${i}`}
-								class="cantidad"
-								placeholder="Cantidad"
-								value={herramienta.cantidad ?? ''}
-								on:input={(e) =>
-									(herramienta.cantidad = (e.currentTarget as HTMLInputElement).value)}
-							/>
-							<label class="sr-only" for={`herramienta-${i}`}>Descripción</label>
-							<input
-								id={`herramienta-${i}`}
-								placeholder="Descripción"
-								bind:value={herramienta.descripcion}
-							/>
+					<label class="casilla-verificacion">
+						<input
+							type="checkbox"
+							checked={reporte.incluyeVerificacion}
+							on:change={alternarVerificacion}
+						/>
+						Incluir tabla de verificación
+					</label>
+					{#if confirmarOmitirTabla}
+						<div class="aviso aviso-alerta" role="alertdialog" aria-labelledby="texto-omitir">
+							<p id="texto-omitir">
+								Ya hay estados u observaciones capturados. El documento omitirá la tabla, pero se
+								conservan por si vuelve a activarla.
+							</p>
 							<button
+								class="boton"
 								type="button"
-								class="action-btn delete"
-								aria-label={`Quitar la herramienta ${i + 1}`}
-								on:click={() =>
-									(reporte.herramientas = reporte.herramientas.filter((_, j) => j !== i))}
-								>Quitar</button
+								on:click={() => {
+									reporte.incluyeVerificacion = false;
+									confirmarOmitirTabla = false;
+								}}>Omitir la tabla</button
 							>
-						</li>
-					{/each}
-				</ul>
-				<button
-					class="boton"
-					type="button"
-					on:click={() =>
-						(reporte.herramientas = [...reporte.herramientas, { cantidad: null, descripcion: '' }])}
-					>Agregar herramienta</button
-				>
-			</section>
+							<button class="boton" type="button" on:click={() => (confirmarOmitirTabla = false)}
+								>Mantenerla</button
+							>
+						</div>
+					{/if}
 
-			<section id="seccion-conclusiones" class="card" aria-labelledby="seccion-conclusiones-titulo">
-				<h2 id="seccion-conclusiones-titulo" class="view-heading" tabindex="-1">
-					Conclusiones y/o recomendaciones
-				</h2>
-				<label class="sr-only" for="conclusiones">Conclusiones</label>
-				<textarea
-					id="conclusiones"
-					rows="4"
-					bind:value={reporte.conclusiones}
-					aria-invalid={!!errores.conclusiones}
-					aria-describedby={describir(errores, 'conclusiones')}
-				></textarea>
-				<ErrorCampo id="error-conclusiones" mensaje={errores.conclusiones} />
-			</section>
+					<ol class="alcances">
+						{#each reporte.alcances as alcance (alcance.id)}
+							{#if !bajas[alcance.id]}
+								{@const numero = numeroAlcance.get(alcance.id) ?? 0}
+								{@const campoTitulo = `titulo-alcance-${alcance.id}`}
+								{@const campoEstado = `estado-${alcance.id}`}
+								{@const campoObservaciones = `observaciones-${alcance.id}`}
+								{@const faltanAlcance = completitud.porAlcance[alcance.id] ?? 0}
+								{#if alcance.id === alcanceAbierto}
+									<li id={`alcance-${alcance.id}`} class="alcance abierto" tabindex="-1">
+										<div class="cabecera-alcance">
+											<h3 class="subtitulo-seccion">2.{numero} · Alcance abierto</h3>
+											<div class="acciones-alcance">
+												<span class="mover" aria-hidden="true">Mover</span>
+												<button
+													type="button"
+													class="action-btn edit"
+													aria-label={`Subir el alcance 2.${numero}`}
+													title="Subir"
+													disabled={numero === 1}
+													on:click={() => moverAlcance(alcance.id, -1)}
+													><svg
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg
+													></button
+												>
+												<button
+													type="button"
+													class="action-btn edit"
+													aria-label={`Bajar el alcance 2.${numero}`}
+													title="Bajar"
+													disabled={numero === visible.alcances.length}
+													on:click={() => moverAlcance(alcance.id, 1)}
+													><svg
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														aria-hidden="true"><path d="M12 5v14M19 12l-7 7-7-7" /></svg
+													></button
+												>
+												<button
+													type="button"
+													class="action-btn edit"
+													aria-label={`Quitar el alcance 2.${numero}`}
+													on:click={() => quitarAlcance(alcance)}>Quitar</button
+												>
+											</div>
+										</div>
+										<div class="form-group">
+											<label for={campoTitulo}>Título del alcance 2.{numero}</label>
+											<input
+												id={campoTitulo}
+												placeholder="Título del alcance"
+												bind:value={alcance.titulo}
+												aria-invalid={!!errores[campoTitulo]}
+												aria-describedby={describir(errores, campoTitulo)}
+											/>
+											<ErrorCampo id={`error-${campoTitulo}`} mensaje={errores[campoTitulo]} />
+										</div>
+										<div class="form-group">
+											<label for={`descripcion-${alcance.id}`}
+												>Descripción del alcance 2.{numero}</label
+											>
+											<textarea
+												id={`descripcion-${alcance.id}`}
+												rows="3"
+												placeholder="Descripción de lo realizado"
+												bind:value={alcance.descripcion}
+											></textarea>
+										</div>
+										<FotosAlcance
+											bind:fotos={alcance.fotos}
+											posicionAlcance={numero}
+											tituloAlcance={alcance.titulo}
+											disposicion={reporte.disposicionFotos}
+											reporteId={conImagenes ? reporte.id : ''}
+											soloLectura={!editable}
+											progreso={cargas[alcance.id] ?? null}
+											ocultas={bajas}
+											{reemplazando}
+											otrosAlcances={visible.alcances
+												.map((a, j) => ({ id: a.id, etiqueta: `2.${j + 1} ${a.titulo}` }))
+												.filter((a) => a.id !== alcance.id)}
+											on:cargar={(e) =>
+												cargarFotos(alcance.id, e.detail.archivos, e.detail.momento)}
+											on:mover={(e) => moverFoto(alcance.id, e.detail.fotoId, e.detail.alcanceId)}
+											on:quitar={(e) =>
+												quitarConDeshacer(e.detail.fotoId, `Se quitó la ${e.detail.pie}.`)}
+											on:reemplazar={(e) =>
+												reemplazarFoto(e.detail.fotoId, e.detail.archivo, e.detail.pie)}
+											on:deshacer={(e) => deshacerBaja(e.detail.fotoId)}
+										/>
+										{#if reporte.incluyeVerificacion}
+											{@const conObservacion = alcance.estadoVerificacion === 'con_observacion'}
+											<div class="verificacion">
+												<span class="etiqueta" aria-hidden="true">Verificación</span>
+												<BotonesSegmentados
+													id={campoEstado}
+													etiqueta={`Verificación del alcance 2.${numero}`}
+													opciones={OPCIONES_VERIFICACION}
+													valor={alcance.estadoVerificacion}
+													disabled={!editable}
+													invalido={!!errores[campoEstado]}
+													describedby={describir(errores, campoEstado)}
+													on:change={(e) =>
+														(alcance.estadoVerificacion = e.detail as EstadoVerificacion)}
+												/>
+												<ErrorCampo id={`error-${campoEstado}`} mensaje={errores[campoEstado]} />
+												<!-- Se muestran con «Con observación» o si ya tienen texto: no se oculta lo capturado. -->
+												{#if conObservacion || alcance.observaciones.trim()}
+													<label class="etiqueta" for={campoObservaciones}
+														>Observaciones{conObservacion ? ' (obligatorias)' : ''}</label
+													>
+													<input
+														id={campoObservaciones}
+														bind:value={alcance.observaciones}
+														required={conObservacion}
+														aria-invalid={!!errores[campoObservaciones]}
+														aria-describedby={describir(errores, campoObservaciones)}
+													/>
+													<ErrorCampo
+														id={`error-${campoObservaciones}`}
+														mensaje={errores[campoObservaciones]}
+													/>
+												{/if}
+											</div>
+										{/if}
+									</li>
+								{:else}
+									<li id={`alcance-${alcance.id}`} class="alcance plegado" tabindex="-1">
+										<span class="numero-alcance">2.{numero}</span>
+										<span class="titulo-plegado">{alcance.titulo.trim() || 'Sin título'}</span>
+										<span class="estado-plegado">
+											{#if reporte.estado === 'borrador' && faltanAlcance > 0}
+												<span class="falta-plegado">{plural(faltanAlcance, 'pendiente')}</span>
+											{:else if reporte.incluyeVerificacion && alcance.estadoVerificacion !== 'pendiente'}
+												{#if alcance.estadoVerificacion === 'ok'}<svg
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2.5"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg
+													>{/if}
+												{TEXTO_ESTADO_VERIFICACION[alcance.estadoVerificacion]}
+											{/if}
+											{#if alcance.fotos.length}<span>{plural(alcance.fotos.length, 'foto')}</span
+												>{/if}
+										</span>
+										<button
+											type="button"
+											class="enlace-accion"
+											aria-label={`Abrir el alcance 2.${numero}`}
+											on:click={() => abrirAlcance(alcance.id)}
+											>Abrir <svg
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg
+											></button
+										>
+									</li>
+								{/if}
+							{/if}
+						{/each}
+					</ol>
+					<button
+						id="agregar-alcance"
+						class="enlace-accion agregar"
+						type="button"
+						on:click={agregarAlcance}><span aria-hidden="true">+</span> Agregar alcance</button
+					>
+				</section>
+			{:else if seccionActiva === 'herramientas'}
+				<section
+					id="seccion-herramientas"
+					class="card seccion"
+					aria-labelledby="seccion-herramientas-titulo"
+				>
+					<h2 id="seccion-herramientas-titulo" class="titulo-seccion" tabindex="-1">
+						Herramientas y equipo
+					</h2>
+					<p class="descripcion-seccion">
+						Lo que se usó en el trabajo; las filas sin descripción no se guardan.
+					</p>
+					{#if reporte.herramientas.length}
+						<div class="cabecera-herramientas" aria-hidden="true">
+							<span>Cantidad</span><span>Descripción</span>
+						</div>
+					{/if}
+					<ul class="lista-herramientas">
+						{#each reporte.herramientas as herramienta, i (i)}
+							<li>
+								<label class="sr-only" for={`cantidad-${i}`}>Cantidad</label>
+								<input
+									id={`cantidad-${i}`}
+									class="cantidad"
+									placeholder="1"
+									value={herramienta.cantidad ?? ''}
+									on:input={(e) =>
+										(herramienta.cantidad = (e.currentTarget as HTMLInputElement).value)}
+								/>
+								<label class="sr-only" for={`herramienta-${i}`}>Descripción</label>
+								<input
+									id={`herramienta-${i}`}
+									placeholder="Descripción"
+									bind:value={herramienta.descripcion}
+								/>
+								<button
+									type="button"
+									class="action-btn edit"
+									aria-label={`Quitar la herramienta ${i + 1}`}
+									on:click={() =>
+										(reporte.herramientas = reporte.herramientas.filter((_, j) => j !== i))}
+									>Quitar</button
+								>
+							</li>
+						{/each}
+					</ul>
+					<button
+						class="enlace-accion agregar"
+						type="button"
+						on:click={() =>
+							(reporte.herramientas = [
+								...reporte.herramientas,
+								{ cantidad: null, descripcion: '' }
+							])}><span aria-hidden="true">+</span> Agregar herramienta</button
+					>
+				</section>
+			{:else}
+				<section
+					id="seccion-conclusiones"
+					class="card seccion"
+					aria-labelledby="seccion-conclusiones-titulo"
+				>
+					<h2 id="seccion-conclusiones-titulo" class="titulo-seccion" tabindex="-1">
+						Conclusiones
+					</h2>
+					<p class="descripcion-seccion">Cierre del documento.</p>
+					<label class="etiqueta-bloque" for="conclusiones">Conclusiones y/o recomendaciones</label>
+					<textarea
+						id="conclusiones"
+						rows="5"
+						bind:value={reporte.conclusiones}
+						aria-invalid={!!errores.conclusiones}
+						aria-describedby={describir(errores, 'conclusiones')}
+					></textarea>
+					<ErrorCampo id="error-conclusiones" mensaje={errores.conclusiones} />
+				</section>
+			{/if}
 		</fieldset>
+
+		<nav class="navegacion-secciones" aria-label="Recorrido del reporte">
+			<button class="enlace-accion" type="button" on:click={() => indice?.enfocar()}
+				><svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg
+				> Índice del documento</button
+			>
+			{#if siguiente}
+				<button
+					class="boton contorno"
+					type="button"
+					on:click={() => siguiente && irASeccion(siguiente)}
+					>Siguiente: {NOMBRE_SECCION[siguiente]}
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg
+					></button
+				>
+			{/if}
+		</nav>
 	</div>
 </div>
 
@@ -1380,98 +1657,170 @@
 </Dialogo>
 
 <style>
-	/* Barra fija pegada al borde superior del área de contenido, sin hueco por el relleno. */
+	/* Encabezado fijo del reporte: llega a los bordes del área de contenido y se pega arriba. */
 	.barra-reporte {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px 12px;
-		align-items: center;
-		justify-content: space-between;
 		position: sticky;
 		top: calc(-1 * var(--relleno-main, 0px));
-		z-index: 2;
-		padding: 10px 16px;
+		z-index: 3;
+		display: grid;
+		gap: 12px;
+		margin: calc(-1 * var(--relleno-main, 0px)) calc(-1 * var(--relleno-lateral, 0px)) 32px;
+		padding: 22px var(--relleno-lateral, 32px) 20px;
+		border-bottom: 1px solid var(--linea);
+		background: var(--superficie);
 	}
-	.linea-estado {
+	.fila-principal {
 		display: flex;
-		flex: 1 1 320px;
-		gap: 8px 12px;
+		flex-wrap: wrap;
+		gap: 12px 24px;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.identidad {
+		display: grid;
+		gap: 6px;
+		min-width: 0;
+		flex: 1 1 420px;
+	}
+	.identidad .migas {
+		margin: 0;
+	}
+	.titulo-estado {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 14px;
 		align-items: center;
 		min-width: 0;
 	}
-	.contexto {
+	.titulo-reporte {
+		margin: 0;
 		min-width: 0;
+		max-width: 100%;
+		font-size: var(--texto-xl);
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.2;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		font-weight: 600;
+	}
+	.periodo {
+		color: var(--tinta-tenue);
+		font-size: var(--texto-md);
+		white-space: nowrap;
+	}
+	.revision {
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 	.guardado {
 		display: inline-flex;
+		align-items: center;
 		gap: 4px;
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--exito);
+		font-size: var(--texto-sm);
 		white-space: nowrap;
+	}
+	.guardado svg {
+		width: 14px;
+		height: 14px;
+	}
+	.guardado .hace {
+		color: var(--tinta-tenue);
 	}
 	.guardado-pendiente,
 	.guardado-guardando {
-		font-style: italic;
+		color: var(--tinta-tenue);
 	}
 	.guardado-conflicto,
 	.guardado-error {
-		color: var(--danger);
+		color: var(--peligro);
 		font-weight: 600;
 	}
 	.acciones-reporte {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 10px;
 		align-items: center;
 	}
-	.acciones-reporte .boton {
-		white-space: nowrap;
-	}
-	.faltan {
-		color: var(--danger);
-		border-color: var(--danger);
-		font-weight: 600;
-	}
-	.marca-faltan {
-		display: inline-grid;
-		place-items: center;
-		width: 18px;
-		height: 18px;
-		border-radius: 50%;
-		background: var(--danger);
-		color: var(--surface);
-		font-size: 0.75rem;
-	}
 	.motivo-descarga {
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
+	}
+	.fila-notas {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 24px;
+		justify-content: space-between;
+		font-size: var(--texto-xs);
+	}
+	.fila-notas p {
+		margin: 0;
+	}
+	.nota-guardado {
+		color: var(--tinta-tenue);
+	}
+	.nota-accion {
+		color: var(--accion);
 	}
 	.titulo-emision {
 		margin: 0;
 		font-weight: 600;
 	}
-	.completo {
-		color: var(--success);
-		font-weight: 600;
-		white-space: nowrap;
-	}
+
+	/* Cuerpo: índice persistente y una sección a la vez. */
 	.cuerpo-editor {
 		display: grid;
-		gap: 16px;
+		gap: 20px;
 	}
 	.contenido-editor {
 		min-width: 0;
 	}
 	@media (min-width: 1100px) {
 		.cuerpo-editor {
-			grid-template-columns: 220px minmax(0, 1fr);
+			grid-template-columns: 200px minmax(0, 1fr);
 			align-items: start;
-			gap: 24px;
+			gap: 36px;
 		}
+		/* El índice se pega bajo el encabezado fijo. */
+		.cuerpo-editor :global(.indice) {
+			top: 156px;
+		}
+	}
+
+	/* Contexto fijo del reporte: datos de solo lectura sin caja, como los rótulos del plano. */
+	.contexto-reporte {
+		display: grid;
+		gap: 6px;
+		margin-bottom: 20px;
+	}
+	.datos-contrato {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px 48px;
+		margin: 0;
+	}
+	.dato {
+		display: grid;
+		gap: 4px;
+		min-width: 0;
+	}
+	.dato-usuario {
+		flex: 1 1 320px;
+	}
+	.datos-contrato dd {
+		margin: 0;
+		font-size: var(--texto-campo);
+		overflow-wrap: anywhere;
+	}
+	.contexto,
+	.nota-contrato {
+		margin: 0;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
+	}
+	.contexto {
+		margin-top: 6px;
 	}
 	.resumen-pendientes ul {
 		margin: 8px 0 12px;
@@ -1481,8 +1830,10 @@
 	}
 	.titulo-resumen {
 		margin: 0;
-		font-size: 1rem;
+		font-size: var(--texto-md);
 	}
+
+	/* Sección: título ligero, descripción y campos a todo el ancho. */
 	.editor-reporte {
 		border: 0;
 		margin: 0;
@@ -1493,62 +1844,99 @@
 	.editor-reporte input:not([type='checkbox']) {
 		width: 100%;
 	}
-	.datos-contrato {
-		display: grid;
-		gap: 8px 16px;
-		grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+	.seccion {
+		margin-bottom: 0;
+		padding: 30px;
+	}
+	.titulo-seccion {
 		margin: 0;
+		font-size: var(--texto-xl);
+		font-weight: 400;
+		letter-spacing: -0.01em;
 	}
-	.datos-contrato dd {
-		margin: 2px 0 0;
+	.descripcion-seccion {
+		margin: 6px 0 28px;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
-	.nota-contrato {
-		margin: 8px 0 16px;
-		font-size: 0.85rem;
+	.subtitulo-seccion {
+		margin: 0;
+		font-size: var(--texto-campo);
+		font-weight: 600;
+	}
+	.etiqueta,
+	.etiqueta-bloque {
+		font-size: var(--texto-sm);
+		font-weight: 600;
+		color: var(--tinta);
+	}
+	.etiqueta-bloque {
+		display: block;
+		margin-bottom: 6px;
+	}
+	.ayuda {
+		margin: 0;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
+	}
+	.fila-encabezado {
+		display: grid;
+		gap: 0 24px;
+	}
+	@media (min-width: 900px) {
+		.fila-encabezado {
+			grid-template-columns: minmax(0, 1fr) minmax(200px, 250px);
+		}
 	}
 	.fila-fecha {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 10px;
 	}
 	.fila-fecha input {
-		flex: 1 1 160px;
+		flex: 0 1 160px;
 	}
 	.fila-fecha .boton {
 		white-space: nowrap;
 	}
-	/* Los días y sus atajos necesitan más ancho que un campo corto del encabezado. */
-	@media (min-width: 1000px) {
-		.campo-dias {
-			grid-column: span 2;
-		}
+	.vista-documento {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 18px;
+		align-items: baseline;
+		margin: 10px 0 0;
+		padding: 14px 16px;
+		border-radius: var(--radio-control);
+		background: var(--accion-suave);
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
 	}
-	.ayuda {
-		margin: 0;
-		color: var(--muted);
-		font-size: 0.85rem;
+	.vista-documento strong {
+		color: var(--accion);
+		font-size: var(--texto-campo);
+		font-weight: 600;
 	}
-	.ancho-completo {
-		grid-column: 1 / -1;
-	}
-	.etiqueta {
-		font-size: 0.85rem;
-		font-weight: 500;
-		color: var(--muted);
-	}
-	.resumen-firmas {
+	.vistazo {
 		display: grid;
-		gap: 4px 16px;
-		grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-		margin: 0;
-		padding: 0;
-		list-style: none;
+		gap: 10px;
+		margin-top: 12px;
+		padding-top: 24px;
+		border-top: 1px solid var(--linea);
 	}
-	.resumen-firmas li {
-		display: grid;
+	.cabecera-vistazo {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		justify-content: space-between;
 	}
-	.resumen-texto {
+	.cabecera-vistazo .subtitulo-seccion {
+		font-size: var(--texto-lg);
+		font-weight: 400;
+	}
+	.texto-vistazo {
 		margin: 0;
+		color: var(--tinta-secundaria);
+		font-size: var(--texto-campo);
 		white-space: pre-line;
 		display: -webkit-box;
 		-webkit-line-clamp: 3;
@@ -1556,76 +1944,250 @@
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
+	/* Acción en texto con flecha («Editar objetivo →», «Abrir ⌄», «+ Agregar alcance»). */
+	.enlace-accion {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		min-height: var(--objetivo-min);
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--accion);
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.enlace-accion:hover:not(:disabled) {
+		color: var(--accion-hover);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.enlace-accion:disabled {
+		color: var(--tinta-deshabilitada);
+		cursor: not-allowed;
+	}
+	.enlace-accion svg {
+		width: 15px;
+		height: 15px;
+	}
+	.agregar {
+		margin-top: 12px;
+	}
+
+	/* Firmas: aviso de los nombres que faltan y tres columnas iguales. */
+	.faltan-nombres {
+		display: grid;
+		gap: 8px;
+		margin-bottom: 28px;
+		padding: 20px;
+	}
+	.faltan-nombres p {
+		margin: 0;
+	}
+	.titulo-aviso {
+		font-size: var(--texto-lg);
+	}
+	.enlaces-nombres {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 28px;
+	}
 	.firmas {
 		display: grid;
-		gap: 12px;
-		grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+		gap: 24px 28px;
+		grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
 	}
 	.firma {
 		display: grid;
 		gap: 6px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 8px 12px 12px;
+		align-content: start;
 		margin: 0;
+		padding: 0;
+		border: 0;
 		min-width: 0;
 	}
-	.firma legend {
-		padding: 0 4px;
-		font-weight: 600;
+	.cabecera-firma {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 12px;
+		align-items: baseline;
+		justify-content: space-between;
+		margin-bottom: 14px;
+	}
+	.funcion {
+		font-size: var(--texto-lg);
+	}
+	.nombre-pendiente {
+		color: var(--alerta);
+		font-size: var(--texto-xs);
 	}
 	.firma .etiqueta:not(:first-of-type) {
-		margin-top: 4px;
+		margin-top: 12px;
 	}
-	.alcances {
-		list-style: none;
-		margin: 12px 0;
-		padding: 0;
-		display: grid;
-		gap: 16px;
-	}
-	.alcance {
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 12px;
-		display: grid;
-		gap: 8px;
-		min-width: 0;
-	}
-	.cabecera-alcance {
-		display: grid;
-		grid-template-columns: auto minmax(0, 1fr) auto;
-		gap: 6px;
-		align-items: center;
-	}
-	.acciones-alcance {
+	.nota-seccion {
 		display: flex;
-		gap: 2px;
-	}
-	.verificacion {
-		display: grid;
-		gap: 4px 8px;
-		grid-template-columns: auto minmax(0, 1fr);
+		gap: 10px;
 		align-items: center;
+		margin: 28px 0 0;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
-	.verificacion :global(.error-campo) {
-		grid-column: 2;
+	.nota-seccion svg {
+		width: 18px;
+		height: 18px;
+		flex-shrink: 0;
+		color: var(--exito);
 	}
+
+	/* Alcance: uno abierto para editar; los demás como filas que se leen de un vistazo. */
 	.casilla-verificacion {
 		display: flex;
 		gap: 8px;
 		align-items: center;
-		margin: 12px 0 4px;
+		margin: 0 0 4px;
 	}
-	.cantidad {
-		max-width: 120px;
+	.alcances {
+		list-style: none;
+		margin: 16px 0 0;
+		padding: 0;
+		display: grid;
+		border-top: 1px solid var(--linea);
+	}
+	.alcance {
+		min-width: 0;
+		border-bottom: 1px solid var(--linea);
+	}
+	.alcance:focus-visible {
+		outline-offset: 4px;
+	}
+	.alcance.abierto {
+		display: grid;
+		gap: 4px;
+		padding: 20px 0 24px;
+	}
+	.cabecera-alcance {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px 16px;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 12px;
+	}
+	.acciones-alcance {
+		display: flex;
+		gap: 2px;
+		align-items: center;
+	}
+	.mover {
+		margin-right: 2px;
+		color: var(--accion);
+		font-weight: 600;
+	}
+	.acciones-alcance .action-btn {
+		font-weight: 600;
+	}
+	.acciones-alcance svg {
+		width: 16px;
+		height: 16px;
+	}
+	.alcance.plegado {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto auto;
+		gap: 12px;
+		align-items: center;
+		min-height: 50px;
+		padding: 4px 0;
+		font-size: var(--texto-campo);
+	}
+	.numero-alcance {
+		font-variant-numeric: tabular-nums;
+	}
+	.titulo-plegado {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.estado-plegado {
+		display: inline-flex;
+		gap: 4px 10px;
+		align-items: center;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
+		white-space: nowrap;
+	}
+	.estado-plegado svg {
+		width: 12px;
+		height: 12px;
+	}
+	.falta-plegado {
+		color: var(--alerta);
+		font-weight: 600;
+	}
+	.verificacion {
+		display: grid;
+		gap: 6px 16px;
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: center;
+		margin-top: 16px;
+	}
+	.verificacion :global(.error-campo),
+	.verificacion label,
+	.verificacion input {
+		grid-column: 2;
+	}
+
+	/* Herramientas: cantidad corta, descripción y «Quitar» en una fila. */
+	.cabecera-herramientas,
+	.lista-herramientas li {
+		display: grid;
+		grid-template-columns: 100px minmax(0, 1fr) auto;
+		gap: 12px;
+		align-items: center;
+	}
+	.cabecera-herramientas {
+		margin-bottom: 6px;
+		font-size: var(--texto-sm);
+		font-weight: 600;
+	}
+	.lista-herramientas {
+		display: grid;
+		gap: 10px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	/* Recorrido entre secciones bajo la tarjeta. */
+	.navegacion-secciones {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 22px;
+	}
+	.navegacion-secciones .boton svg {
+		width: 15px;
+		height: 15px;
+	}
+	.acciones-aviso {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px;
+		align-items: center;
 	}
 	@media (max-width: 600px) {
-		/* En móvil la cabecera de la página ya muestra el reporte: la barra se queda en dos líneas. */
+		/* En un teléfono el encabezado fijo taparía media pantalla: se desplaza con el contenido. */
 		.barra-reporte {
-			padding: 8px 12px;
+			position: relative;
+			top: auto;
+			padding-block: 14px;
 		}
-		.contexto {
+		.titulo-reporte {
+			font-size: var(--texto-lg);
+		}
+		.fila-notas {
 			display: none;
 		}
 		/* Se oculta a la vista, no del nombre accesible («Descargar DOCX»). */
@@ -1637,36 +2199,30 @@
 			clip-path: inset(50%);
 			white-space: nowrap;
 		}
-		/* Los botones van en una fila; sin fecha, el motivo de la descarga ocupa la línea siguiente. */
-		.acciones-reporte {
-			flex-wrap: wrap;
-			row-gap: 4px;
-		}
-		.acciones-reporte .boton {
-			padding-inline: 12px;
-		}
 		.motivo-descarga {
 			order: 1;
 			flex-basis: 100%;
 		}
-		.cabecera-alcance {
-			grid-template-columns: auto minmax(0, 1fr);
+		.seccion {
+			padding: 20px 16px;
 		}
-		.acciones-alcance {
-			grid-column: 1 / -1;
-			justify-self: end;
+		.alcance.plegado {
+			grid-template-columns: auto minmax(0, 1fr) auto;
+		}
+		.estado-plegado {
+			display: none;
 		}
 		.verificacion {
 			grid-template-columns: minmax(0, 1fr);
 		}
-		.verificacion :global(.error-campo) {
+		.verificacion :global(.error-campo),
+		.verificacion label,
+		.verificacion input {
 			grid-column: auto;
 		}
-	}
-	.acciones-aviso {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 12px;
-		align-items: center;
+		.cabecera-herramientas,
+		.lista-herramientas li {
+			grid-template-columns: 72px minmax(0, 1fr) auto;
+		}
 	}
 </style>

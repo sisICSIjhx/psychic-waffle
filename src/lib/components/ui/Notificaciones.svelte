@@ -37,18 +37,35 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
-		padding: 8px 8px 8px 16px;
-		border-radius: 10px;
-		background: var(--text);
-		color: var(--bg);
-		box-shadow: var(--shadow);
+		min-height: 44px;
+		padding: 6px 6px 6px 16px;
+		border-radius: var(--radio-flotante);
+		background: var(--tinta);
+		color: var(--lienzo);
+		box-shadow: var(--sombra-flotante);
+		animation: entrar 0.18s var(--curva-salida);
 		pointer-events: auto;
 	}
 	/* El fondo de la notificación es el color del texto del tema: el botón invierte también. */
 	.deshacer {
-		background: var(--bg);
-		color: var(--text);
-		border-color: var(--bg);
+		background: transparent;
+		color: var(--lienzo);
+		border-color: transparent;
 		font-weight: 600;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.deshacer:hover:not(:disabled) {
+		background: color-mix(in srgb, var(--lienzo) 14%, transparent);
+		border-color: transparent;
+	}
+	.deshacer:focus-visible {
+		outline-color: var(--lienzo);
+	}
+	@keyframes entrar {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
 	}
 </style>

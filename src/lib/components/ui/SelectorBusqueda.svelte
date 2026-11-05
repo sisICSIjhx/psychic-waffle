@@ -19,6 +19,13 @@
 	import { createEventDispatcher, tick } from 'svelte';
 	import { normalizarBusqueda } from '$lib/dominio/seleccion';
 
+	// La marca de la opción llega como símbolo corto y se dibuja como icono: alerta, reloj o lápiz.
+	const ICONOS: Record<string, string> = {
+		'!': 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 8v5M12 16.5h.01',
+		'●': 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l3 2',
+		'✎': 'M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'
+	};
+
 	export let id: string;
 	export let etiqueta: string;
 	export let opciones: OpcionSelector[] = [];
@@ -156,9 +163,20 @@
 						on:mousedown|preventDefault={() => elegir(opcion)}
 					>
 						<span class="texto">{opcion.texto}</span>
-						{#if opcion.insignia}<span class="insignia"
-								>{#if opcion.icono}<span class="icono" aria-hidden="true">{opcion.icono}</span>
-								{/if}{opcion.insignia}</span
+						{#if opcion.insignia}<span
+								class="insignia"
+								class:insignia-peligro={opcion.icono === '!'}
+								class:insignia-info={opcion.icono === '●'}
+								>{#if opcion.icono && ICONOS[opcion.icono]}<svg
+										class="icono"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.25"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"><path d={ICONOS[opcion.icono]} /></svg
+									>{/if}{opcion.insignia}</span
 							>{/if}
 						{#if opcion.detalle}<span class="detalle">{opcion.detalle}</span>{/if}
 					</div>
@@ -177,12 +195,12 @@
 	.selector {
 		position: relative;
 		display: grid;
-		gap: 6px;
+		gap: 4px;
 	}
 	label {
-		font-size: 0.85rem;
+		font-size: var(--texto-sm);
 		font-weight: 500;
-		color: var(--muted);
+		color: var(--tinta-secundaria);
 	}
 	input {
 		width: 100%;
@@ -197,21 +215,19 @@
 		overflow-y: auto;
 		margin-top: 4px;
 		padding: 4px;
-		border: 1px solid var(--borde-campo);
-		border-radius: 8px;
-		background: var(--surface);
-		box-shadow: var(--shadow);
+		border: 1px solid var(--linea-fuerte);
+		border-radius: var(--radio-flotante);
+		background: var(--superficie-flotante);
+		box-shadow: var(--sombra-flotante);
 	}
 	.lista[hidden] {
 		display: none;
 	}
 	.titulo-grupo {
 		padding: 8px 8px 4px;
-		color: var(--muted);
-		font-size: 0.8rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
 		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
 	}
 	.opcion {
 		display: grid;
@@ -220,42 +236,53 @@
 		align-items: center;
 		min-height: var(--objetivo-min);
 		padding: 6px 8px;
-		border-radius: 6px;
+		border-radius: var(--radio-control);
 		cursor: pointer;
 	}
-	.opcion:hover,
-	.opcion.activa {
-		background: var(--primary-soft);
+	.opcion:hover {
+		background: var(--superficie-hover);
 	}
 	.opcion.activa {
-		outline: 2px solid var(--primary);
-		outline-offset: -2px;
+		background: var(--accion-suave);
+		box-shadow: inset 0 0 0 1px var(--accion);
 	}
 	.opcion.elegida .texto {
 		font-weight: 600;
 	}
 	.icono {
-		margin-right: 4px;
+		width: 13px;
+		height: 13px;
+		flex-shrink: 0;
 	}
 	.insignia {
-		font-size: 0.8rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		color: var(--tinta-secundaria);
+		font-size: var(--texto-xs);
 		font-weight: 600;
 		white-space: nowrap;
 	}
+	.insignia-peligro {
+		color: var(--peligro);
+	}
+	.insignia-info {
+		color: var(--info);
+	}
 	.detalle {
 		grid-column: 1 / -1;
-		color: var(--muted);
-		font-size: 0.8rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
-	/* Sobre el fondo de la opción activa el gris atenuado no llega a 4.5:1. */
+	/* Sobre el fondo de la opción activa el texto tenue baja de 5:1; el secundario lo mantiene. */
 	.opcion:hover .detalle,
 	.opcion.activa .detalle {
-		color: var(--text);
+		color: var(--tinta-secundaria);
 	}
 	.resultado {
 		margin: 0;
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 	.resultado:empty {
 		display: none;

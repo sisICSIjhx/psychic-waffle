@@ -1,0 +1,1427 @@
+/* Estilos del programa anual (vistas anual, mensual y semanal): tokens --pa-* en claro y oscuro,
+   tonos de estado e-*, encabezado, filtros, indicadores, matriz con celdas-tarjeta y panel. Todo va
+   bajo .programa-anual (contenedor de PlaneacionView) para que las vistas hijas compartan la matriz. */
+/* Tokens del programa anual. Claro por omisión; el oscuro reproduce el diseño de Figma. */
+.programa-anual {
+	--pa-tarjeta: #ffffff;
+	--pa-tarjeta-borde: #e2e8f0;
+	--pa-tabla: #ffffff;
+	--pa-cabecera: #f8fafc;
+	--pa-cabecera-meses: #f1f5f9;
+	--pa-anio-par: #f8fafc;
+	--pa-linea: #e2e8f0;
+	--pa-linea-suave: #edf1f5;
+	--pa-campo: #ffffff;
+	--pa-campo-borde: #cbd5e1;
+	--pa-campo-borde-hover: #94a3b8;
+	--pa-texto: #0f172a;
+	--pa-texto-2: #334155;
+	--pa-texto-3: #475569;
+	--pa-texto-4: #556274;
+	--pa-deshabilitado: #94a3b8;
+	--pa-vacio: #cbd5e1;
+	--pa-pista: #e2e8f0;
+	--pa-hover: #f1f5f9;
+	--pa-segmento: #f1f5f9;
+	--pa-segmento-activo: #0369a1;
+	--pa-anio-actual: #0369a1;
+	--pa-mes-actual: #e0f2fe;
+	--pa-mes-actual-columna: #f5fbff;
+	--pa-mes-actual-borde: #7dd3fc;
+	--pa-mes-actual-texto: #0369a1;
+	--pa-insignia: #f1f5f9;
+	--pa-insignia-borde: #cbd5e1;
+	--pa-insignia-texto: #334155;
+	--pa-verde-texto: #047857;
+	--pa-verde-punto: #10b981;
+	--pa-ambar-texto: #b45309;
+	--pa-ambar-punto: #f59e0b;
+	--pa-gris-punto: #94a3b8;
+	--pa-sombra: 0 1px 2px rgba(15, 23, 42, 0.05);
+	--pa-sombra-menu: 0 8px 24px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+html[data-theme='dark'] .programa-anual {
+	--pa-tarjeta: #0b1325;
+	--pa-tarjeta-borde: #1e293b;
+	--pa-tabla: #0b1222;
+	--pa-cabecera: #0a0f1d;
+	--pa-cabecera-meses: #0a0f1d;
+	--pa-anio-par: #0d1322;
+	--pa-linea: #1e293b;
+	--pa-linea-suave: rgba(30, 41, 59, 0.6);
+	--pa-campo: #0d1629;
+	--pa-campo-borde: #334155;
+	--pa-campo-borde-hover: #475569;
+	--pa-texto: #ffffff;
+	--pa-texto-2: #e2e8f0;
+	--pa-texto-3: #cbd5e1;
+	--pa-texto-4: #94a3b8;
+	--pa-deshabilitado: #64748b;
+	--pa-vacio: #334155;
+	--pa-pista: rgba(30, 41, 59, 0.6);
+	--pa-hover: rgba(30, 41, 59, 0.45);
+	--pa-segmento: #09101f;
+	/* El diseño usa #0284C7; un tono más oscuro da 4,8:1 al texto blanco. */
+	--pa-segmento-activo: #0277bd;
+	--pa-anio-actual: rgba(56, 189, 248, 0.9);
+	--pa-mes-actual: rgba(8, 47, 73, 0.3);
+	--pa-mes-actual-columna: rgba(8, 47, 73, 0.2);
+	--pa-mes-actual-borde: rgba(7, 89, 133, 0.6);
+	--pa-mes-actual-texto: #7dd3fc;
+	--pa-insignia: #1e293b;
+	--pa-insignia-borde: #334155;
+	--pa-insignia-texto: #cbd5e1;
+	--pa-verde-texto: #34d399;
+	--pa-verde-punto: #34d399;
+	--pa-ambar-texto: #fbbf24;
+	--pa-ambar-punto: #f59e0b;
+	--pa-gris-punto: #64748b;
+	--pa-sombra: 0 1px 2px rgba(0, 0, 0, 0.05);
+	--pa-sombra-menu: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
+/* Tonos de estado: fondo, borde y división de la tarjeta, texto, punto, icono, insignia y barra. */
+.programa-anual .e-total {
+	--c-texto: #0369a1;
+	--c-punto: #0ea5e9;
+	--c-icono-fondo: #f0f9ff;
+	--c-icono-borde: #bae6fd;
+	--c-tarjeta-borde: var(--pa-tarjeta-borde);
+	--c-barra: #0ea5e9;
+}
+.programa-anual .e-ejecutado {
+	--c-fondo: #ecfdf5;
+	--c-borde: #a7f3d0;
+	--c-division: #d1fae5;
+	--c-texto: #047857;
+	--c-punto: #10b981;
+	--c-icono-fondo: #ecfdf5;
+	--c-icono-borde: #a7f3d0;
+	--c-insignia-fondo: #ecfdf5;
+	--c-insignia-borde: #a7f3d0;
+	--c-tarjeta-borde: #d1fae5;
+	--c-barra: #10b981;
+}
+.programa-anual .e-pendiente {
+	--c-fondo: #f0f9ff;
+	--c-borde: #bae6fd;
+	--c-division: #e0f2fe;
+	--c-texto: #0369a1;
+	--c-punto: #0ea5e9;
+	--c-icono-fondo: #f0f9ff;
+	--c-icono-borde: #bae6fd;
+	--c-insignia-fondo: #f0f9ff;
+	--c-insignia-borde: #bae6fd;
+	--c-tarjeta-borde: #e0f2fe;
+	--c-barra: #0ea5e9;
+}
+.programa-anual .e-programado {
+	--c-fondo: #fffbeb;
+	--c-borde: #fde68a;
+	--c-division: #fef3c7;
+	--c-texto: #b45309;
+	--c-punto: #f59e0b;
+	--c-icono-fondo: #fffbeb;
+	--c-icono-borde: #fde68a;
+	--c-insignia-fondo: #fffbeb;
+	--c-insignia-borde: #fde68a;
+	--c-tarjeta-borde: #fef3c7;
+	--c-barra: #f59e0b;
+}
+.programa-anual .e-vencido {
+	--c-fondo: #fff1f2;
+	--c-borde: #fecdd3;
+	--c-division: #ffe4e6;
+	--c-texto: #be123c;
+	--c-punto: #f43f5e;
+	--c-icono-fondo: #fff1f2;
+	--c-icono-borde: #fecdd3;
+	--c-insignia-fondo: #fff1f2;
+	--c-insignia-borde: #fecdd3;
+	--c-tarjeta-borde: #ffe4e6;
+	--c-barra: #f43f5e;
+}
+.programa-anual .e-reprogramado {
+	--c-fondo: #faf5ff;
+	--c-borde: #e9d5ff;
+	--c-division: #f3e8ff;
+	--c-texto: #7e22ce;
+	--c-punto: #a855f7;
+}
+.programa-anual .e-neutro {
+	--c-fondo: #f8fafc;
+	--c-borde: #cbd5e1;
+	--c-division: #e2e8f0;
+	--c-texto: #475569;
+	--c-punto: #64748b;
+	--c-icono-fondo: #f8fafc;
+	--c-icono-borde: #cbd5e1;
+	--c-insignia-fondo: #f1f5f9;
+	--c-insignia-borde: #cbd5e1;
+	--c-tarjeta-borde: var(--pa-tarjeta-borde);
+	--c-barra: #64748b;
+}
+html[data-theme='dark'] .programa-anual .e-total {
+	--c-texto: #38bdf8;
+	--c-punto: #0ea5e9;
+	--c-icono-fondo: rgba(8, 47, 73, 0.6);
+	--c-icono-borde: rgba(2, 132, 199, 0.3);
+}
+html[data-theme='dark'] .programa-anual .e-ejecutado {
+	--c-fondo: rgba(2, 44, 34, 0.4);
+	--c-borde: rgba(6, 95, 70, 0.6);
+	--c-division: rgba(6, 78, 59, 0.4);
+	--c-texto: #34d399;
+	--c-punto: #34d399;
+	--c-icono-fondo: rgba(2, 44, 34, 0.5);
+	--c-icono-borde: rgba(16, 185, 129, 0.3);
+	--c-insignia-fondo: rgba(2, 44, 34, 0.6);
+	--c-insignia-borde: rgba(6, 95, 70, 0.5);
+	--c-tarjeta-borde: rgba(2, 44, 34, 0.6);
+}
+html[data-theme='dark'] .programa-anual .e-pendiente {
+	--c-fondo: rgba(8, 47, 73, 0.4);
+	--c-borde: rgba(7, 89, 133, 0.6);
+	--c-division: rgba(12, 74, 110, 0.4);
+	--c-texto: #38bdf8;
+	--c-punto: #38bdf8;
+	--c-icono-fondo: rgba(8, 47, 73, 0.5);
+	--c-icono-borde: rgba(14, 165, 233, 0.3);
+	--c-insignia-fondo: rgba(8, 47, 73, 0.6);
+	--c-insignia-borde: rgba(7, 89, 133, 0.5);
+	--c-tarjeta-borde: rgba(8, 47, 73, 0.6);
+}
+html[data-theme='dark'] .programa-anual .e-programado {
+	--c-fondo: rgba(69, 26, 3, 0.4);
+	--c-borde: rgba(146, 64, 14, 0.6);
+	--c-division: rgba(120, 53, 15, 0.4);
+	--c-texto: #fbbf24;
+	--c-punto: #fbbf24;
+	--c-icono-fondo: rgba(69, 26, 3, 0.5);
+	--c-icono-borde: rgba(245, 158, 11, 0.3);
+	--c-insignia-fondo: rgba(69, 26, 3, 0.6);
+	--c-insignia-borde: rgba(146, 64, 14, 0.5);
+	--c-tarjeta-borde: rgba(69, 26, 3, 0.6);
+}
+html[data-theme='dark'] .programa-anual .e-vencido {
+	--c-fondo: rgba(76, 5, 25, 0.4);
+	--c-borde: rgba(159, 18, 57, 0.6);
+	--c-division: rgba(136, 19, 55, 0.4);
+	--c-texto: #fb7185;
+	--c-punto: #f43f5e;
+	--c-icono-fondo: rgba(76, 5, 25, 0.5);
+	--c-icono-borde: rgba(244, 63, 94, 0.3);
+	--c-insignia-fondo: rgba(76, 5, 25, 0.6);
+	--c-insignia-borde: rgba(159, 18, 57, 0.5);
+	--c-tarjeta-borde: rgba(76, 5, 25, 0.6);
+}
+html[data-theme='dark'] .programa-anual .e-reprogramado {
+	--c-fondo: rgba(59, 7, 100, 0.4);
+	--c-borde: rgba(107, 33, 168, 0.6);
+	--c-division: rgba(88, 28, 135, 0.4);
+	--c-texto: #c084fc;
+	--c-punto: #a855f7;
+}
+html[data-theme='dark'] .programa-anual .e-neutro {
+	--c-fondo: rgba(30, 41, 59, 0.4);
+	--c-borde: #334155;
+	--c-division: rgba(51, 65, 85, 0.6);
+	--c-texto: #94a3b8;
+	--c-punto: #64748b;
+	--c-icono-fondo: #0f172a;
+	--c-icono-borde: #334155;
+	--c-insignia-fondo: rgba(30, 41, 59, 0.8);
+	--c-insignia-borde: #334155;
+}
+
+.programa-anual .encabezado-pagina {
+	margin-bottom: 24px;
+}
+.programa-anual .titulo-pagina {
+	font-size: 1.5rem;
+	letter-spacing: -0.025em;
+	color: var(--pa-texto);
+}
+.programa-anual .descripcion-pagina {
+	color: var(--pa-texto-3);
+	font-size: var(--texto-base);
+}
+.programa-anual .punto {
+	flex-shrink: 0;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--c-punto, var(--pa-gris-punto));
+}
+
+/* Encabezado: vistas en botones segmentados y, debajo, «Exportar». */
+.programa-anual .acciones-programa {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 10px;
+}
+.programa-anual .selector-vista {
+	display: inline-flex;
+	gap: 2px;
+	padding: 4px;
+	border: 1px solid var(--pa-tarjeta-borde);
+	border-radius: 8px;
+	background: var(--pa-segmento);
+}
+.programa-anual .opcion-vista {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 30px;
+	padding: 6px 14px;
+	border-radius: 6px;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+	transition:
+		background-color 0.12s var(--curva-salida),
+		color 0.12s var(--curva-salida);
+}
+.programa-anual .opcion-vista svg {
+	width: 14px;
+	height: 14px;
+}
+.programa-anual .opcion-vista:hover {
+	background: var(--pa-hover);
+	color: var(--pa-texto);
+}
+.programa-anual .opcion-vista[aria-current='page'] {
+	background: var(--pa-segmento-activo);
+	color: #ffffff;
+	font-weight: 700;
+	box-shadow: var(--pa-sombra);
+}
+.programa-anual .boton-programa {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 40px;
+	padding: 8px 15px;
+	border: 1px solid var(--pa-campo-borde);
+	border-radius: 8px;
+	background: var(--pa-campo);
+	color: var(--pa-texto-2);
+	font-size: var(--texto-base);
+	list-style: none;
+	cursor: pointer;
+	box-shadow: var(--pa-sombra);
+	transition: border-color 0.12s var(--curva-salida);
+}
+.programa-anual .boton-programa::-webkit-details-marker {
+	display: none;
+}
+.programa-anual .boton-programa:hover {
+	border-color: var(--pa-campo-borde-hover);
+}
+.programa-anual .boton-programa svg {
+	width: 16px;
+	height: 16px;
+	color: var(--pa-texto-4);
+}
+.programa-anual .boton-programa svg.flecha {
+	width: 14px;
+	height: 14px;
+	transition: transform 0.15s var(--curva-salida);
+}
+.programa-anual .menu-desplegable[open] .flecha {
+	transform: rotate(180deg);
+}
+.programa-anual .boton-icono {
+	justify-content: center;
+	width: 40px;
+	padding: 0;
+}
+.programa-anual .boton-icono.activo {
+	border-color: var(--pa-segmento-activo);
+	color: var(--pa-segmento-activo);
+}
+.programa-anual .boton-icono.activo svg {
+	color: var(--pa-segmento-activo);
+}
+.programa-anual .menu-desplegable {
+	position: relative;
+}
+.programa-anual .opciones-menu {
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
+	z-index: 5;
+	display: grid;
+	gap: 2px;
+	min-width: 240px;
+	padding: 6px;
+	border-radius: 8px;
+	background: var(--pa-tarjeta);
+	box-shadow: var(--pa-sombra-menu);
+}
+.programa-anual .opcion-menu {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 34px;
+	padding: 6px 10px;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	color: var(--pa-texto-2);
+	font-size: var(--texto-sm);
+	text-align: left;
+	cursor: pointer;
+}
+.programa-anual .opcion-menu:hover {
+	background: var(--pa-hover);
+}
+.programa-anual .opcion-menu[aria-pressed='true'] {
+	background: var(--pa-hover);
+	color: var(--pa-texto);
+	font-weight: 600;
+}
+.programa-anual .nota-menu {
+	margin: 0;
+	padding: 4px 10px 6px;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+
+/* Filtros: cuatro selectores con etiqueta en mayúsculas pequeñas. */
+.programa-anual .filtros {
+	display: grid;
+	gap: 14px;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	margin-bottom: 24px;
+}
+.programa-anual .filtro {
+	display: grid;
+	gap: 6px;
+	min-width: 0;
+}
+.programa-anual .filtro label {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-2xs);
+	letter-spacing: 0.025em;
+	text-transform: uppercase;
+}
+.programa-anual .filtro label svg {
+	width: 12px;
+	height: 12px;
+}
+.programa-anual .control {
+	position: relative;
+}
+/* Flecha propia del selector (la nativa queda oculta). */
+.programa-anual .control::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	right: 12px;
+	width: 7px;
+	height: 7px;
+	margin-top: -6px;
+	border-right: 1.5px solid var(--pa-texto-4);
+	border-bottom: 1.5px solid var(--pa-texto-4);
+	transform: rotate(45deg);
+	pointer-events: none;
+}
+.programa-anual .control select {
+	width: 100%;
+	min-height: 40px;
+	padding: 9px 34px 9px 12px;
+	border-color: var(--pa-campo-borde);
+	border-radius: 8px;
+	background: var(--pa-campo);
+	color: var(--pa-texto-2);
+	font-size: var(--texto-base);
+	appearance: none;
+	text-overflow: ellipsis;
+}
+.programa-anual .control select:hover:not(:focus) {
+	border-color: var(--pa-campo-borde-hover);
+}
+.programa-anual .con-icono select {
+	padding-left: 37px;
+}
+.programa-anual .icono-campo {
+	position: absolute;
+	top: 50%;
+	left: 12px;
+	width: 16px;
+	height: 16px;
+	margin-top: -8px;
+	color: var(--pa-texto-4);
+	pointer-events: none;
+}
+
+/* Indicadores: seis tarjetas con icono, cifra, porcentaje y barra de avance. */
+.programa-anual .indicadores {
+	display: grid;
+	gap: 14px;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	margin-bottom: 24px;
+}
+.programa-anual .indicador {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	gap: 12px;
+	min-width: 0;
+	padding: 16px;
+	border: 1px solid var(--c-tarjeta-borde, var(--pa-tarjeta-borde));
+	border-radius: 12px;
+	background: var(--pa-tarjeta);
+	box-shadow: var(--pa-sombra);
+	color: var(--pa-texto);
+	font: inherit;
+	text-align: left;
+}
+.programa-anual .indicador.interactivo {
+	position: relative;
+	cursor: pointer;
+	transition: border-color 0.12s var(--curva-salida);
+}
+.programa-anual .indicador.interactivo:hover,
+.programa-anual .indicador.interactivo[aria-expanded='true'] {
+	border-color: var(--c-borde);
+}
+.programa-anual .cuerpo-indicador {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 48px;
+}
+.programa-anual .icono-indicador {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border: 1px solid var(--c-icono-borde);
+	border-radius: 8px;
+	background: var(--c-icono-fondo);
+	color: var(--c-texto);
+}
+.programa-anual .icono-indicador svg {
+	width: 20px;
+	height: 20px;
+}
+.programa-anual .datos-indicador {
+	display: grid;
+	min-width: 0;
+}
+.programa-anual .etiqueta-indicador {
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+	line-height: 16px;
+}
+.programa-anual .cifra-indicador {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px 8px;
+	color: var(--pa-texto);
+	font-size: 1.5rem;
+	font-weight: 700;
+	letter-spacing: -0.025em;
+	line-height: 32px;
+	font-variant-numeric: tabular-nums;
+}
+.programa-anual .sufijo-indicador {
+	color: var(--pa-texto-4);
+	font-size: var(--texto-2xs);
+	font-weight: 400;
+	letter-spacing: 0;
+	line-height: 1.3;
+}
+.programa-anual .porcentaje {
+	padding: 2px 6px;
+	border: 1px solid var(--c-insignia-borde);
+	border-radius: 4px;
+	background: var(--c-insignia-fondo);
+	color: var(--c-texto);
+	font-size: var(--texto-2xs);
+	font-weight: 700;
+	letter-spacing: 0;
+	line-height: 16px;
+}
+.programa-anual .flecha-indicador {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	width: 16px;
+	height: 16px;
+	color: var(--pa-texto-4);
+	transition: transform 0.15s var(--curva-salida);
+}
+.programa-anual .indicador[aria-expanded='true'] .flecha-indicador {
+	transform: rotate(180deg);
+}
+.programa-anual .barra {
+	display: block;
+	height: 4px;
+	overflow: hidden;
+	border-radius: 9999px;
+	background: var(--pa-pista);
+}
+.programa-anual .barra > span {
+	display: block;
+	height: 100%;
+	border-radius: 9999px;
+	background: var(--c-barra);
+}
+
+/* Vencimientos: lista por mes, abierta desde el indicador «Vencidas»; larga, se desplaza dentro. */
+.programa-anual .vencidos {
+	--c-borde: #fecdd3;
+	max-height: 420px;
+	margin: -8px 0 24px;
+	padding: 16px 24px;
+	overflow-y: auto;
+	border: 1px solid var(--c-borde);
+	border-radius: 12px;
+	background: var(--pa-tarjeta);
+}
+html[data-theme='dark'] .programa-anual .vencidos {
+	--c-borde: rgba(159, 18, 57, 0.6);
+}
+.programa-anual .cabecera-vencidos {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	justify-content: space-between;
+}
+.programa-anual .titulo-vencidos {
+	margin: 0;
+	color: var(--pa-texto);
+	font-size: var(--texto-base);
+	font-weight: 700;
+}
+.programa-anual .mes-vencido {
+	margin: 12px 0 6px;
+	color: var(--pa-texto-3);
+	font-size: var(--texto-sm);
+	font-weight: 600;
+}
+.programa-anual .lista-vencidos {
+	display: grid;
+	gap: 4px;
+	margin: 0;
+	padding-left: 18px;
+	color: var(--pa-texto-2);
+	font-size: var(--texto-sm);
+}
+.programa-anual .lista-vencidos li > * + * {
+	margin-left: 12px;
+}
+
+/* Cabecera de la matriz: título, número de partidas y ciclo, y leyenda de colores. */
+.programa-anual .cabecera-matriz {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 24px;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 24px;
+	padding: 16px 24px;
+	border: 1px solid var(--pa-tarjeta-borde);
+	border-radius: 12px;
+	background: var(--pa-tabla);
+	box-shadow: var(--pa-sombra);
+}
+.programa-anual .titulo-con-icono {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.programa-anual .titulo-con-icono .icono-indicador {
+	width: 36px;
+	height: 36px;
+}
+.programa-anual .titulo-matriz {
+	margin: 0;
+	color: var(--pa-texto);
+	font-size: var(--texto-base);
+	font-weight: 700;
+	letter-spacing: 0.025em;
+	line-height: 20px;
+}
+.programa-anual .subtitulo-matriz {
+	margin: 2px 0 0;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+.programa-anual .leyenda {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	color: var(--pa-texto-3);
+	font-size: var(--texto-xs);
+}
+.programa-anual .leyenda li {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+.programa-anual .leyenda .punto {
+	width: 10px;
+	height: 10px;
+}
+
+/* Búsqueda y filtro por estado. */
+.programa-anual .barra-busqueda {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	margin-bottom: 24px;
+}
+.programa-anual .campo-busqueda {
+	position: relative;
+	flex: 1;
+	min-width: 0;
+}
+.programa-anual .campo-busqueda .icono-campo {
+	left: 14px;
+}
+.programa-anual .campo-busqueda input {
+	width: 100%;
+	min-height: 40px;
+	padding: 9px 16px 9px 41px;
+	border-color: var(--pa-campo-borde);
+	border-radius: 8px;
+	background: var(--pa-campo);
+	color: var(--pa-texto-2);
+	font-size: var(--texto-base);
+	box-shadow: var(--pa-sombra);
+}
+.programa-anual .campo-busqueda input::placeholder {
+	color: var(--pa-texto-4);
+}
+
+/* Espacio de programación: matriz y, con una celda elegida, el panel a la derecha. */
+.programa-anual .espacio-programa {
+	display: grid;
+	gap: 20px;
+	align-items: start;
+}
+@media (min-width: 1100px) {
+	.programa-anual .espacio-programa.con-panel {
+		grid-template-columns: minmax(0, 1fr) 300px;
+	}
+}
+.programa-anual .matriz-programa {
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid var(--pa-tarjeta-borde);
+	border-radius: 12px;
+	background: var(--pa-tabla);
+}
+
+/* Matriz: columnas fijas (número, partida y periodicidad) y un mes por columna. */
+.programa-anual .matriz {
+	min-width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	background: var(--pa-tabla);
+	font-size: var(--texto-xs);
+}
+.programa-anual .matriz th,
+.programa-anual .matriz td {
+	padding: 0;
+	vertical-align: middle;
+}
+.programa-anual .matriz thead th {
+	color: var(--pa-texto-4);
+	font-size: var(--texto-2xs);
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+.programa-anual .fila-anios th {
+	height: 33px;
+	padding: 0 12px;
+	background: var(--pa-cabecera);
+	border-bottom: 1px solid var(--pa-linea);
+	border-right: 1px solid var(--pa-linea);
+}
+.programa-anual .fila-anios th.anio {
+	letter-spacing: 0.1em;
+	color: var(--pa-texto-3);
+	text-align: center;
+}
+.programa-anual .fila-anios th.anio-par {
+	background: var(--pa-anio-par);
+}
+.programa-anual .fila-anios th.anio-actual {
+	color: var(--pa-anio-actual);
+}
+.programa-anual .fila-meses th {
+	height: 26px;
+	padding: 0 8px;
+	background: var(--pa-cabecera-meses);
+	border-bottom: 1px solid var(--pa-linea);
+	border-right: 1px solid var(--pa-linea-suave);
+	text-align: center;
+}
+.programa-anual .fila-meses th.mes-actual {
+	background: var(--pa-mes-actual);
+	border-right-color: var(--pa-mes-actual-borde);
+	color: var(--pa-mes-actual-texto);
+}
+.programa-anual .columna-numero,
+.programa-anual .columna-partida,
+.programa-anual .columna-periodicidad {
+	position: sticky;
+	z-index: 1;
+	background: var(--pa-tabla);
+}
+.programa-anual thead .columna-numero,
+.programa-anual thead .columna-partida,
+.programa-anual thead .columna-periodicidad {
+	z-index: 2;
+	background: var(--pa-cabecera);
+}
+.programa-anual .columna-numero {
+	left: 0;
+	width: 40px;
+	min-width: 40px;
+	text-align: center;
+}
+.programa-anual .columna-partida {
+	left: 40px;
+	width: 168px;
+	min-width: 168px;
+	text-align: left;
+}
+.programa-anual .columna-periodicidad {
+	left: 208px;
+	width: 112px;
+	min-width: 112px;
+	text-align: center;
+	box-shadow: inset -1px 0 0 var(--pa-linea);
+}
+.programa-anual .matriz thead .columna-partida {
+	padding-left: 16px;
+}
+.programa-anual .matriz tbody td,
+.programa-anual .matriz tbody th {
+	border-top: 1px solid var(--pa-linea-suave);
+}
+.programa-anual tbody .columna-numero {
+	border-right: 1px solid var(--pa-linea-suave);
+	color: var(--pa-texto-4);
+	font-weight: 700;
+}
+.programa-anual tbody .columna-partida {
+	padding: 12px 16px;
+	border-right: 1px solid var(--pa-linea-suave);
+	color: var(--pa-texto-2);
+	font-size: var(--texto-xs);
+	font-weight: 400;
+	line-height: 16.5px;
+}
+.programa-anual .insignia-periodicidad {
+	display: inline-block;
+	padding: 2px 10px;
+	border: 1px solid var(--pa-insignia-borde);
+	border-radius: 4px;
+	background: var(--pa-insignia);
+	color: var(--pa-insignia-texto);
+	font-size: 0.625rem;
+	line-height: 16px;
+	white-space: nowrap;
+}
+.programa-anual .columna-mes {
+	min-width: 100px;
+}
+.programa-anual .matriz tbody tr:hover > td,
+.programa-anual .matriz tbody tr:hover > th {
+	background: var(--pa-tabla);
+}
+.programa-anual .matriz tbody tr:hover > td.celda:not(.mes-actual) {
+	background: var(--pa-hover);
+}
+.programa-anual .celda {
+	min-width: 100px;
+	padding: 5px 4px;
+	border-right: 1px solid var(--pa-linea-suave);
+	text-align: center;
+}
+.programa-anual .celda.mes-actual,
+.programa-anual .matriz tbody tr:hover > td.celda.mes-actual {
+	background: var(--pa-mes-actual-columna);
+	border-right-color: var(--pa-mes-actual-borde);
+}
+.programa-anual .vacio {
+	color: var(--pa-vacio);
+}
+.programa-anual .tarjeta-celda {
+	display: flex;
+	flex-direction: column;
+	min-height: 76px;
+	overflow: hidden;
+	border: 1px solid var(--c-borde);
+	border-radius: 8px;
+	background: var(--c-fondo);
+	text-align: left;
+	transition: box-shadow 0.12s var(--curva-salida);
+}
+.programa-anual .celda.elegida .tarjeta-celda {
+	box-shadow:
+		0 0 0 1px var(--pa-tabla),
+		0 0 0 3px var(--foco);
+}
+/* «relative» contiene el nombre .sr-only de la celda dentro del botón. */
+.programa-anual .boton-celda {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.programa-anual .boton-celda:hover {
+	background: color-mix(in srgb, var(--c-punto) 8%, transparent);
+}
+.programa-anual .boton-celda:focus-visible {
+	outline-offset: -3px;
+}
+.programa-anual .linea-celda {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	min-height: 25px;
+	padding: 6px 8px;
+	font-size: 0.625rem;
+	line-height: 12.5px;
+}
+.programa-anual .linea-celda + .linea-celda,
+.programa-anual .boton-celda + .linea-celda {
+	border-top: 1px solid var(--c-division);
+}
+.programa-anual .texto-linea {
+	min-width: 0;
+	overflow-wrap: break-word;
+}
+/* La cuenta de las partidas con varias ejecuciones pasa a otra línea si no cabe junto al estado. */
+.programa-anual .linea-celda.estado {
+	flex-wrap: wrap;
+	row-gap: 2px;
+	color: var(--c-texto);
+	font-weight: 700;
+}
+.programa-anual .linea-celda.estado .texto-linea {
+	white-space: nowrap;
+}
+.programa-anual .cuenta {
+	margin-left: auto;
+	padding-left: 4px;
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+	white-space: nowrap;
+}
+.programa-anual .linea-celda.documento {
+	color: var(--pa-texto-4);
+}
+.programa-anual .linea-celda.documento .punto {
+	background: var(--pa-gris-punto);
+}
+.programa-anual .linea-celda.documento.con_reporte {
+	color: var(--pa-verde-texto);
+}
+.programa-anual .linea-celda.documento.con_reporte .punto {
+	background: var(--pa-verde-punto);
+}
+.programa-anual .linea-celda.documento.reporte_en_borrador {
+	color: var(--pa-ambar-texto);
+}
+.programa-anual .linea-celda.documento.reporte_en_borrador .punto {
+	background: var(--pa-ambar-punto);
+}
+.programa-anual .linea-celda.documento.alerta {
+	color: var(--c-texto);
+}
+.programa-anual .linea-celda.documento.alerta .punto {
+	background: var(--c-punto);
+}
+.programa-anual .linea-celda.visualizar {
+	color: var(--pa-texto-3);
+	text-decoration: none;
+}
+.programa-anual .linea-celda.visualizar svg {
+	flex-shrink: 0;
+	width: 14px;
+	height: 14px;
+}
+.programa-anual a.linea-celda.visualizar:hover {
+	background: color-mix(in srgb, var(--c-punto) 8%, transparent);
+	color: var(--pa-texto);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+.programa-anual a.linea-celda.visualizar:focus-visible {
+	outline-offset: -3px;
+}
+.programa-anual .linea-celda.visualizar.inactivo {
+	color: var(--pa-deshabilitado);
+}
+.programa-anual .linea-celda.visualizar.inactivo svg {
+	color: var(--c-punto);
+	opacity: 0.55;
+}
+.programa-anual .matriz tbody tr.fila-elegida > td.columna-numero,
+.programa-anual .matriz tbody tr.fila-elegida > th.columna-partida,
+.programa-anual .matriz tbody tr.fila-elegida > td.columna-periodicidad {
+	/* Opaco: las columnas fijas tapan las celdas que pasan por debajo al desplazar. */
+	background:
+		linear-gradient(var(--pa-mes-actual-columna), var(--pa-mes-actual-columna)), var(--pa-tabla);
+}
+.programa-anual .total {
+	padding: 0 12px;
+	color: var(--pa-texto-3);
+	white-space: nowrap;
+	text-align: center;
+}
+.programa-anual .columna-total {
+	min-width: 80px;
+	padding: 0 12px;
+	background: var(--pa-cabecera);
+	border-bottom: 1px solid var(--pa-linea);
+}
+.programa-anual .sin-resultados {
+	padding: 32px 16px;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-sm);
+	text-align: left;
+}
+.programa-anual .sin-resultados .enlace-accion {
+	margin-left: 8px;
+}
+.programa-anual .pie-matriz {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+	align-items: center;
+	justify-content: space-between;
+	padding: 6px 16px;
+	border-top: 1px solid var(--pa-linea);
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+.programa-anual .enlace-accion {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-height: var(--objetivo-min);
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--accion);
+	font-size: var(--texto-sm);
+	font-weight: 600;
+	cursor: pointer;
+}
+.programa-anual .enlace-accion:hover {
+	color: var(--accion-hover);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.programa-anual .enlace-accion svg {
+	width: 15px;
+	height: 15px;
+}
+.programa-anual .enlace-accion svg.invertida {
+	transform: rotate(180deg);
+}
+
+/* Panel de la celda elegida: datos y acciones cerca de la selección. */
+.programa-anual .panel-celda {
+	display: grid;
+	gap: 16px;
+	padding: 22px;
+	border: 1px solid var(--pa-tarjeta-borde);
+	border-radius: 12px;
+	background: var(--pa-tarjeta);
+	box-shadow: var(--pa-sombra);
+}
+@media (min-width: 1100px) {
+	.programa-anual .panel-celda {
+		position: sticky;
+		top: 0;
+	}
+}
+.programa-anual .cabecera-panel {
+	display: flex;
+	gap: 12px;
+	align-items: flex-start;
+	justify-content: space-between;
+}
+.programa-anual .cerrar-panel {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 4px;
+	min-height: var(--objetivo-min);
+	margin-top: -6px;
+	padding: 0 4px;
+	border: 0;
+	border-radius: var(--radio-control);
+	background: none;
+	color: var(--accion);
+	font-weight: 600;
+	cursor: pointer;
+}
+.programa-anual .cerrar-panel:hover {
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.programa-anual .cerrar-panel svg {
+	width: 14px;
+	height: 14px;
+}
+.programa-anual .titulo-panel {
+	margin: 0;
+	color: var(--pa-texto);
+	font-size: var(--texto-lg);
+	font-weight: 400;
+	line-height: 1.35;
+}
+.programa-anual .periodicidad-panel {
+	margin: -8px 0 0;
+}
+.programa-anual .datos-panel {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px 16px;
+	margin: 0;
+}
+/* Leyenda del programado: por qué el mes tiene esa cantidad. */
+.programa-anual .explicacion-programado {
+	margin: 0;
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: var(--pa-hover);
+	color: var(--pa-texto-3);
+	font-size: var(--texto-xs);
+	line-height: 1.5;
+}
+.programa-anual .datos-panel dt {
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+.programa-anual .datos-panel dd {
+	margin: 2px 0 0;
+	color: var(--pa-texto-2);
+	font-size: var(--texto-campo);
+}
+.programa-anual .datos-panel dd.grande {
+	color: var(--pa-texto);
+	font-size: var(--texto-xl);
+	line-height: 1.2;
+}
+.programa-anual .estado-panel {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--c-texto) !important;
+	font-weight: 600;
+}
+.programa-anual .estado-panel .punto {
+	width: 8px;
+	height: 8px;
+}
+.programa-anual .acciones-panel {
+	display: grid;
+	gap: 10px;
+	justify-items: start;
+}
+.programa-anual .nota-panel {
+	margin: 0;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+
+/* Registro externo al pie: enlace que despliega el formulario. */
+.programa-anual .registro-externo {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 24px;
+	align-items: flex-start;
+	justify-content: space-between;
+	margin-top: 28px;
+}
+.programa-anual .registro-externo details {
+	flex: 1 1 100%;
+	order: 1;
+}
+.programa-anual .registro-externo details[open] {
+	order: 0;
+}
+.programa-anual .registro-externo summary {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-height: var(--objetivo-min);
+	color: var(--accion);
+	font-weight: 600;
+	list-style: none;
+}
+.programa-anual .registro-externo summary::-webkit-details-marker {
+	display: none;
+}
+.programa-anual .registro-externo summary svg {
+	width: 15px;
+	height: 15px;
+}
+.programa-anual .registro-externo details[open] summary svg {
+	transform: rotate(90deg);
+}
+.programa-anual .registro-externo details:not([open]) {
+	flex: 0 1 auto;
+	order: 0;
+}
+.programa-anual .cuerpo-registro {
+	margin: 12px 0 0;
+}
+.programa-anual .nota-registro {
+	margin: 8px 0 0;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+
+@media (max-width: 760px) {
+	.programa-anual .acciones-programa {
+		align-items: flex-start;
+	}
+	.programa-anual .columna-partida {
+		width: 140px;
+		min-width: 140px;
+	}
+	.programa-anual .columna-periodicidad {
+		position: static;
+	}
+}
+
+/* Matriz de la vista mensual: una columna por semana (número del año y días del mes). */
+.programa-anual .navegacion-meses {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+	margin-bottom: 16px;
+}
+.programa-anual .mes-semanal {
+	margin: 0;
+	color: var(--pa-texto);
+	font-size: var(--texto-md);
+	font-weight: 700;
+}
+.programa-anual .matriz.semanal {
+	width: 100%;
+}
+.programa-anual .matriz.semanal .fila-anios th.semana {
+	color: var(--pa-anio-actual);
+	letter-spacing: 0.05em;
+	text-align: center;
+}
+.programa-anual .matriz.semanal .fila-anios th.semana.mes-actual {
+	background: var(--pa-mes-actual);
+	border-right-color: var(--pa-mes-actual-borde);
+	color: var(--pa-mes-actual-texto);
+}
+.programa-anual .matriz.semanal .columna-mes,
+.programa-anual .matriz.semanal .celda {
+	min-width: 150px;
+}
+.programa-anual .matriz.semanal tbody tr:hover > td.celda:not(.mes-actual) {
+	background: var(--pa-tabla);
+}
+@media (min-width: 761px) {
+	.programa-anual .matriz.semanal .columna-partida {
+		width: 260px;
+		min-width: 260px;
+	}
+	.programa-anual .matriz.semanal .columna-periodicidad {
+		left: 300px;
+	}
+}
+
+/* Vista mensual: barra con meses y formato; lista agrupada por estado. */
+.programa-anual .barra-mensual {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 24px;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+.programa-anual .barra-mensual .navegacion-meses {
+	margin-bottom: 0;
+}
+.programa-anual .lista-mensual {
+	display: grid;
+	gap: 8px;
+	padding: 8px 20px 16px;
+	border: 1px solid var(--pa-tarjeta-borde);
+	border-radius: 12px;
+	background: var(--pa-tabla);
+}
+.programa-anual .grupo-lista {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 12px 0 0;
+	color: var(--c-texto);
+	font-size: var(--texto-xs);
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+.programa-anual .grupo-lista .punto {
+	width: 8px;
+	height: 8px;
+}
+.programa-anual .cuenta-grupo {
+	padding: 0 7px;
+	border: 1px solid var(--c-borde);
+	border-radius: 9999px;
+	background: var(--c-fondo);
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0;
+	line-height: 18px;
+}
+.programa-anual .lista-mensual .filas {
+	display: grid;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.programa-anual .fila-lista {
+	display: grid;
+	grid-template-columns: 32px minmax(0, 1fr) 180px 130px 250px;
+	gap: 8px 16px;
+	align-items: center;
+	padding: 12px 0;
+	border-bottom: 1px solid var(--pa-linea-suave);
+}
+.programa-anual .fila-lista:last-child {
+	border-bottom: 0;
+}
+.programa-anual .fila-lista .numero {
+	color: var(--pa-texto-4);
+	font-size: var(--texto-sm);
+	font-weight: 700;
+	text-align: center;
+}
+.programa-anual .actividad-lista {
+	margin: 0;
+	color: var(--pa-texto-2);
+	font-size: var(--texto-sm);
+	line-height: 1.4;
+}
+.programa-anual .meta-lista {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 8px;
+	align-items: center;
+	margin: 4px 0 0;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+.programa-anual .estado-lista {
+	display: grid;
+	gap: 4px;
+	justify-items: start;
+}
+.programa-anual .pastilla {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	border: 1px solid var(--c-borde);
+	border-radius: 9999px;
+	background: var(--c-fondo);
+	color: var(--c-texto);
+	font-size: var(--texto-xs);
+	font-weight: 700;
+}
+.programa-anual .documento-lista {
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+}
+.programa-anual .documento-lista.con_reporte {
+	color: var(--pa-verde-texto);
+}
+.programa-anual .documento-lista.reporte_en_borrador {
+	color: var(--pa-ambar-texto);
+}
+.programa-anual .avance-lista {
+	display: grid;
+	gap: 6px;
+}
+.programa-anual .cifra-avance {
+	color: var(--pa-texto-3);
+	font-size: var(--texto-xs);
+	font-variant-numeric: tabular-nums;
+}
+.programa-anual .acciones-lista {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	justify-content: flex-end;
+}
+.programa-anual .acciones-lista .boton {
+	min-height: 34px;
+	padding: 6px 12px;
+	font-size: var(--texto-sm);
+}
+.programa-anual .lista-vacia {
+	border: 1px solid var(--pa-tarjeta-borde);
+	border-radius: 12px;
+	background: var(--pa-tabla);
+}
+.programa-anual .aviso-semanal {
+	align-items: center;
+}
+@media (max-width: 900px) {
+	.programa-anual .fila-lista {
+		grid-template-columns: 32px minmax(0, 1fr);
+	}
+	.programa-anual .estado-lista,
+	.programa-anual .avance-lista,
+	.programa-anual .acciones-lista {
+		grid-column: 2;
+		justify-content: flex-start;
+	}
+}
+
+/* Vista semanal: una columna por día, con hoy resaltado. */
+.programa-anual .matriz.por-dias .fila-anios th {
+	height: 44px;
+}
+.programa-anual .matriz.por-dias .fila-anios th.semana {
+	color: var(--pa-texto-2);
+}
+.programa-anual .matriz.por-dias .fila-anios th.semana.mes-actual {
+	color: var(--pa-mes-actual-texto);
+}
+.programa-anual .matriz.por-dias .celda {
+	min-width: 112px;
+}

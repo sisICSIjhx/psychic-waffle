@@ -271,25 +271,26 @@
 <style>
 	.edicion {
 		margin: 12px 0;
-		padding: 12px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
+		padding: 16px;
+		border: 1px solid var(--linea);
+		border-radius: var(--radio-panel);
+		background: var(--superficie-alta);
 	}
 	.subtitulo {
 		grid-column: 1 / -1;
 		margin: 0;
-		font-size: 1rem;
+		font-size: var(--texto-md);
 	}
 	.nota {
 		grid-column: 1 / -1;
 		margin: 0;
-		color: var(--muted);
-		font-size: 0.85rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-sm);
 	}
 	.error {
 		margin: 4px 0 0;
-		color: var(--danger);
-		font-size: 0.85rem;
+		color: var(--peligro);
+		font-size: var(--texto-sm);
 	}
 	.error.formulario {
 		grid-column: 1 / -1;
