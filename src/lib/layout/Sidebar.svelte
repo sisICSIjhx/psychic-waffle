@@ -2,8 +2,7 @@
      y cambio de tema. En ventanas estrechas se abre como panel desde la cabecera. -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { resolve } from '$app/paths';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import IconoAnimado from '$lib/components/ui/IconoAnimado.svelte';
 	import { clientesCaptura, type VistaId } from './navegacion';
 

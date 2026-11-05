@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-11-04 — Calendario animado en Programa
+
+- Vitest: 417 pruebas aprobadas en 55 archivos. Se utilizó Edge mediante una configuración temporal porque faltaba el ejecutable de Chromium de Playwright.
+
+- Se sustituyó el icono del enlace a Planeación por el calendario de useAnimations. El componente conserva un SVG de respaldo y reproduce la animación una vez al recibir el puntero o el foco. Respeta el movimiento reducido y los colores del tema.
+- Archivos: `src/lib/layout/Sidebar.svelte`, `src/lib/components/ui/IconoAnimado.svelte`, `static/iconos/calendar.json`, `package.json` y `package-lock.json`.
+- Validación: Svelte sin errores ni advertencias, ESLint de los dos componentes correcto. En Edge se comprobaron los fotogramas con puntero y teclado, el movimiento reducido y el cambio de color entre temas. El lint global reportó 121 errores en archivos ajenos al cambio.
+
 ## 2026-10-28 — Alcances predeterminados, alta de personal y script único para Supabase
 
 - Motivo: el usuario pidió un apartado para dar de alta alcances predeterminados de las partidas, divididos por proyecto; el alta de personal (nombre, apellido paterno y materno, fecha de nacimiento, proyectos con acceso y rol: líder administrativo, líder operativo, administrador o reporteador, que solo genera reportes); y un solo script con todo lo necesario para crear la base en Supabase, considerando que las fotos irán a SharePoint y la base solo guardará su URL. Nivel 3 (estructura de datos y roles): cambio OpenSpec `alcances-personal-esquema-bd` en la rama `feat/alcances-personal-bd`, apilada sobre `feat/rediseno-interfaz`. Respaldo de `storage/pglite` fuera del repositorio antes de aplicar la migración.
