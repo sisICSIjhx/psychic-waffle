@@ -11,11 +11,20 @@ export type FiltroTrabajo = (typeof FILTROS)[number];
 export const load: PageServerLoad = async ({ url }) => {
 	const repos = await datos();
 	const hoy = fechaEnZona();
+	// Consultas que no dependen de otras: arrancan juntas (con Supabase cada una es un viaje de red).
+	const sitiosPedidos = repos.catalogo.listarSitios();
+	const totalesPedidos = Promise.all([
+		repos.reportes.listar({ estado: 'borrador', tamano: 1 }),
+		repos.reportes.listar({ estado: 'en_revision', tamano: 1 })
+	]);
+	// Si otra consulta falla antes de esperarlas, su error no debe quedar como rechazo sin manejar.
+	sitiosPedidos.catch(() => undefined);
+	totalesPedidos.catch(() => undefined);
 	const programas = (await repos.programa.listarProgramas()).filter(
 		(p) => p.periodoInicio <= hoy && hoy <= p.periodoFin
 	);
 	const avances = await Promise.all(programas.map((p) => repos.programa.obtenerAvance(p.id)));
-	const sitios = new Map((await repos.catalogo.listarSitios()).map((s) => [s.id, s]));
+	const sitios = new Map((await sitiosPedidos).map((s) => [s.id, s]));
 
 	// Los borradores se buscan completos en el rango de meses con trabajo pendiente: ninguno se
 	// queda fuera por un límite y «Continuar borrador» aparece siempre que exista.
@@ -32,10 +41,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		sitio: sitios.get(t.sitioId)?.clave ?? ''
 	}));
 
-	const [totalBorradores, enRevision] = await Promise.all([
-		repos.reportes.listar({ estado: 'borrador', tamano: 1 }),
-		repos.reportes.listar({ estado: 'en_revision', tamano: 1 })
-	]);
+	const [totalBorradores, enRevision] = await totalesPedidos;
 	const ver = url.searchParams.get('ver');
 	return {
 		hoy,

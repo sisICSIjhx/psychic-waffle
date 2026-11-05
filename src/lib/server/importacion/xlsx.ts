@@ -145,8 +145,31 @@ function leerHoja(
 	return { nombre, filas, combinadas, rellenos, columnasOcultas, filasOcultas };
 }
 
+/** Tamaño máximo del archivo .xlsx que se acepta desde la interfaz (los scripts no lo aplican). */
+export const LIMITE_LIBRO_BYTES = 10 * 1024 * 1024;
+/**
+ * Tope del contenido descomprimido: un .xlsx de 10 MB con datos reales descomprime a decenas de MB;
+ * uno que declara más es una «bomba zip» y se rechaza antes de descomprimirlo.
+ */
+export const LIMITE_DESCOMPRIMIDO_BYTES = 200 * 1024 * 1024;
+
+/** Rechaza paquetes que declaran un contenido desmedido (JSZip verifica luego el tamaño real). */
+export function revisarTamanoDescomprimido(zip: JSZip, limite = LIMITE_DESCOMPRIMIDO_BYTES): void {
+	let total = 0;
+	for (const archivo of Object.values(zip.files)) {
+		// `_data` no es parte de la API pública: sin él no se revisa y se confía en el tope del archivo.
+		const tamano = (archivo as unknown as { _data?: { uncompressedSize?: number } })._data
+			?.uncompressedSize;
+		total += typeof tamano === 'number' ? tamano : 0;
+	}
+	if (total > limite) {
+		throw new Error('El libro es demasiado grande para importarlo');
+	}
+}
+
 export async function leerLibro(datos: Uint8Array | ArrayBuffer): Promise<Hoja[]> {
 	const zip = await JSZip.loadAsync(datos);
+	revisarTamanoDescomprimido(zip);
 	const leer = async (parte: string) => (await zip.file(parte)?.async('string')) ?? '';
 	const libro = await leer('xl/workbook.xml');
 	if (!libro) throw new Error('El archivo no es un libro de Excel (.xlsx) válido');

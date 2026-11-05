@@ -1,37 +1,28 @@
 // Tipos y esquemas Zod de las entidades, compartidos por cliente y servidor. Reflejan el JSON que
 // devuelven las funciones api_* de la base de datos (claves en camelCase).
 import { z } from 'zod';
+import {
+	PERIODICIDADES,
+	DISPOSICIONES,
+	TIPOS_ALCANCE,
+	FUNCIONES_FIRMA,
+	ESTADOS_REPORTE,
+	ESTADOS_VERIFICACION,
+	MOMENTOS_FOTO,
+	ROTACIONES_FOTO,
+	TIPOS_OCURRENCIA,
+	ALMACENAMIENTOS_FOTO,
+	ROLES_PERSONAL,
+	ESTADOS_EQUIPO,
+	ENTIDADES_CATALOGO,
+	ACCIONES_CATALOGO,
+	ORIGENES_CAMBIO,
+	TIPOS_AJUSTE,
+	MOTIVOS_AJUSTE
+} from './constantes.ts';
 
-export const PERIODICIDADES = [
-	'diaria',
-	'semanal',
-	'quincenal',
-	'mensual',
-	'bimestral',
-	'trimestral',
-	'cuatrimestral',
-	'semestral',
-	'anual',
-	'cuando_aplique'
-] as const;
-export const DISPOSICIONES = ['cuadricula', 'antes_durante_despues'] as const;
-export const TIPOS_ALCANCE = ['alcance', 'nota', 'norma'] as const;
-export const FUNCIONES_FIRMA = ['elaboro', 'aprobo', 'recibio'] as const;
-export const ESTADOS_REPORTE = ['borrador', 'en_revision', 'emitido', 'sustituido'] as const;
-export const ESTADOS_VERIFICACION = ['pendiente', 'ok', 'no_aplica', 'con_observacion'] as const;
-export const MOMENTOS_FOTO = ['antes', 'durante', 'despues'] as const;
-/** Giro de una foto en grados, en el sentido de las agujas del reloj. */
-export const ROTACIONES_FOTO = [0, 90, 180, 270] as const;
-export const TIPOS_OCURRENCIA = ['semana', 'quincena', 'dia'] as const;
-/** Dónde está el archivo de una foto; de SharePoint la base solo guarda la URL. */
-export const ALMACENAMIENTOS_FOTO = ['local', 'sharepoint'] as const;
-export const ROLES_PERSONAL = [
-	'administrador',
-	'lider_administrativo',
-	'lider_operativo',
-	'reporteador'
-] as const;
-export type RolPersonal = (typeof ROLES_PERSONAL)[number];
+// Las constantes viven sin Zod en constantes.ts para que el cliente no cargue Zod al usarlas.
+export * from './constantes.ts';
 
 const id = z.uuid();
 /** Fecha AAAA-MM-DD. */
@@ -80,15 +71,6 @@ export const esquemaEquipo = z.object({
 	numeroSerie: textoOpcional
 });
 export type Equipo = z.infer<typeof esquemaEquipo>;
-
-/** Estados de un equipo del catálogo; «baja» no cuenta en los indicadores. */
-export const ESTADOS_EQUIPO = [
-	'en_servicio',
-	'fuera_de_servicio',
-	'fuera_de_operacion',
-	'baja'
-] as const;
-export type EstadoEquipo = (typeof ESTADOS_EQUIPO)[number];
 
 /** Campos del catálogo de equipos (Excel) que se capturan; comunes a la ficha y a la importación. */
 const camposCatalogoEquipo = {
@@ -163,11 +145,6 @@ export const esquemaFirmantesVigentes = z.object({
 	recibio: esquemaFirmante.nullable()
 });
 export type FirmantesVigentes = z.infer<typeof esquemaFirmantesVigentes>;
-
-// Bitácora del catálogo (cambio edicion-contratos-bitacora).
-export const ENTIDADES_CATALOGO = ['contrato', 'sitio', 'firmante', 'contrato_sitio'] as const;
-export const ACCIONES_CATALOGO = ['crear', 'editar', 'reemplazar', 'asociar', 'quitar'] as const;
-export const ORIGENES_CAMBIO = ['interfaz', 'script'] as const;
 
 export const esquemaCambioCampo = z.object({
 	campo: z.string(),
@@ -383,27 +360,6 @@ export const esquemaPrograma = z.object({
 	meses: z.array(fecha)
 });
 export type Programa = z.infer<typeof esquemaPrograma>;
-
-// Ajustes del programa (cambio tablero-cumplimiento): el plan original no cambia; lo reprogramado y
-// lo no ejecutado se registran aparte.
-export const TIPOS_AJUSTE = ['reprogramado', 'no_ejecutado'] as const;
-export const MOTIVOS_AJUSTE = [
-	'cliente_operacion',
-	'clima',
-	'materiales_refacciones',
-	'acceso_permisos',
-	'personal',
-	'otro'
-] as const;
-export type MotivoAjuste = (typeof MOTIVOS_AJUSTE)[number];
-export const ETIQUETA_MOTIVO_AJUSTE: Record<MotivoAjuste, string> = {
-	cliente_operacion: 'Cliente u operación',
-	clima: 'Clima',
-	materiales_refacciones: 'Materiales o refacciones',
-	acceso_permisos: 'Acceso o permisos',
-	personal: 'Personal',
-	otro: 'Otro'
-};
 
 export const esquemaAjuste = z.object({
 	id,

@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-11-05 contra los archivos locales (rama `claude/gracious-fermi-mipx0k`).
+Verificado el 2026-11-05 contra los archivos locales (rama `claude/zen-bardeen-akcla7`).
 
 ## Producto y arquitectura
 
@@ -15,6 +15,9 @@ Verificado el 2026-11-05 contra los archivos locales (rama `claude/gracious-ferm
 - Capas:
   - `src/lib/dominio/`: reglas puras compartidas (esquemas Zod, documento, captura, planeación,
     fechas en la zona America/Mexico_City, textos de la interfaz).
+  - Seguridad web: CSP en `svelte.config.js` (`kit.csp`, hash del script del tema de `app.html`) y
+    encabezados y `handleError` en `src/hooks.server.ts`. Constantes del dominio sin Zod en
+    `dominio/constantes.ts` (el navegador no descarga Zod; `esquemas.ts` las reexporta).
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
     resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
@@ -67,6 +70,7 @@ Verificado el 2026-11-05 contra los archivos locales (rama `claude/gracious-ferm
 | Cambios en curso               | openspec/changes/ (rmt-01 en cierre; ux-editor-inicio-captura)      |
 | Revisiones con Codex           | docs/revisiones/fase-N.md y ux-fase-X.md                            |
 | Propuesta técnica y pendientes | docs/PROPUESTA_TECNOLOGICA_Y_PENDIENTES.md                          |
+| Rendimiento, seguridad, ideas  | docs/OPTIMIZACION_SEGURIDAD_Y_PROPUESTAS.md                         |
 | Plan de diseño UI/UX           | docs/PLAN_DISENO_UX.md                                              |
 | Validación                     | npm run check, npm run lint, npm run test (raíz)                    |
 | Decisiones anteriores          | Buscar por tema en HISTORIAL.md                                     |
@@ -103,6 +107,9 @@ Verificado el 2026-11-05 contra los archivos locales (rama `claude/gracious-ferm
 - Cambio `catalogo-equipos-proyecto` (2026-11-05, migración 0021): módulo «Equipos» sobre la tabla
   `equipos` ampliada (TAG único por sitio y nombre); falta importar el Excel real en la base de
   trabajo.
+- Rendimiento y seguridad (2026-11-05): JavaScript por página −65 a −73 %, DOCX con `noSandbox`,
+  giradas guardadas, generación compartida y precalentada; CSP, encabezados y permisos completos en
+  el catálogo. Detalle y 10 propuestas en `docs/OPTIMIZACION_SEGURIDAD_Y_PROPUESTAS.md`.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); carga del
   histórico antes de usar el tablero; proyecto de
   Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue

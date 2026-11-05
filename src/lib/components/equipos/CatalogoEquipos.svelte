@@ -6,13 +6,13 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import type { SubmitFunction } from '@sveltejs/kit';
-	import {
-		ESTADOS_EQUIPO,
-		type Cliente,
-		type EquipoCatalogo,
-		type EstadoEquipo,
-		type ResultadoImportacionEquipos,
-		type Sitio
+	import { ESTADOS_EQUIPO } from '$lib/dominio/constantes';
+	import type {
+		Cliente,
+		EquipoCatalogo,
+		EstadoEquipo,
+		ResultadoImportacionEquipos,
+		Sitio
 	} from '$lib/dominio/esquemas';
 	import {
 		csvEquipos,
