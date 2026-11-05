@@ -3,6 +3,8 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { base } from '$app/paths';
+	import IconoAnimado from '$lib/components/ui/IconoAnimado.svelte';
 	import { clientesCaptura, type VistaId } from './navegacion';
 
 	export let activeView: VistaId | null = 'dashboard';
@@ -112,17 +114,34 @@
 				title={destino.titulo}
 				on:click={() => navigate(destino.vista)}
 			>
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.75"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
-					><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
-					{@html destino.icono}</svg
-				>
+				{#if destino.vista === 'planeacion'}
+					<IconoAnimado ruta={base + '/iconos/calendar.json'}>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.75"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -- trazo constante del calendario -->
+							{@html destino.icono}
+						</svg>
+					</IconoAnimado>
+				{:else}
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.75"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+						{@html destino.icono}</svg
+					>
+				{/if}
 				<span>{destino.etiqueta}</span>
 			</a>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
