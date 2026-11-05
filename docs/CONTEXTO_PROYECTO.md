@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-11-05 contra los archivos locales (rama `claude/gracious-fermi-mipx0k`).
+Verificado el 2026-11-05 contra los archivos locales (rama `claude/compassionate-archimedes-zwu00c`).
 
 ## Producto y arquitectura
 
@@ -24,11 +24,13 @@ Verificado el 2026-11-05 contra los archivos locales (rama `claude/gracious-ferm
     (solo URL en `reporte_fotos`).
   - `src/lib/components/`: vistas (`views/`), catálogo, editor de reportes, campos y `ui/` (diálogo,
     notificaciones con deshacer, botones segmentados, selector con búsqueda y `EncabezadoPagina`).
-    Sistema visual «Foco operativo» (propuesta A de Figma, página 03) en `src/app.css`: Inter y
-    Manrope (`@fontsource-variable`), tokens semánticos de ambos temas (contraste AA medido), riel
-    de navegación de 112 px sin cabecera en escritorio, título de cada página en su contenido
-    (`encabezadoDePagina` en `layout/navegacion.ts`), controles de 42 px y radio 6 px; tema
-    recordado (`layout/preferencias.ts`).
+    Sistema visual «Panel claro» (2026-11-05, inspirado en los kits DashStack y «SAAS Dashboard» de
+    Figma) en `src/app.css`: Nunito Sans y Manrope (`@fontsource-variable`), tokens semánticos de
+    ambos temas (contraste AA medido), riel de 240 px con barra superior (fecha, conexión y «Nuevo
+    reporte»), paneles de 14 px con sombra, insignias en píldora y fichas de icono; título de cada
+    página en su contenido (`encabezadoDePagina` en `layout/navegacion.ts`). Tema y diseño del
+    programa recordados (`layout/preferencias.ts`): el programa ofrece «Diseño original» (el anterior
+    «Foco operativo», tokens en `planeacion/diseno-original.css`).
 - Rutas: `/` «Mi trabajo» (avance del mes, tarjetas y siguiente trabajo; `?ver=`); `/planeacion`
   matriz P/R con estados de ejecución y documental y ajustes (`?vista=mensual` y `?vista=semanal`);
   `/cumplimiento` tablero de indicadores en el menú; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección

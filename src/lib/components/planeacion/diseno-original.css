@@ -1,0 +1,168 @@
+/* Diseño original del programa anual («Foco operativo», hasta el 2026-11-05), elegido con el
+   botón «Diseño original» del encabezado del programa. Reproduce los tokens globales de entonces
+   dentro del área de contenido, para que los estilos compartidos (campos, botones, insignias,
+   diálogos) y programa.css se vean como antes. El resto de la aplicación usa el diseño nuevo.
+   El atributo data-diseno-programa lo pone src/app.html antes de pintar y lo cambia PlaneacionView. */
+html[data-diseno-programa='original'] .main:has(.programa-anual) {
+	color-scheme: light;
+
+	/* Superficies, de abajo arriba. El riel de navegación tiene su propio tono. */
+	--lienzo: #f7f9f8;
+	--lienzo-riel: #edf2f1;
+	--superficie: #ffffff;
+	--superficie-alta: #edf2f1;
+	--superficie-hover: #e6eceb;
+	--superficie-flotante: #ffffff;
+	--campo-fondo: #ffffff;
+
+	/* Texto: principal, secundario, tenue (metadatos) y deshabilitado. */
+	--tinta: #202d32;
+	--tinta-secundaria: #3d4a50;
+	--tinta-tenue: #58656b;
+	--tinta-deshabilitada: #8d989d;
+
+	/* Bordes: línea (separa sin llamar la atención), fuerte (controles) y de campo (≥ 3:1). */
+	--linea: #dfe4e6;
+	--linea-fuerte: #cbd3d5;
+	--borde-campo: #8a959b;
+
+	/* Acción, selección y foco. */
+	--accion: #0b6072;
+	--accion-hover: #084d5c;
+	--accion-activa: #063e4a;
+	--accion-texto: #ffffff;
+	--accion-suave: #e2eff1;
+	--accion-suave-hover: #d2e6ea;
+	--foco: #0b6072;
+
+	/* Estados. */
+	--exito: #1b6a37;
+	--exito-fondo: #e7f3eb;
+	--exito-borde: #9dcaab;
+	--alerta: #8a5200;
+	--alerta-fondo: #fcf2df;
+	--alerta-borde: #e2bd78;
+	--peligro: #b0261d;
+	--peligro-fondo: #fbeceb;
+	--peligro-borde: #e5a49e;
+	--peligro-hover: #8f1e17;
+	--info: #245598;
+	--info-fondo: #e9eff8;
+	--info-borde: #a8bedc;
+	--neutro-fondo: #edf2f1;
+
+	--velo: rgba(15, 22, 25, 0.5);
+	/* Contorno de fotos: negro o blanco puros; un neutro teñido se ve como borde sucio. */
+	--contorno-imagen: rgba(0, 0, 0, 0.1);
+	/* Barra fija sobre contenido que se desplaza debajo. */
+	--sombra-barra: 0 6px 12px -10px rgba(32, 45, 50, 0.35);
+	--sombra-flotante:
+		0 0 0 1px rgba(32, 45, 50, 0.06), 0 4px 12px rgba(32, 45, 50, 0.1),
+		0 16px 32px -8px rgba(32, 45, 50, 0.14);
+
+	/* Escalas. Base de 4 px; texto de interfaz de 14 px y de campos de 15 px. */
+	--fuente: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+	--fuente-titulos: var(--fuente);
+	--fuente-marca: 'Manrope Variable', var(--fuente);
+	--texto-2xs: 0.6875rem;
+	--texto-xs: 0.75rem;
+	--texto-sm: 0.8125rem;
+	--texto-base: 0.875rem;
+	--texto-campo: 0.9375rem;
+	--texto-md: 1rem;
+	--texto-lg: 1.125rem;
+	--texto-xl: 1.5625rem;
+	--texto-2xl: 2rem;
+	--radio-control: 6px;
+	--radio-panel: 8px;
+	--radio-flotante: 8px;
+	/* Objetivos: 24 px mínimo (WCAG 2.5.8); 44 px con puntero táctil. */
+	--alto-control: 42px;
+	--objetivo-min: 32px;
+	--curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
+
+	/* Tokens que el diseño nuevo agregó, con el valor que tenían las reglas originales. */
+	--sombra-panel: none;
+	--borde-panel: var(--linea);
+	--sombra-boton-primario: none;
+	--radio-insignia: 4px;
+	--relleno-insignia: 2px 9px;
+	--mezcla-borde-insignia: 100%;
+	--peso-titulo: 700;
+	--peso-encabezado: 600;
+	--peso-boton: 500;
+	--peso-cabecera-tabla: 600;
+	--relleno-main: 40px;
+	--relleno-accion: var(--accion);
+	--relleno-accion-hover: var(--accion-hover);
+	--relleno-accion-activo: var(--accion-activa);
+	--relleno-accion-texto: var(--accion-texto);
+	--apariencia-select: auto;
+	--relleno-flecha-select: 12px;
+	--flecha-select: none;
+
+	/* El cuerpo ya calculó la fuente y el color con los tokens nuevos: se vuelven a aplicar aquí. */
+	background: var(--lienzo);
+	color: var(--tinta);
+	font-family: var(--fuente);
+}
+html[data-diseno-programa='original'][data-theme='dark'] .main:has(.programa-anual) {
+	color-scheme: dark;
+
+	--lienzo: #0f1417;
+	--lienzo-riel: #131a1d;
+	--superficie: #151b1e;
+	--superficie-alta: #1b2226;
+	--superficie-hover: #222b30;
+	--superficie-flotante: #1d2529;
+	--campo-fondo: #0c1113;
+
+	--tinta: #e4eaec;
+	--tinta-secundaria: #b4bfc4;
+	--tinta-tenue: #8f9ca2;
+	--tinta-deshabilitada: #5f6b71;
+
+	--linea: #252e33;
+	--linea-fuerte: #344046;
+	--borde-campo: #6c7a81;
+
+	--accion: #68c2cf;
+	--accion-hover: #8dd3dd;
+	--accion-activa: #a9dfe6;
+	--accion-texto: #0a1a1d;
+	--accion-suave: #1a3036;
+	--accion-suave-hover: #213d44;
+	--foco: #68c2cf;
+
+	--exito: #6fcf8f;
+	--exito-fondo: #14271c;
+	--exito-borde: #2f5a3d;
+	--alerta: #efb75a;
+	--alerta-fondo: #2a2111;
+	--alerta-borde: #6b5223;
+	--peligro: #f2877d;
+	--peligro-fondo: #2f1715;
+	--peligro-borde: #6e302b;
+	--peligro-hover: #f6a39b;
+	--info: #8fb5ea;
+	--info-fondo: #152135;
+	--info-borde: #34507a;
+	--neutro-fondo: #222a2e;
+
+	--velo: rgba(0, 0, 0, 0.6);
+	--contorno-imagen: rgba(255, 255, 255, 0.1);
+	--sombra-barra: 0 8px 16px -10px rgba(0, 0, 0, 0.7);
+	--sombra-flotante: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+@media (pointer: coarse) {
+	html[data-diseno-programa='original'] .main:has(.programa-anual) {
+		--alto-control: 44px;
+		--objetivo-min: 44px;
+	}
+}
+@media (max-width: 768px) {
+	html[data-diseno-programa='original'] .main:has(.programa-anual) {
+		--relleno-main: 20px;
+	}
+}
