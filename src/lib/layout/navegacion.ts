@@ -7,6 +7,7 @@ export type VistaId =
 	| 'captura'
 	| 'historial'
 	| 'catalogo'
+	| 'equipos'
 	| 'personal'
 	| 'perfil';
 
@@ -17,6 +18,7 @@ export const routesByView = {
 	captura: '/captura',
 	historial: '/historial',
 	catalogo: '/catalogo',
+	equipos: '/equipos',
 	personal: '/personal',
 	perfil: '/perfil'
 } as const satisfies Record<VistaId, string>;
@@ -28,6 +30,7 @@ export const titulosPorVista: Record<VistaId, string> = {
 	captura: 'Capturar reporte',
 	historial: 'Historial de reportes',
 	catalogo: 'Catálogo de contratos',
+	equipos: 'Catálogo de equipos',
 	personal: 'Personal',
 	perfil: 'Mi Perfil'
 };
@@ -40,6 +43,7 @@ const cejasPorVista: Record<VistaId, string> = {
 	captura: 'Capturar / Nuevo reporte',
 	historial: 'Consulta / Historial',
 	catalogo: 'Consulta / Catálogo',
+	equipos: 'Consulta / Equipos',
 	personal: 'Administración',
 	perfil: 'Cuenta'
 };
@@ -84,19 +88,27 @@ export type EncabezadoPagina = { ceja: string | null; titulo: string };
 
 /**
  * Encabezado que el layout pone sobre la página. El editor y el programa traen el suyo (con estado
- * y acciones) y devuelven null; las páginas internas del catálogo y del personal llevan migas en lugar
- * de ceja.
+ * y acciones) y devuelven null; las páginas internas del catálogo, de los equipos y del personal
+ * llevan migas en lugar de ceja.
  */
 export function encabezadoDePagina(
 	pathname: string,
 	cliente: string | null = null,
-	datos: { contrato?: string | null; partida?: string | null; persona?: string | null } = {}
+	datos: {
+		contrato?: string | null;
+		partida?: string | null;
+		persona?: string | null;
+		equipo?: string | null;
+	} = {}
 ): EncabezadoPagina | null {
 	const vista = vistaDesdeRuta(pathname);
 	const [, primero, segundo] = pathname.split('/');
 	if (vista === null || primero === 'reportes' || vista === 'planeacion') return null;
 	if (vista === 'catalogo' && segundo === 'contratos') {
 		return { ceja: null, titulo: datos.contrato ? `Contrato ${datos.contrato}` : 'Contrato' };
+	}
+	if (vista === 'equipos' && segundo) {
+		return { ceja: null, titulo: datos.equipo ? `Equipo ${datos.equipo}` : 'Nuevo equipo' };
 	}
 	if (vista === 'personal' && segundo) {
 		return { ceja: null, titulo: datos.persona || 'Nueva persona' };

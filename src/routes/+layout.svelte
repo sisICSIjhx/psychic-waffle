@@ -35,11 +35,13 @@
 		contrato?: { numero?: string };
 		partida?: { numero?: string };
 		persona?: Parameters<typeof nombreCompleto>[0] | null;
+		equipo?: { tag?: string } | null;
 	};
 	$: encabezado = encabezadoDePagina(pathname, cliente, {
 		contrato: datosPagina.contrato?.numero,
 		partida: datosPagina.partida?.numero,
-		persona: datosPagina.persona ? nombreCompleto(datosPagina.persona) : null
+		persona: datosPagina.persona ? nombreCompleto(datosPagina.persona) : null,
+		equipo: datosPagina.equipo?.tag ?? null
 	});
 
 	onMount(() => {
