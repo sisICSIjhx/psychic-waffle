@@ -36,34 +36,53 @@
 				: trabajo;
 	$: mostrados = ver ? filtrados : filtrados.slice(0, MOSTRADOS);
 	$: restantes = filtrados.length - mostrados.length;
+	/** Trazos de las fichas de icono de los contadores (24 × 24, línea de 2 px). */
+	const ICONOS = {
+		reloj: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+		calendario:
+			'<path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+		borrador:
+			'<path d="M12 20h9"/><path d="M16.38 3.62a1 1 0 0 1 3 3L7.37 18.64a2 2 0 0 1-.86.5l-2.87.84a.5.5 0 0 1-.62-.62l.84-2.87a2 2 0 0 1 .5-.86z"/>',
+		revision:
+			'<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>'
+	};
+
 	$: tarjetas = [
 		{
 			clave: 'vencidos',
 			valor: resumen.vencidas,
 			etiqueta: 'Pendientes vencidos',
 			destino: `${resolve('/')}?ver=vencidos#siguiente-trabajo`,
-			peligro: resumen.vencidas > 0
+			peligro: resumen.vencidas > 0,
+			tono: 'rosa',
+			icono: ICONOS.reloj
 		},
 		{
 			clave: 'mes',
 			valor: resumen.pendientes,
 			etiqueta: 'Pendientes del mes',
 			destino: `${resolve('/')}?ver=mes#siguiente-trabajo`,
-			peligro: false
+			peligro: false,
+			tono: 'azul',
+			icono: ICONOS.calendario
 		},
 		{
 			clave: 'borradores',
 			valor: borradores,
 			etiqueta: 'Borradores abiertos',
 			destino: `${resolve('/historial')}?estado=borrador`,
-			peligro: false
+			peligro: false,
+			tono: 'ambar',
+			icono: ICONOS.borrador
 		},
 		{
 			clave: 'revision',
 			valor: enRevision,
 			etiqueta: 'En revisión',
 			destino: `${resolve('/historial')}?estado=en_revision`,
-			peligro: false
+			peligro: false,
+			tono: 'violeta',
+			icono: ICONOS.revision
 		}
 	];
 
@@ -116,7 +135,23 @@
 	<ul class="tarjetas" aria-label="Resumen del trabajo">
 		{#each tarjetas as tarjeta (tarjeta.clave)}
 			<li>
-				<a class="tarjeta" class:peligro={tarjeta.peligro} href={tarjeta.destino}>
+				<a
+					class="tarjeta tono-{tarjeta.tono}"
+					class:peligro={tarjeta.peligro}
+					href={tarjeta.destino}
+				>
+					<span class="ficha" aria-hidden="true"
+						><svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+							{@html tarjeta.icono}</svg
+						></span
+					>
 					<span class="valor cifra">{tarjeta.valor}</span>
 					<span class="etiqueta">
 						{#if tarjeta.peligro}<svg
@@ -251,7 +286,7 @@
 	}
 	.realizadas {
 		font-size: var(--texto-xl);
-		font-weight: 700;
+		font-weight: 800;
 		color: var(--tinta);
 		letter-spacing: -0.02em;
 	}
@@ -264,10 +299,10 @@
 		appearance: none;
 		display: block;
 		width: 100%;
-		height: 6px;
-		margin: 10px 0 8px;
+		height: 8px;
+		margin: 12px 0 8px;
 		border: none;
-		border-radius: 3px;
+		border-radius: 999px;
 		overflow: hidden;
 		background: var(--neutro-fondo);
 		color: var(--accion);
@@ -276,41 +311,85 @@
 		background: var(--neutro-fondo);
 	}
 	.barra-avance::-webkit-progress-value {
+		border-radius: 999px;
 		background: var(--accion);
 	}
 	.barra-avance::-moz-progress-bar {
+		border-radius: 999px;
 		background: var(--accion);
 	}
 	.sin-programa {
 		margin-bottom: 16px;
 	}
+	/* Contadores como las tarjetas de DashStack: cifra grande, etiqueta y ficha de icono a la derecha. */
 	.tarjetas {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 4px;
+		gap: 16px;
 		list-style: none;
-		margin: 16px -12px -8px;
-		padding: 12px 0 0;
-		border-top: 1px solid var(--linea);
+		margin: 20px 0 0;
+		padding: 0;
 	}
 	.tarjeta {
+		--ficha: var(--ficha-azul);
+		--ficha-icono: var(--ficha-azul-icono);
 		display: grid;
-		gap: 2px;
-		padding: 8px 12px;
-		border-radius: var(--radio-control);
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas:
+			'valor ficha'
+			'etiqueta ficha';
+		align-items: center;
+		gap: 4px 12px;
+		height: 100%;
+		padding: 18px 20px;
+		border: 1px solid var(--linea);
+		border-radius: var(--radio-panel);
 		color: var(--tinta);
-		transition: background-color 0.12s var(--curva-salida);
+		transition:
+			background-color 0.12s var(--curva-salida),
+			border-color 0.12s var(--curva-salida),
+			box-shadow 0.12s var(--curva-salida);
 	}
 	.tarjeta:hover {
-		background: var(--superficie-hover);
+		border-color: transparent;
+		background: var(--superficie);
+		box-shadow: var(--sombra-panel);
+	}
+	.tono-rosa {
+		--ficha: var(--ficha-rosa);
+		--ficha-icono: var(--ficha-rosa-icono);
+	}
+	.tono-ambar {
+		--ficha: var(--ficha-ambar);
+		--ficha-icono: var(--ficha-ambar-icono);
+	}
+	.tono-violeta {
+		--ficha: var(--ficha-violeta);
+		--ficha-icono: var(--ficha-violeta-icono);
+	}
+	.ficha {
+		grid-area: ficha;
+		display: grid;
+		place-items: center;
+		width: 52px;
+		height: 52px;
+		border-radius: 16px;
+		background: var(--ficha);
+		color: var(--ficha-icono);
+	}
+	.ficha svg {
+		width: 24px;
+		height: 24px;
 	}
 	.valor {
-		font-size: var(--texto-xl);
-		font-weight: 600;
+		grid-area: valor;
+		font-size: 1.75rem;
+		font-weight: 800;
 		line-height: 1.15;
 		letter-spacing: -0.02em;
 	}
 	.etiqueta {
+		grid-area: etiqueta;
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
@@ -329,7 +408,12 @@
 	.peligro .etiqueta {
 		font-weight: 600;
 	}
+	.peligro {
+		border-color: var(--peligro-borde);
+		background: var(--peligro-fondo);
+	}
 	.peligro:hover {
+		border-color: var(--peligro-borde);
 		background: var(--peligro-fondo);
 	}
 	.cabecera-lista {
@@ -414,6 +498,27 @@
 	@media (max-width: 768px) {
 		.tarjetas {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 12px;
+		}
+		/* En dos columnas estrechas la ficha pasa arriba para no tapar la etiqueta. */
+		.tarjeta {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-areas:
+				'ficha'
+				'valor'
+				'etiqueta';
+			justify-items: start;
+			padding: 14px 16px;
+		}
+		.ficha {
+			width: 40px;
+			height: 40px;
+			margin-bottom: 6px;
+			border-radius: 12px;
+		}
+		.ficha svg {
+			width: 20px;
+			height: 20px;
 		}
 	}
 </style>
