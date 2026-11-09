@@ -1,5 +1,6 @@
-<!-- Riel de navegación persistente: marca, destinos con icono sobre la etiqueta, captura por cliente
-     y cambio de tema. En ventanas estrechas se abre como panel desde la cabecera. -->
+<!-- Riel de navegación persistente: marca, destinos en filas con icono y etiqueta (el activo en una
+     píldora del acento, como en DashStack), captura por cliente y cambio de tema. En ventanas
+     estrechas se abre como panel desde la cabecera. -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { resolve } from '$app/paths';
@@ -102,10 +103,23 @@
 
 <aside id="menu-principal" class="sidebar" class:mobile-open={isMobileOpen}>
 	<a class="marca" href={resolve('/')} on:click={() => navigate('dashboard')}>
-		<span class="marca-icsi">ICSI</span>
-		<span class="marca-producto">Reportes</span>
+		<span class="logo" aria-hidden="true">
+			<svg
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2.25"
+				stroke-linecap="round"
+				stroke-linejoin="round"><path d="M4 18 9.5 11l4 4L20 6" /><path d="M15 6h5v5" /></svg
+			>
+		</span>
+		<span class="marca-texto">
+			<span class="marca-icsi">ICSI</span>
+			<span class="marca-producto">Reportes</span>
+		</span>
 	</a>
 
+	<p class="titulo-seccion" aria-hidden="true">Menú</p>
 	<nav class="nav" aria-label="Navegación principal">
 		{#each DESTINOS as destino (destino.vista)}
 			{@const activo =
@@ -127,7 +141,7 @@
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
-							stroke-width="1.75"
+							stroke-width="2"
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							aria-hidden="true"
@@ -141,7 +155,7 @@
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
-						stroke-width="1.75"
+						stroke-width="2"
 						stroke-linecap="round"
 						stroke-linejoin="round"
 						aria-hidden="true"
@@ -169,7 +183,8 @@
 						class:active={activo}
 						aria-current={activo ? 'page' : undefined}
 						title={`Capturar reporte: ${cliente.etiqueta}`}
-						on:click={() => navigate('captura', cliente.clave)}>{cliente.etiqueta}</a
+						on:click={() => navigate('captura', cliente.clave)}
+						><span class="punto-cliente" aria-hidden="true"></span>{cliente.etiqueta}</a
 					>
 					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				</li>
@@ -211,6 +226,9 @@
 					aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg
 				>
 			{/if}
+			<span class="texto-tema" aria-hidden="true"
+				>{theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}</span
+			>
 		</button>
 	</div>
 </aside>
@@ -220,87 +238,148 @@
 		grid-area: sidebar;
 		display: flex;
 		flex-direction: column;
-		gap: 26px;
+		gap: 8px;
 		height: 100%;
-		padding: 26px 12px 16px;
+		padding: 20px 16px 16px;
 		overflow-x: hidden;
 		overflow-y: auto;
 		z-index: 50;
+		border-right: 1px solid var(--linea);
 		background: var(--lienzo-riel);
 	}
 	.marca {
-		display: grid;
-		justify-items: start;
-		gap: 2px;
-		padding: 0 4px;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin: 0 0 16px;
+		padding: 4px 8px;
 		border-radius: var(--radio-control);
 		color: var(--tinta);
 	}
+	.logo {
+		display: grid;
+		place-items: center;
+		flex-shrink: 0;
+		width: 38px;
+		height: 38px;
+		border-radius: 12px;
+		background: var(--relleno-accion);
+		color: var(--relleno-accion-texto);
+		box-shadow: var(--sombra-boton-primario);
+	}
+	.logo svg {
+		width: 20px;
+		height: 20px;
+	}
+	.marca-texto {
+		display: grid;
+		gap: 1px;
+	}
 	.marca-icsi {
 		font-family: var(--fuente-marca);
-		font-size: var(--texto-xl);
+		font-size: 1.25rem;
 		font-weight: 800;
-		line-height: 1.1;
+		line-height: 1.05;
 		letter-spacing: -0.01em;
 		color: var(--accion);
 	}
 	.marca-producto {
-		font-size: 0.625rem;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-2xs);
 		font-weight: 700;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.titulo-seccion,
+	.titulo-clientes {
+		margin: 8px 0 4px;
+		padding: 0 12px;
+		color: var(--tinta-tenue);
+		font-size: var(--texto-2xs);
+		font-weight: 700;
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
 	}
 	.nav {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 4px;
 	}
-	/* Destino: icono sobre la etiqueta, centrados; el activo con fondo de selección suave. */
+	/* Destino: fila con icono y etiqueta; el activo en píldora del acento con su barra a la izquierda. */
 	.nav-item {
+		position: relative;
 		display: flex;
-		flex-direction: column;
 		align-items: center;
-		gap: 7px;
-		padding: 12px 4px;
-		border-radius: var(--radio-control);
-		color: var(--tinta);
-		font-size: var(--texto-2xs);
+		gap: 14px;
+		min-height: 46px;
+		padding: 10px 14px;
+		border-radius: 10px;
+		color: var(--tinta-secundaria);
+		font-size: var(--texto-base);
 		font-weight: 600;
 		line-height: 1.3;
-		text-align: center;
 		transition:
 			background-color 0.12s var(--curva-salida),
 			color 0.12s var(--curva-salida);
 	}
 	.nav-item:hover {
 		background: var(--superficie-hover);
+		color: var(--tinta);
 	}
-	.nav-item.active,
+	.nav-item.active {
+		background: var(--relleno-accion);
+		color: var(--relleno-accion-texto);
+		box-shadow: var(--sombra-boton-primario);
+	}
+	.nav-item.active::before {
+		content: '';
+		position: absolute;
+		top: 6px;
+		bottom: 6px;
+		left: -16px;
+		width: 4px;
+		border-radius: 0 4px 4px 0;
+		background: var(--relleno-accion);
+	}
 	.nav-item.en-seccion {
 		background: var(--accion-suave);
-	}
-	.nav-item.active svg,
-	.nav-item.en-seccion svg {
 		color: var(--accion);
 	}
 	.nav-item svg {
 		width: 20px;
 		height: 20px;
 		flex-shrink: 0;
-		color: var(--tinta-secundaria);
+		color: var(--tinta-tenue);
+	}
+	.nav-item:hover svg {
+		color: var(--tinta);
+	}
+	.nav-item.active svg {
+		color: var(--relleno-accion-texto);
+	}
+	.nav-item.en-seccion svg {
+		color: var(--accion);
+	}
+	/* El icono animado del programa trae su propio color; aquí sigue al de la fila. */
+	.nav-item :global(.icono) {
+		color: var(--tinta-tenue);
+	}
+	.nav-item.active :global(.icono) {
+		color: var(--relleno-accion-texto);
+	}
+	.nav-item.en-seccion :global(.icono) {
+		color: var(--accion);
 	}
 	.captura-clientes {
 		display: grid;
-		gap: 4px;
-		padding: 0 4px;
-	}
-	.titulo-clientes {
-		margin: 0;
-		color: var(--tinta-tenue);
-		font-size: 0.625rem;
+		gap: 2px;
+		margin-top: 8px;
+		padding-top: 12px;
+		border-top: 1px solid var(--linea);
 	}
 	.captura-clientes ul {
 		display: grid;
+		gap: 2px;
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -308,33 +387,57 @@
 	.cliente {
 		display: flex;
 		align-items: center;
-		min-height: 24px;
-		color: var(--accion);
-		font-size: var(--texto-2xs);
-		text-underline-offset: 3px;
+		gap: 12px;
+		min-height: 36px;
+		padding: 6px 14px;
+		border-radius: 10px;
+		color: var(--tinta-secundaria);
+		font-size: var(--texto-sm);
+		font-weight: 600;
+		transition: background-color 0.12s var(--curva-salida);
 	}
 	.cliente:hover {
-		text-decoration: underline;
+		background: var(--superficie-hover);
+		color: var(--tinta);
 	}
 	.cliente.active {
+		background: var(--accion-suave);
+		color: var(--accion);
 		font-weight: 700;
-		text-decoration: underline;
-		text-decoration-thickness: 2px;
+	}
+	/* Cada cliente con su punto de color, como las etiquetas de DashStack. */
+	.punto-cliente {
+		flex-shrink: 0;
+		width: 8px;
+		height: 8px;
+		margin: 0 6px;
+		border-radius: 50%;
+		background: var(--ficha-azul-icono);
+	}
+	li:nth-child(2) .punto-cliente {
+		background: var(--ficha-verde-icono);
+	}
+	li:nth-child(3) .punto-cliente {
+		background: var(--ficha-rosa-icono);
 	}
 	.sidebar-footer {
 		display: flex;
 		margin-top: auto;
-		padding: 0 4px;
+		padding-top: 12px;
+		border-top: 1px solid var(--linea);
 	}
 	.btn-icon {
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		width: 100%;
+		min-height: 44px;
+		padding: 8px 14px;
 		border: none;
-		border-radius: var(--radio-control);
+		border-radius: 10px;
 		background: transparent;
-		color: var(--tinta-tenue);
+		color: var(--tinta-secundaria);
+		font-weight: 600;
 		cursor: pointer;
 		transition:
 			background-color 0.12s var(--curva-salida),
@@ -345,32 +448,18 @@
 		color: var(--tinta);
 	}
 	.btn-icon svg {
-		width: 18px;
-		height: 18px;
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
 	}
 	@media (pointer: coarse) {
 		.cliente {
 			min-height: 44px;
 		}
 	}
-	/* Como panel móvil hay ancho de sobra: cada destino es una fila con icono y etiqueta. */
 	@media (max-width: 768px) {
-		.nav {
-			gap: 2px;
-		}
-		.nav-item {
-			flex-direction: row;
-			gap: 12px;
-			min-height: 44px;
-			padding: 8px 12px;
-			font-size: var(--texto-base);
-			text-align: left;
-		}
-		.cliente {
-			font-size: var(--texto-base);
-		}
-		.titulo-clientes {
-			font-size: var(--texto-xs);
+		.nav-item.active::before {
+			display: none;
 		}
 	}
 </style>

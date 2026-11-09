@@ -17,6 +17,8 @@
 		type Tema
 	} from '$lib/layout/preferencias';
 
+	// Nunito Sans: interfaz. Inter: diseño original del programa. Manrope: marca.
+	import '@fontsource-variable/nunito-sans';
 	import '@fontsource-variable/inter';
 	import '@fontsource-variable/manrope';
 	import '../app.css';

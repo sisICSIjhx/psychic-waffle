@@ -1,72 +1,95 @@
 /* =========================================
-   ICSI Reportes · sistema visual «Foco operativo» (propuesta A en Figma, página 03)
-   Resolver lo pendiente sin perder el contexto: un riel de navegación persistente, el título de cada
-   página dentro del contenido y acciones reunidas junto a lo que se edita. Neutros verdosos de
-   croma bajo, un solo acento «petróleo» (#0B6072) para acción, foco y selección, y semánticos solo
-   para estados (guardado/ejecutado, pendiente prioritario, error de campo). Inter para la interfaz y
-   Manrope para la marca. Base 14–16 px, controles de 42 px, espaciado 8/16/24/32 y radio 6 px.
-   Contraste medido (WCAG 2.2 AA) en los dos temas: texto ≥ 4.5:1 sobre lienzo, superficie y riel;
-   bordes de campo ≥ 3:1; texto semántico ≥ 4.5:1 sobre su fondo.
+   ICSI Reportes · sistema visual «Panel claro» (2026-11-05)
+   Inspirado en los kits DashStack y «SAAS Dashboard» de Figma: lienzo gris azulado, paneles blancos
+   muy redondeados con sombra suave y sin borde, un acento azul para acción, foco y selección, fichas
+   de icono en tonos tenues e insignias en píldora. Nunito Sans para la interfaz y Manrope para la
+   marca. Base 14–16 px, controles de 42 px, espaciado 8/16/24/32, radio 8 px en controles y 14 px
+   en paneles. Contraste medido (WCAG 2.2 AA) en los dos temas: texto ≥ 4.5:1 sobre lienzo,
+   superficie y riel; bordes de campo ≥ 3:1; texto semántico ≥ 4.5:1 sobre su fondo.
+   El diseño anterior («Foco operativo») se conserva solo para el programa anual, como opción del
+   usuario: sus tokens están en src/lib/components/planeacion/diseno-original.css.
    ========================================= */
 :root {
 	color-scheme: light;
 
-	/* Superficies, de abajo arriba. El riel de navegación tiene su propio tono. */
-	--lienzo: #f7f9f8;
-	--lienzo-riel: #edf2f1;
+	/* Superficies, de abajo arriba. El riel de navegación y la barra superior son blancos. */
+	--lienzo: #f5f6fa;
+	--lienzo-riel: #ffffff;
 	--superficie: #ffffff;
-	--superficie-alta: #edf2f1;
-	--superficie-hover: #e6eceb;
+	--superficie-alta: #f1f4f9;
+	--superficie-hover: #eef1f7;
 	--superficie-flotante: #ffffff;
 	--campo-fondo: #ffffff;
 
 	/* Texto: principal, secundario, tenue (metadatos) y deshabilitado. */
-	--tinta: #202d32;
-	--tinta-secundaria: #3d4a50;
-	--tinta-tenue: #58656b;
-	--tinta-deshabilitada: #8d989d;
+	--tinta: #202224;
+	--tinta-secundaria: #4a5160;
+	--tinta-tenue: #5c6370;
+	--tinta-deshabilitada: #a6abb5;
 
 	/* Bordes: línea (separa sin llamar la atención), fuerte (controles) y de campo (≥ 3:1). */
-	--linea: #dfe4e6;
-	--linea-fuerte: #cbd3d5;
-	--borde-campo: #8a959b;
+	--linea: #e8ebf0;
+	--linea-fuerte: #d5d9e2;
+	--borde-campo: #8c93a1;
 
 	/* Acción, selección y foco. */
-	--accion: #0b6072;
-	--accion-hover: #084d5c;
-	--accion-activa: #063e4a;
+	--accion: #3563e9;
+	--accion-hover: #2a52cc;
+	--accion-activa: #2243aa;
 	--accion-texto: #ffffff;
-	--accion-suave: #e2eff1;
-	--accion-suave-hover: #d2e6ea;
-	--foco: #0b6072;
+	--accion-suave: #ebf1ff;
+	--accion-suave-hover: #dce6ff;
+	--foco: #3563e9;
+	/* Relleno de acción (botón primario, destino activo, logo): en oscuro, azul intenso con blanco. */
+	--relleno-accion: var(--accion);
+	--relleno-accion-hover: var(--accion-hover);
+	--relleno-accion-activo: var(--accion-activa);
+	--relleno-accion-texto: var(--accion-texto);
 
-	/* Estados. */
-	--exito: #1b6a37;
-	--exito-fondo: #e7f3eb;
-	--exito-borde: #9dcaab;
-	--alerta: #8a5200;
-	--alerta-fondo: #fcf2df;
-	--alerta-borde: #e2bd78;
-	--peligro: #b0261d;
-	--peligro-fondo: #fbeceb;
-	--peligro-borde: #e5a49e;
-	--peligro-hover: #8f1e17;
-	--info: #245598;
-	--info-fondo: #e9eff8;
-	--info-borde: #a8bedc;
-	--neutro-fondo: #edf2f1;
+	/* Estados (fondos tenues como las insignias de los kits). */
+	--exito: #007a62;
+	--exito-fondo: #e0f7f2;
+	--exito-borde: #8fd9c7;
+	--alerta: #a85400;
+	--alerta-fondo: #fff1e0;
+	--alerta-borde: #f5c58f;
+	--peligro: #c42b2b;
+	--peligro-fondo: #fdeaea;
+	--peligro-borde: #f2a7a7;
+	--peligro-hover: #a12020;
+	--info: #5b2ad6;
+	--info-fondo: #efe8ff;
+	--info-borde: #c8b5fa;
+	--neutro-fondo: #eef1f7;
 
-	--velo: rgba(15, 22, 25, 0.5);
+	--velo: rgba(17, 24, 39, 0.45);
 	/* Contorno de fotos: negro o blanco puros; un neutro teñido se ve como borde sucio. */
 	--contorno-imagen: rgba(0, 0, 0, 0.1);
 	/* Barra fija sobre contenido que se desplaza debajo. */
-	--sombra-barra: 0 6px 12px -10px rgba(32, 45, 50, 0.35);
+	--sombra-barra: 0 6px 16px -10px rgba(28, 39, 76, 0.3);
 	--sombra-flotante:
-		0 0 0 1px rgba(32, 45, 50, 0.06), 0 4px 12px rgba(32, 45, 50, 0.1),
-		0 16px 32px -8px rgba(32, 45, 50, 0.14);
+		0 0 0 1px rgba(28, 39, 76, 0.05), 0 8px 24px rgba(28, 39, 76, 0.12),
+		0 20px 40px -12px rgba(28, 39, 76, 0.16);
+	/* Paneles: sombra muy suave en lugar de borde. */
+	--sombra-panel: 0 4px 24px rgba(28, 39, 76, 0.05), 0 1px 2px rgba(28, 39, 76, 0.04);
+	--borde-panel: transparent;
+	--sombra-boton-primario: 0 6px 14px -6px rgba(53, 99, 233, 0.55);
+
+	/* Fichas de icono de los indicadores: fondo tenue y trazo del mismo tono. */
+	--ficha-azul: #e5edff;
+	--ficha-azul-icono: #3563e9;
+	--ficha-violeta: #ece7ff;
+	--ficha-violeta-icono: #6d4ae8;
+	--ficha-ambar: #fff3d6;
+	--ficha-ambar-icono: #c27c00;
+	--ficha-verde: #d9f7ee;
+	--ficha-verde-icono: #00936f;
+	--ficha-rosa: #ffe4dc;
+	--ficha-rosa-icono: #e5533d;
 
 	/* Escalas. Base de 4 px; texto de interfaz de 14 px y de campos de 15 px. */
-	--fuente: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+	--fuente:
+		'Nunito Sans Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
 	--fuente-titulos: var(--fuente);
 	--fuente-marca: 'Manrope Variable', var(--fuente);
 	--texto-2xs: 0.6875rem;
@@ -78,10 +101,21 @@
 	--texto-lg: 1.125rem;
 	--texto-xl: 1.5625rem;
 	--texto-2xl: 2rem;
-	--radio-control: 6px;
-	--radio-panel: 8px;
-	--radio-flotante: 8px;
-	--sidebar-w: 112px;
+	--peso-titulo: 800;
+	--peso-encabezado: 700;
+	--peso-boton: 700;
+	--peso-cabecera-tabla: 700;
+	--radio-control: 8px;
+	--radio-panel: 14px;
+	--radio-flotante: 14px;
+	/* Insignias en píldora sin borde; el diseño original usa 4 px con borde (mezcla al 100 %). */
+	--radio-insignia: 999px;
+	--relleno-insignia: 2px 10px;
+	--mezcla-borde-insignia: 0%;
+	--sidebar-w: 240px;
+	--apariencia-select: none;
+	--relleno-flecha-select: 38px;
+	--flecha-select: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235c6370' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 	/* Objetivos: 24 px mínimo (WCAG 2.5.8); 44 px con puntero táctil. */
 	--alto-control: 42px;
 	--objetivo-min: 32px;
@@ -91,50 +125,69 @@
 html[data-theme='dark'] {
 	color-scheme: dark;
 
-	--lienzo: #0f1417;
-	--lienzo-riel: #131a1d;
-	--superficie: #151b1e;
-	--superficie-alta: #1b2226;
-	--superficie-hover: #222b30;
-	--superficie-flotante: #1d2529;
-	--campo-fondo: #0c1113;
+	--lienzo: #1b2431;
+	--lienzo-riel: #273142;
+	--superficie: #273142;
+	--superficie-alta: #313d4f;
+	--superficie-hover: #323d4e;
+	--superficie-flotante: #2d384a;
+	--campo-fondo: #1f2836;
 
-	--tinta: #e4eaec;
-	--tinta-secundaria: #b4bfc4;
-	--tinta-tenue: #8f9ca2;
-	--tinta-deshabilitada: #5f6b71;
+	--tinta: #f1f3f6;
+	--tinta-secundaria: #d6dbe3;
+	--tinta-tenue: #a6b0c0;
+	--tinta-deshabilitada: #6b778a;
 
-	--linea: #252e33;
-	--linea-fuerte: #344046;
-	--borde-campo: #6c7a81;
+	--linea: #364153;
+	--linea-fuerte: #44516a;
+	--borde-campo: #8390a6;
 
-	--accion: #68c2cf;
-	--accion-hover: #8dd3dd;
-	--accion-activa: #a9dfe6;
-	--accion-texto: #0a1a1d;
-	--accion-suave: #1a3036;
-	--accion-suave-hover: #213d44;
-	--foco: #68c2cf;
+	--accion: #7da2ff;
+	--accion-hover: #9bb8ff;
+	--accion-activa: #b5caff;
+	--accion-texto: #0b1530;
+	--accion-suave: #2a3a5f;
+	--accion-suave-hover: #33466f;
+	--foco: #7da2ff;
+	--relleno-accion: #3563e9;
+	--relleno-accion-hover: #2f58d6;
+	--relleno-accion-activo: #2a4fbf;
+	--relleno-accion-texto: #ffffff;
 
-	--exito: #6fcf8f;
-	--exito-fondo: #14271c;
-	--exito-borde: #2f5a3d;
-	--alerta: #efb75a;
-	--alerta-fondo: #2a2111;
-	--alerta-borde: #6b5223;
-	--peligro: #f2877d;
-	--peligro-fondo: #2f1715;
-	--peligro-borde: #6e302b;
-	--peligro-hover: #f6a39b;
-	--info: #8fb5ea;
-	--info-fondo: #152135;
-	--info-borde: #34507a;
-	--neutro-fondo: #222a2e;
+	--exito: #5fd4b4;
+	--exito-fondo: #1f3a3a;
+	--exito-borde: #2e6158;
+	--alerta: #ffb070;
+	--alerta-fondo: #3d2f22;
+	--alerta-borde: #7a5430;
+	--peligro: #ff8a8a;
+	--peligro-fondo: #3f2430;
+	--peligro-borde: #7b3a46;
+	--peligro-hover: #ffa8a8;
+	--info: #b9a2ff;
+	--info-fondo: #332b52;
+	--info-borde: #5b4b91;
+	--neutro-fondo: #323d4e;
 
-	--velo: rgba(0, 0, 0, 0.6);
+	--velo: rgba(5, 9, 16, 0.6);
 	--contorno-imagen: rgba(255, 255, 255, 0.1);
 	--sombra-barra: 0 8px 16px -10px rgba(0, 0, 0, 0.7);
 	--sombra-flotante: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 12px 32px rgba(0, 0, 0, 0.45);
+	--sombra-panel: 0 4px 24px rgba(0, 0, 0, 0.18);
+	--flecha-select: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a6b0c0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+	--borde-panel: transparent;
+	--sombra-boton-primario: 0 6px 14px -6px rgba(0, 0, 0, 0.6);
+
+	--ficha-azul: #2a3a5f;
+	--ficha-azul-icono: #9bb8ff;
+	--ficha-violeta: #352d57;
+	--ficha-violeta-icono: #c3b0ff;
+	--ficha-ambar: #3d3420;
+	--ficha-ambar-icono: #ffcb5c;
+	--ficha-verde: #1f3a3a;
+	--ficha-verde-icono: #6ee0c0;
+	--ficha-rosa: #42292a;
+	--ficha-rosa-icono: #ff9c87;
 }
 
 @media (pointer: coarse) {
@@ -237,25 +290,35 @@ time,
 }
 
 /* =========================================
-   Estructura: riel de navegación y contenido. El título de cada página vive en su contenido
-   (.encabezado-pagina); la cabecera solo aparece en ventanas estrechas, con el botón del menú.
+   Estructura: riel de navegación, barra superior y contenido. El título de cada página vive en su
+   contenido (.encabezado-pagina); la barra superior lleva la fecha y las acciones globales.
    ========================================= */
 .layout {
 	display: grid;
 	grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
-	grid-template-rows: minmax(0, 1fr);
-	grid-template-areas: 'sidebar main';
+	grid-template-rows: 64px minmax(0, 1fr);
+	grid-template-areas:
+		'sidebar header'
+		'sidebar main';
 	height: 100dvh;
 }
+/* Barra superior: fecha, acceso rápido a capturar y tema; en ventanas estrechas, también el menú. */
 .header {
-	display: none;
+	grid-area: header;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 0 32px;
+	border-bottom: 1px solid var(--linea);
+	background: var(--lienzo-riel);
+	z-index: 40;
 }
 .mobile-menu-trigger {
 	display: none;
 }
 .main {
 	/* Rellenos en variables: el encabezado del editor los usa para llegar a los bordes y pegarse. */
-	--relleno-main: 40px;
+	--relleno-main: 32px;
 	--relleno-lateral: 32px;
 	grid-area: main;
 	padding: var(--relleno-main) var(--relleno-lateral);
@@ -356,7 +419,7 @@ time,
 .titulo-pagina {
 	margin: 0;
 	font-size: var(--texto-2xl);
-	font-weight: 700;
+	font-weight: var(--peso-titulo);
 	letter-spacing: -0.02em;
 	line-height: 1.15;
 	overflow-wrap: anywhere;
@@ -387,7 +450,7 @@ time,
 .view-heading {
 	margin: 0 0 16px 0;
 	font-size: var(--texto-lg);
-	font-weight: 600;
+	font-weight: var(--peso-encabezado);
 	letter-spacing: -0.01em;
 	color: var(--tinta);
 }
@@ -405,12 +468,12 @@ time,
 	margin-top: 24px;
 }
 
-/* Panel: agrupa una tarea o un conjunto de datos. Sin sombra; el borde fino y el cambio de
-   superficie bastan sobre el lienzo. */
+/* Panel: agrupa una tarea o un conjunto de datos. Sombra suave sin borde sobre el lienzo. */
 .card {
 	background: var(--superficie);
-	border: 1px solid var(--linea);
+	border: 1px solid var(--borde-panel);
 	border-radius: var(--radio-panel);
+	box-shadow: var(--sombra-panel);
 	padding: 24px 30px;
 	margin-bottom: 24px;
 }
@@ -525,6 +588,15 @@ textarea[aria-invalid='true']:focus {
 select {
 	cursor: pointer;
 }
+/* Flecha propia en los selectores; el diseño original del programa conserva la nativa. */
+select:not([multiple], [size]) {
+	appearance: var(--apariencia-select);
+	padding-right: var(--relleno-flecha-select);
+	background-image: var(--flecha-select);
+	background-repeat: no-repeat;
+	background-position: right 12px center;
+	background-size: 16px;
+}
 input[type='checkbox'],
 input[type='radio'] {
 	width: 16px;
@@ -608,7 +680,7 @@ th {
 	color: var(--tinta);
 }
 thead th {
-	font-weight: 600;
+	font-weight: var(--peso-cabecera-tabla);
 	font-size: var(--texto-sm);
 	color: var(--tinta-secundaria);
 	background: var(--superficie-alta);
@@ -644,7 +716,7 @@ tbody tr:hover > td {
 	border-radius: var(--radio-control);
 	background: var(--superficie);
 	color: var(--tinta);
-	font-weight: 500;
+	font-weight: var(--peso-boton);
 	white-space: nowrap;
 	cursor: pointer;
 	transition:
@@ -666,17 +738,18 @@ tbody tr:hover > td {
 	flex-shrink: 0;
 }
 .boton.primario {
-	background: var(--accion);
-	color: var(--accion-texto);
-	border-color: var(--accion);
+	background: var(--relleno-accion);
+	color: var(--relleno-accion-texto);
+	border-color: var(--relleno-accion);
+	box-shadow: var(--sombra-boton-primario);
 }
 .boton.primario:hover:not(:disabled) {
-	background: var(--accion-hover);
-	border-color: var(--accion-hover);
+	background: var(--relleno-accion-hover);
+	border-color: var(--relleno-accion-hover);
 }
 .boton.primario:active:not(:disabled) {
-	background: var(--accion-activa);
-	border-color: var(--accion-activa);
+	background: var(--relleno-accion-activo);
+	border-color: var(--relleno-accion-activo);
 }
 /* Contorno: acción secundaria que avanza o completa («Siguiente», «Agregar hoy», «Ajustar»). */
 .boton.contorno {
@@ -803,9 +876,9 @@ td.acciones-fila > * + * {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	padding: 2px 9px;
+	padding: var(--relleno-insignia);
 	border: 1px solid transparent;
-	border-radius: 4px;
+	border-radius: var(--radio-insignia);
 	background: var(--neutro-fondo);
 	color: var(--tinta-secundaria);
 	font-size: var(--texto-xs);
@@ -817,14 +890,14 @@ td.acciones-fila > * + * {
 .status-badge.vigente,
 .status-badge.accion-sin_cambios {
 	background: var(--exito-fondo);
-	border-color: var(--exito-borde);
+	border-color: color-mix(in srgb, var(--exito-borde) var(--mezcla-borde-insignia), transparent);
 	color: var(--exito);
 }
 .status-badge.warn,
 .status-badge.por-confirmar,
 .status-badge.accion-actualizar {
 	background: var(--alerta-fondo);
-	border-color: var(--alerta-borde);
+	border-color: color-mix(in srgb, var(--alerta-borde) var(--mezcla-borde-insignia), transparent);
 	color: var(--alerta);
 }
 .status-badge.por-confirmar,
@@ -833,12 +906,12 @@ td.acciones-fila > * + * {
 }
 .status-badge.err {
 	background: var(--peligro-fondo);
-	border-color: var(--peligro-borde);
+	border-color: color-mix(in srgb, var(--peligro-borde) var(--mezcla-borde-insignia), transparent);
 	color: var(--peligro);
 }
 .status-badge.accion-crear {
 	background: var(--info-fondo);
-	border-color: var(--info-borde);
+	border-color: color-mix(in srgb, var(--info-borde) var(--mezcla-borde-insignia), transparent);
 	color: var(--info);
 }
 
@@ -985,15 +1058,6 @@ details[open] > summary.view-heading {
 			'header'
 			'main';
 	}
-	.header {
-		grid-area: header;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		border-bottom: 1px solid var(--linea);
-		background: var(--lienzo-riel);
-		z-index: 40;
-	}
 	/* Menú como panel superpuesto. Cerrado no se ve ni recibe el foco; «visibility» espera a que
 	   termine la salida. */
 	.sidebar {
@@ -1030,6 +1094,7 @@ details[open] > summary.view-heading {
 		background: var(--superficie-hover);
 	}
 	.header {
+		gap: 8px;
 		padding: 0 16px;
 	}
 	.main {

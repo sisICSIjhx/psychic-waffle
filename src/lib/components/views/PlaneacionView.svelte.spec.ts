@@ -363,6 +363,25 @@ describe('PlaneacionView: vistas mensual y semanal', () => {
 		await expect.element(page.getByRole('table')).toBeInTheDocument();
 	});
 
+	it('«Diseño original» alterna el diseño del programa y recuerda la elección', async () => {
+		localStorage.removeItem('icsi-diseno-programa');
+		montar();
+		const raiz = document.documentElement;
+		const boton = page.getByRole('button', { name: 'Diseño original' });
+		await expect.element(boton).toHaveAttribute('aria-pressed', 'false');
+		expect(raiz.getAttribute('data-diseno-programa')).toBe('nuevo');
+
+		await boton.click();
+		await expect.element(boton).toHaveAttribute('aria-pressed', 'true');
+		expect(raiz.getAttribute('data-diseno-programa')).toBe('original');
+		expect(localStorage.getItem('icsi-diseno-programa')).toBe('original');
+
+		await boton.click();
+		await expect.element(boton).toHaveAttribute('aria-pressed', 'false');
+		expect(raiz.getAttribute('data-diseno-programa')).toBe('nuevo');
+		expect(localStorage.getItem('icsi-diseno-programa')).toBeNull();
+	});
+
 	it('la lista mensual agrupa por urgencia, ofrece «Continuar borrador» y no pasa del periodo', async () => {
 		montar({
 			vista: 'mensual',

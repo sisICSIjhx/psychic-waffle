@@ -1,0 +1,422 @@
+/* Diseño nuevo del programa anual («Panel claro», 2026-11-05). Capa sobre programa.css, que se
+   conserva sin cambios como diseño original: aquí solo se reasignan los tokens --pa-* y los tonos
+   e-*, y se ajustan radios, sombras y fichas al estilo de los kits DashStack y «SAAS Dashboard».
+   Se aplica salvo que el usuario elija «Diseño original» (html[data-diseno-programa='original']).
+   Especificidad: el tema oscuro lleva un atributo más que el claro para ganarle en ambos casos. */
+
+/* Botón para alternar el diseño y la fila que lo comparte con «Exportar» (en los dos diseños). */
+.programa-anual .fila-acciones {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	justify-content: flex-end;
+}
+.programa-anual .boton-diseno[aria-pressed='true'] {
+	border-color: var(--pa-segmento-activo);
+	color: var(--pa-segmento-activo);
+}
+.programa-anual .boton-diseno[aria-pressed='true'] svg {
+	color: var(--pa-segmento-activo);
+}
+
+/* =========================================
+   Tokens del diseño nuevo
+   ========================================= */
+html:not([data-diseno-programa='original']) .programa-anual {
+	--pa-tarjeta: #ffffff;
+	--pa-tarjeta-borde: transparent;
+	--pa-tabla: #ffffff;
+	--pa-cabecera: #f1f4f9;
+	--pa-cabecera-meses: #f7f8fb;
+	--pa-anio-par: #f7f8fb;
+	--pa-linea: #e8ebf0;
+	--pa-linea-suave: #f0f2f6;
+	--pa-campo: #ffffff;
+	--pa-campo-borde: #d5d9e2;
+	--pa-campo-borde-hover: #8c93a1;
+	--pa-texto: #202224;
+	--pa-texto-2: #3a3f4a;
+	--pa-texto-3: #4a5160;
+	--pa-texto-4: #5c6370;
+	--pa-deshabilitado: #a6abb5;
+	--pa-vacio: #cfd4dd;
+	--pa-pista: #eef1f7;
+	--pa-hover: #f5f7ff;
+	--pa-segmento: #ffffff;
+	--pa-segmento-activo: #3563e9;
+	--pa-anio-actual: #3563e9;
+	--pa-mes-actual: #ebf1ff;
+	--pa-mes-actual-columna: #f7f9ff;
+	--pa-mes-actual-borde: #b9ccff;
+	--pa-mes-actual-texto: #2a52cc;
+	--pa-insignia: #eef1f7;
+	--pa-insignia-borde: transparent;
+	--pa-insignia-texto: #4a5160;
+	--pa-verde-texto: #007a62;
+	--pa-verde-punto: #00b69b;
+	--pa-ambar-texto: #a85400;
+	--pa-ambar-punto: #ffa756;
+	--pa-gris-punto: #9aa1ad;
+	--pa-sombra: 0 4px 24px rgba(28, 39, 76, 0.05), 0 1px 2px rgba(28, 39, 76, 0.04);
+	--pa-sombra-menu: 0 12px 32px rgba(28, 39, 76, 0.14), 0 0 0 1px rgba(28, 39, 76, 0.05);
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual {
+	--pa-tarjeta: #273142;
+	--pa-tarjeta-borde: transparent;
+	--pa-tabla: #273142;
+	--pa-cabecera: #313d4f;
+	--pa-cabecera-meses: #2d384a;
+	--pa-anio-par: #2b3546;
+	--pa-linea: #364153;
+	--pa-linea-suave: rgba(54, 65, 83, 0.6);
+	--pa-campo: #1f2836;
+	--pa-campo-borde: #44516a;
+	--pa-campo-borde-hover: #8390a6;
+	--pa-texto: #ffffff;
+	--pa-texto-2: #e3e7ee;
+	--pa-texto-3: #c5ccd8;
+	--pa-texto-4: #a6b0c0;
+	--pa-deshabilitado: #6b778a;
+	--pa-vacio: #4a5568;
+	--pa-pista: #364153;
+	--pa-hover: #2d384a;
+	--pa-segmento: #1f2836;
+	--pa-segmento-activo: #3563e9;
+	--pa-anio-actual: #9bb8ff;
+	--pa-mes-actual: rgba(125, 162, 255, 0.14);
+	--pa-mes-actual-columna: rgba(125, 162, 255, 0.06);
+	--pa-mes-actual-borde: rgba(125, 162, 255, 0.45);
+	--pa-mes-actual-texto: #9bb8ff;
+	--pa-insignia: #323d4e;
+	--pa-insignia-borde: transparent;
+	--pa-insignia-texto: #d6dbe3;
+	--pa-verde-texto: #5fd4b4;
+	--pa-verde-punto: #00b69b;
+	--pa-ambar-texto: #ffb070;
+	--pa-ambar-punto: #ffa756;
+	--pa-gris-punto: #8390a6;
+	--pa-sombra: 0 4px 24px rgba(0, 0, 0, 0.18);
+	--pa-sombra-menu: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+/* Tonos de estado: los de los kits (verde azulado, azul, naranja, rosa, violeta y gris). Las fichas
+   y las insignias van sin borde; la tarjeta del indicador, con sombra. */
+html:not([data-diseno-programa='original']) .programa-anual .e-total {
+	--c-texto: #2a52cc;
+	--c-punto: #4880ff;
+	--c-icono-fondo: #e5edff;
+	--c-icono-borde: transparent;
+	--c-tarjeta-borde: transparent;
+	--c-barra: #4880ff;
+}
+html:not([data-diseno-programa='original']) .programa-anual .e-ejecutado {
+	--c-fondo: #e9faf5;
+	--c-borde: #b5eadc;
+	--c-division: #ccf1e6;
+	--c-texto: #007a62;
+	--c-punto: #00b69b;
+	--c-icono-fondo: #d9f7ee;
+	--c-icono-borde: transparent;
+	--c-insignia-fondo: #d9f7ee;
+	--c-insignia-borde: transparent;
+	--c-tarjeta-borde: transparent;
+	--c-barra: #00b69b;
+}
+html:not([data-diseno-programa='original']) .programa-anual .e-pendiente {
+	--c-fondo: #f0f5ff;
+	--c-borde: #c9d8ff;
+	--c-division: #dce6ff;
+	--c-texto: #2a52cc;
+	--c-punto: #4880ff;
+	--c-icono-fondo: #e5edff;
+	--c-icono-borde: transparent;
+	--c-insignia-fondo: #e5edff;
+	--c-insignia-borde: transparent;
+	--c-tarjeta-borde: transparent;
+	--c-barra: #4880ff;
+}
+html:not([data-diseno-programa='original']) .programa-anual .e-programado {
+	--c-fondo: #fff7ee;
+	--c-borde: #ffd9b0;
+	--c-division: #ffe8cc;
+	--c-texto: #a85400;
+	--c-punto: #ffa756;
+	--c-icono-fondo: #fff1e0;
+	--c-icono-borde: transparent;
+	--c-insignia-fondo: #fff1e0;
+	--c-insignia-borde: transparent;
+	--c-tarjeta-borde: transparent;
+	--c-barra: #ffa756;
+}
+html:not([data-diseno-programa='original']) .programa-anual .e-vencido {
+	--c-fondo: #fff1f3;
+	--c-borde: #f9c2cc;
+	--c-division: #fbd8de;
+	--c-texto: #c4213f;
+	--c-punto: #f93c65;
+	--c-icono-fondo: #fde4e9;
+	--c-icono-borde: transparent;
+	--c-insignia-fondo: #fde4e9;
+	--c-insignia-borde: transparent;
+	--c-tarjeta-borde: transparent;
+	--c-barra: #f93c65;
+}
+html:not([data-diseno-programa='original']) .programa-anual .e-reprogramado {
+	--c-fondo: #f5f1ff;
+	--c-borde: #d8cbff;
+	--c-division: #e6ddff;
+	--c-texto: #5b2ad6;
+	--c-punto: #8280ff;
+}
+html:not([data-diseno-programa='original']) .programa-anual .e-neutro {
+	--c-fondo: #f7f8fb;
+	--c-borde: #dfe3ea;
+	--c-division: #e8ebf0;
+	--c-texto: #5c6370;
+	--c-punto: #9aa1ad;
+	--c-icono-fondo: #eef1f7;
+	--c-icono-borde: transparent;
+	--c-insignia-fondo: #eef1f7;
+	--c-insignia-borde: transparent;
+	--c-tarjeta-borde: transparent;
+	--c-barra: #9aa1ad;
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-total {
+	--c-texto: #9bb8ff;
+	--c-punto: #7da2ff;
+	--c-icono-fondo: #2a3a5f;
+	--c-barra: #7da2ff;
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-ejecutado {
+	--c-fondo: rgba(0, 182, 155, 0.1);
+	--c-borde: rgba(0, 182, 155, 0.35);
+	--c-division: rgba(0, 182, 155, 0.2);
+	--c-texto: #5fd4b4;
+	--c-icono-fondo: rgba(0, 182, 155, 0.18);
+	--c-insignia-fondo: rgba(0, 182, 155, 0.18);
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-pendiente {
+	--c-fondo: rgba(72, 128, 255, 0.1);
+	--c-borde: rgba(72, 128, 255, 0.4);
+	--c-division: rgba(72, 128, 255, 0.22);
+	--c-texto: #9bb8ff;
+	--c-punto: #7da2ff;
+	--c-icono-fondo: rgba(72, 128, 255, 0.2);
+	--c-insignia-fondo: rgba(72, 128, 255, 0.2);
+	--c-barra: #7da2ff;
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-programado {
+	--c-fondo: rgba(255, 167, 86, 0.1);
+	--c-borde: rgba(255, 167, 86, 0.38);
+	--c-division: rgba(255, 167, 86, 0.2);
+	--c-texto: #ffb070;
+	--c-icono-fondo: rgba(255, 167, 86, 0.18);
+	--c-insignia-fondo: rgba(255, 167, 86, 0.18);
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-vencido {
+	--c-fondo: rgba(249, 60, 101, 0.1);
+	--c-borde: rgba(249, 60, 101, 0.4);
+	--c-division: rgba(249, 60, 101, 0.22);
+	--c-texto: #ff8fa6;
+	--c-icono-fondo: rgba(249, 60, 101, 0.18);
+	--c-insignia-fondo: rgba(249, 60, 101, 0.18);
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-reprogramado {
+	--c-fondo: rgba(130, 128, 255, 0.12);
+	--c-borde: rgba(130, 128, 255, 0.4);
+	--c-division: rgba(130, 128, 255, 0.22);
+	--c-texto: #b9b8ff;
+	--c-punto: #8280ff;
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-neutro {
+	--c-fondo: rgba(131, 144, 166, 0.08);
+	--c-borde: #44516a;
+	--c-division: #364153;
+	--c-texto: #a6b0c0;
+	--c-punto: #8390a6;
+	--c-icono-fondo: #323d4e;
+	--c-insignia-fondo: #323d4e;
+	--c-barra: #8390a6;
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .vencidos {
+	--c-borde: transparent;
+}
+
+/* =========================================
+   Forma: paneles de 14 px con sombra, fichas de icono grandes y controles redondeados.
+   ========================================= */
+html:not([data-diseno-programa='original']) .programa-anual .titulo-pagina {
+	font-size: var(--texto-2xl);
+	font-weight: 800;
+}
+html:not([data-diseno-programa='original']) .programa-anual .selector-vista {
+	gap: 4px;
+	padding: 5px;
+	border-radius: 12px;
+	box-shadow: var(--pa-sombra);
+}
+html:not([data-diseno-programa='original']) .programa-anual .opcion-vista {
+	min-height: 32px;
+	padding: 6px 16px;
+	border-radius: 8px;
+	font-weight: 600;
+}
+html:not([data-diseno-programa='original']) .programa-anual .opcion-vista[aria-current='page'] {
+	box-shadow: 0 6px 14px -6px rgba(53, 99, 233, 0.6);
+}
+html:not([data-diseno-programa='original']) .programa-anual .boton-programa {
+	min-height: 42px;
+	border-color: transparent;
+	border-radius: 10px;
+	font-weight: 600;
+}
+html:not([data-diseno-programa='original']) .programa-anual .boton-programa:hover {
+	border-color: var(--pa-campo-borde);
+}
+html:not([data-diseno-programa='original']) .programa-anual .boton-diseno[aria-pressed='true'] {
+	border-color: var(--pa-segmento-activo);
+}
+html:not([data-diseno-programa='original']) .programa-anual .opciones-menu {
+	border-radius: 12px;
+}
+
+/* Filtros dentro de un panel, como la barra de filtros de DashStack. */
+html:not([data-diseno-programa='original']) .programa-anual .filtros {
+	padding: 18px 20px;
+	border-radius: 14px;
+	background: var(--pa-tarjeta);
+	box-shadow: var(--pa-sombra);
+}
+html:not([data-diseno-programa='original']) .programa-anual .filtro label {
+	font-weight: 700;
+}
+html:not([data-diseno-programa='original']) .programa-anual .control select,
+html:not([data-diseno-programa='original']) .programa-anual .campo-busqueda input {
+	min-height: 42px;
+	border-radius: 10px;
+	background: var(--pa-campo);
+}
+html:not([data-diseno-programa='original']) .programa-anual .control select {
+	background: var(--pa-cabecera-meses);
+	border-color: transparent;
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .control select {
+	background: var(--pa-campo);
+}
+html:not([data-diseno-programa='original']) .programa-anual .control select:hover:not(:focus) {
+	border-color: var(--pa-campo-borde);
+}
+html:not([data-diseno-programa='original']) .programa-anual .campo-busqueda input {
+	border-color: transparent;
+}
+
+/* Indicadores: tarjeta sin borde con sombra, ficha de icono de 44 px y cifra grande. */
+html:not([data-diseno-programa='original']) .programa-anual .indicadores {
+	gap: 16px;
+}
+html:not([data-diseno-programa='original']) .programa-anual .indicador {
+	gap: 14px;
+	padding: 16px;
+	border-radius: 14px;
+}
+html:not([data-diseno-programa='original']) .programa-anual .indicador.interactivo:hover,
+html:not([data-diseno-programa='original'])
+	.programa-anual
+	.indicador.interactivo[aria-expanded='true'] {
+	border-color: var(--c-borde);
+}
+html:not([data-diseno-programa='original']) .programa-anual .cuerpo-indicador {
+	flex-direction: row-reverse;
+	justify-content: space-between;
+	align-items: flex-start;
+}
+html:not([data-diseno-programa='original']) .programa-anual .icono-indicador {
+	width: 44px;
+	height: 44px;
+	border-radius: 14px;
+}
+html:not([data-diseno-programa='original']) .programa-anual .icono-indicador svg {
+	width: 22px;
+	height: 22px;
+}
+html:not([data-diseno-programa='original'])
+	.programa-anual
+	.indicador.interactivo
+	.icono-indicador {
+	margin-right: 18px;
+}
+html:not([data-diseno-programa='original']) .programa-anual .etiqueta-indicador {
+	font-size: var(--texto-sm);
+	font-weight: 600;
+	line-height: 20px;
+}
+html:not([data-diseno-programa='original']) .programa-anual .cifra-indicador {
+	font-size: 1.75rem;
+	font-weight: 800;
+	line-height: 38px;
+}
+html:not([data-diseno-programa='original']) .programa-anual .porcentaje {
+	border-radius: 999px;
+	padding: 2px 8px;
+}
+html:not([data-diseno-programa='original']) .programa-anual .barra {
+	height: 6px;
+}
+
+/* Paneles: cabecera de la matriz, matriz, vencimientos y panel de la celda. */
+html:not([data-diseno-programa='original']) .programa-anual .cabecera-matriz,
+html:not([data-diseno-programa='original']) .programa-anual .matriz-programa,
+html:not([data-diseno-programa='original']) .programa-anual .panel-celda,
+html:not([data-diseno-programa='original']) .programa-anual .vencidos {
+	border-radius: 14px;
+	box-shadow: var(--pa-sombra);
+}
+html:not([data-diseno-programa='original']) .programa-anual .vencidos {
+	border-color: transparent;
+	box-shadow:
+		inset 4px 0 0 var(--c-punto, #f93c65),
+		var(--pa-sombra);
+}
+html:not([data-diseno-programa='original']) .programa-anual .titulo-con-icono .icono-indicador {
+	width: 44px;
+	height: 44px;
+	border-radius: 14px;
+}
+html:not([data-diseno-programa='original']) .programa-anual .titulo-matriz {
+	font-size: var(--texto-md);
+	font-weight: 800;
+	letter-spacing: 0;
+}
+html:not([data-diseno-programa='original']) .programa-anual .leyenda li {
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: var(--pa-cabecera-meses);
+	font-weight: 600;
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .leyenda li {
+	background: var(--pa-cabecera);
+}
+html:not([data-diseno-programa='original']) .programa-anual .leyenda .punto {
+	width: 8px;
+	height: 8px;
+}
+
+/* Matriz: cabecera gris como las tablas de los kits, celdas-tarjeta más redondeadas. */
+html:not([data-diseno-programa='original']) .programa-anual .matriz thead th {
+	color: var(--pa-texto-3);
+}
+html:not([data-diseno-programa='original']) .programa-anual .tarjeta-celda {
+	border-radius: 10px;
+}
+html:not([data-diseno-programa='original']) .programa-anual .insignia-periodicidad {
+	border-radius: 999px;
+	font-weight: 600;
+}
+html:not([data-diseno-programa='original']) .programa-anual .pastilla {
+	border-color: transparent;
+	background: var(--c-insignia-fondo, var(--c-fondo));
+}
+html:not([data-diseno-programa='original']) .programa-anual .cerrar-panel {
+	border-radius: 10px;
+}
