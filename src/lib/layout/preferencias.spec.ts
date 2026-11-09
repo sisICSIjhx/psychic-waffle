@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { CLAVE_TEMA, guardarPreferencia, leerPreferencia, temaInicial } from './preferencias';
+import {
+	CLAVE_DISENO_PROGRAMA,
+	CLAVE_TEMA,
+	disenoProgramaInicial,
+	guardarPreferencia,
+	leerPreferencia,
+	temaInicial
+} from './preferencias';
 
 describe('preferencias de la interfaz', () => {
 	it('usa el tema guardado y, si no hay uno válido, el del sistema', () => {
@@ -22,5 +29,19 @@ describe('preferencias de la interfaz', () => {
 		expect(cabecera).toContain(`localStorage.getItem('${CLAVE_TEMA}')`);
 		expect(cabecera).toContain("setAttribute('data-theme', tema)");
 		expect(cabecera).toContain('(prefers-color-scheme: dark)');
+	});
+
+	it('el programa usa el diseño nuevo salvo que se elija el original', () => {
+		expect(disenoProgramaInicial(null)).toBe('nuevo');
+		expect(disenoProgramaInicial('nuevo')).toBe('nuevo');
+		expect(disenoProgramaInicial('otro')).toBe('nuevo');
+		expect(disenoProgramaInicial('original')).toBe('original');
+	});
+
+	it('el script de app.html aplica el diseño del programa con la misma clave antes de pintar', () => {
+		const html = readFileSync('src/app.html', 'utf8');
+		const cabecera = html.slice(0, html.indexOf('%sveltekit.head%'));
+		expect(cabecera).toContain(`localStorage.getItem('${CLAVE_DISENO_PROGRAMA}')`);
+		expect(cabecera).toContain("'data-diseno-programa'");
 	});
 });

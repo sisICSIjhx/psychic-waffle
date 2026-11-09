@@ -1,4 +1,4 @@
-// Preferencias de la interfaz guardadas en el navegador: el tema.
+// Preferencias de la interfaz guardadas en el navegador: el tema y el diseño del programa anual.
 // El script en línea de src/app.html aplica el tema antes de pintar con la misma clave y la misma
 // regla que temaInicial; si cambian aquí, deben cambiar allá.
 
@@ -10,6 +10,15 @@ export const CLAVE_TEMA = 'icsi-tema';
 export function temaInicial(guardado: string | null, sistemaOscuro: boolean): Tema {
 	if (guardado === 'light' || guardado === 'dark') return guardado;
 	return sistemaOscuro ? 'dark' : 'light';
+}
+
+export type DisenoPrograma = 'nuevo' | 'original';
+
+export const CLAVE_DISENO_PROGRAMA = 'icsi-diseno-programa';
+
+/** El programa anual usa el diseño nuevo salvo que se haya elegido el original. */
+export function disenoProgramaInicial(guardado: string | null): DisenoPrograma {
+	return guardado === 'original' ? 'original' : 'nuevo';
 }
 
 /** Lee una preferencia; devuelve null si el navegador no permite el almacenamiento. */

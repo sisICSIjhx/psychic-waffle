@@ -6,6 +6,8 @@
      planeacion/programa.css, bajo el contenedor .programa-anual. -->
 <script lang="ts">
 	import '$lib/components/planeacion/programa.css';
+	import '$lib/components/planeacion/programa-nuevo.css';
+	import '$lib/components/planeacion/diseno-original.css';
 	import { onMount, tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
@@ -44,6 +46,13 @@
 	import { llamarAccion } from '$lib/components/reportes/acciones';
 	import EncabezadoPagina from '$lib/components/ui/EncabezadoPagina.svelte';
 	import { notificaciones } from '$lib/components/ui/notificaciones';
+	import {
+		CLAVE_DISENO_PROGRAMA,
+		disenoProgramaInicial,
+		guardarPreferencia,
+		leerPreferencia,
+		type DisenoPrograma
+	} from '$lib/layout/preferencias';
 
 	type Partida = AvancePrograma['partidas'][number];
 
@@ -95,6 +104,8 @@
 			'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
 		no_ejecutado: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
 		cerrar: '<path d="M18 6 6 18M6 6l12 12"/>',
+		diseno:
+			'<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>',
 		siguiente: '<path d="M5 12h14M13 6l6 6-6 6"/>'
 	} as const;
 
@@ -445,6 +456,28 @@
 			behavior: 'smooth'
 		});
 	}
+	// Diseño del programa: el nuevo o, si el usuario lo prefiere, el original (diseno-original.css).
+	// app.html ya aplicó el guardado antes de pintar; aquí solo se sincroniza el botón.
+	let diseno: DisenoPrograma = 'nuevo';
+	function aplicarDiseno(valor: DisenoPrograma) {
+		const raiz = document.documentElement;
+		raiz.classList.add('cambiando-tema');
+		raiz.setAttribute('data-diseno-programa', valor);
+		void getComputedStyle(raiz).color;
+		requestAnimationFrame(() =>
+			requestAnimationFrame(() => raiz.classList.remove('cambiando-tema'))
+		);
+	}
+	function cambiarDiseno() {
+		diseno = diseno === 'nuevo' ? 'original' : 'nuevo';
+		aplicarDiseno(diseno);
+		guardarPreferencia(CLAVE_DISENO_PROGRAMA, diseno === 'original' ? 'original' : null);
+	}
+	onMount(() => {
+		diseno = disenoProgramaInicial(leerPreferencia(CLAVE_DISENO_PROGRAMA));
+		aplicarDiseno(diseno);
+	});
+
 	onMount(() => {
 		const observador = new ResizeObserver(medirTabla);
 		if (contenedorTabla) observador.observe(contenedorTabla);
@@ -477,8 +510,8 @@
 		descripcion="Consulte y gestione el avance de sus partidas por contrato, sitio y periodo."
 	>
 		<svelte:fragment slot="acciones">
-			{#if programa}
-				<div class="acciones-programa">
+			<div class="acciones-programa">
+				{#if programa}
 					<nav class="selector-vista" aria-label="Vista de la planeación">
 						<!-- enlaceVista aplica resolve() a la ruta; los filtros van en la consulta. -->
 						<!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -502,7 +535,9 @@
 						{/each}
 						<!-- eslint-enable svelte/no-navigation-without-resolve -->
 					</nav>
-					{#if vista === 'anual'}
+				{/if}
+				<div class="fila-acciones">
+					{#if programa && vista === 'anual'}
 						<details class="menu-desplegable menu-exportar" bind:this={menuExportar}>
 							<summary class="boton-programa"
 								><svg
@@ -538,8 +573,29 @@
 							</div>
 						</details>
 					{/if}
+					<button
+						type="button"
+						class="boton-programa boton-diseno"
+						aria-pressed={diseno === 'original'}
+						title={diseno === 'nuevo'
+							? 'Volver al diseño anterior del programa'
+							: 'Usar el diseño nuevo del programa'}
+						on:click={cambiarDiseno}
+						><svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+							{@html ICONOS.diseno}</svg
+						>
+						Diseño original</button
+					>
 				</div>
-			{/if}
+			</div>
 		</svelte:fragment>
 	</EncabezadoPagina>
 

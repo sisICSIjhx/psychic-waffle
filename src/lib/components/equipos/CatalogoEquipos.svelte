@@ -474,14 +474,25 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-		padding: 14px 18px;
-		border: 1px solid var(--linea);
-		border-left: 4px solid var(--linea-fuerte);
+		padding: 18px 20px;
+		border: 1px solid var(--borde-panel);
 		border-radius: var(--radio-panel);
 		background: var(--superficie);
+		box-shadow: var(--sombra-panel);
 		color: var(--tinta);
 		font: inherit;
 		text-align: left;
+	}
+	/* Punto de color antes de la etiqueta, como las leyendas de los kits. */
+	.etiqueta-indicador::before {
+		content: '';
+		display: inline-block;
+		width: 8px;
+		height: 8px;
+		margin-right: 8px;
+		border-radius: 50%;
+		background: var(--punto-indicador, var(--ficha-azul-icono));
+		vertical-align: 1px;
 	}
 	.indicador.interactivo {
 		cursor: pointer;
@@ -494,10 +505,16 @@
 		box-shadow: inset 0 0 0 1px var(--accion);
 	}
 	.indicador.e-vencida {
-		border-left-color: var(--peligro);
+		--punto-indicador: var(--peligro);
+		box-shadow:
+			inset 4px 0 0 var(--peligro),
+			var(--sombra-panel);
 	}
 	.indicador.e-por-vencer {
-		border-left-color: var(--alerta);
+		--punto-indicador: var(--alerta);
+		box-shadow:
+			inset 4px 0 0 var(--alerta),
+			var(--sombra-panel);
 	}
 	.etiqueta-indicador {
 		color: var(--tinta-secundaria);
@@ -505,8 +522,8 @@
 		font-weight: 600;
 	}
 	.cifra {
-		font-size: var(--texto-xl);
-		font-weight: 700;
+		font-size: 1.75rem;
+		font-weight: 800;
 		font-variant-numeric: tabular-nums;
 	}
 	.nota-indicador {

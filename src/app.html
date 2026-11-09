@@ -5,7 +5,8 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
 			// Tema antes de pintar, sin parpadeo: el guardado o el del sistema. Misma clave y regla que
-			// temaInicial en src/lib/layout/preferencias.ts.
+			// temaInicial en src/lib/layout/preferencias.ts; lo mismo con el diseño del programa
+			// (disenoProgramaInicial).
 			(function () {
 				var tema = null;
 				try {
@@ -17,6 +18,17 @@
 					tema = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 				}
 				document.documentElement.setAttribute('data-theme', tema);
+				// Diseño del programa anual: el original solo si se eligió (clave CLAVE_DISENO_PROGRAMA).
+				var diseno = null;
+				try {
+					diseno = localStorage.getItem('icsi-diseno-programa');
+				} catch (e) {
+					diseno = null;
+				}
+				document.documentElement.setAttribute(
+					'data-diseno-programa',
+					diseno === 'original' ? 'original' : 'nuevo'
+				);
 			})();
 		</script>
 		%sveltekit.head%
