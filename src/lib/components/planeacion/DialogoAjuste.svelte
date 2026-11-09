@@ -7,12 +7,8 @@
 	import { enhance } from '$app/forms';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { faltan as faltanEn } from '$lib/dominio/cumplimiento';
-	import {
-		ETIQUETA_MOTIVO_AJUSTE,
-		MOTIVOS_AJUSTE,
-		type Ajuste,
-		type CeldaPrograma
-	} from '$lib/dominio/esquemas';
+	import { ETIQUETA_MOTIVO_AJUSTE, MOTIVOS_AJUSTE } from '$lib/dominio/constantes';
+	import type { Ajuste, CeldaPrograma } from '$lib/dominio/esquemas';
 	import { textoMes } from '$lib/dominio/textos';
 	import BotonesSegmentados from '$lib/components/ui/BotonesSegmentados.svelte';
 	import Dialogo from '$lib/components/ui/Dialogo.svelte';

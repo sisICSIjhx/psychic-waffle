@@ -17,6 +17,14 @@ export const load: PageServerLoad = async ({ url }) => {
 	const cliente = url.searchParams.get('cliente');
 	const clientes = await repos.catalogo.listarClientes();
 	const clienteElegido = clientes.find((c) => c.clave === cliente) ?? null;
+	// Los borradores no dependen de la selección: se piden ya y se esperan al final.
+	const borradoresPedidos = repos.reportes.listar({
+		estado: 'borrador',
+		tamano: 10,
+		...(clienteElegido ? { clienteClave: clienteElegido.clave } : {})
+	});
+	// Si otra consulta falla antes de esperarla, su error no debe quedar como rechazo sin manejar.
+	borradoresPedidos.catch(() => undefined);
 	// Solo contratos vigentes hoy; con ?cliente= solo los de ese cliente.
 	const contratos = await repos.catalogo.listarContratos({
 		vigentesEn: hoy(),
@@ -50,11 +58,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		hoy: hoy()
 	});
 
-	const borradores = await repos.reportes.listar({
-		estado: 'borrador',
-		tamano: 10,
-		...(clienteElegido ? { clienteClave: clienteElegido.clave } : {})
-	});
+	const borradores = await borradoresPedidos;
 	return {
 		cliente: clienteElegido,
 		contratos,

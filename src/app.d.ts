@@ -2,7 +2,11 @@
 // for information about these interfaces
 declare global {
 	namespace App {
-		// interface Error {}
+		/** Error que llega al navegador: un mensaje genérico y el id con que se registró en el servidor. */
+		interface Error {
+			message: string;
+			id?: string;
+		}
 		/** Sesión validada por el servidor; vacía mientras no haya autenticación (D10). */
 		interface Locals {
 			autenticacion?: boolean;

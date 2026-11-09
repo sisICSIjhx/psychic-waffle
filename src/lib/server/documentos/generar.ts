@@ -307,7 +307,10 @@ export async function generarDocx(
 		cmdDelimiter: '+++',
 		literalXmlDelimiter: DELIMITADOR_XML_LITERAL,
 		processLineBreaks: true,
-		rejectNullish: true
+		rejectNullish: true,
+		// Los comandos son los de la plantilla versionada (código de confianza); los datos solo se
+		// insertan como texto. Sin el `vm` de Node por comando la plantilla se procesa ~3 veces más rápido.
+		noSandbox: true
 	});
 	const docx = await escribirIndice(resultado, indice.titulos);
 	if (docx.length > limiteBytes) {
