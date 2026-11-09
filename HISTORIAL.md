@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-11-09 — Programa: iconos dentro del selector y lista de opciones con el estilo de la plataforma
+
+- Motivo: el usuario pidió que en el diseño nuevo del programa los iconos de «Distribución» y «Periodicidad» vayan dentro del selector, como en «Contrato» y «Sitio», y que las opciones de los selectores sigan el diseño de la plataforma. Nivel 1.
+- Resultado: en el diseño nuevo esos dos iconos pasan al selector; el diseño original los conserva junto a la etiqueta. La lista de opciones de todos los selectores (`appearance: base-select`, donde el navegador lo admite) es un panel flotante redondeado con la opción elegida en el acento y su marca; en navegadores sin soporte y en el diseño original del programa queda la lista nativa.
+- Archivos: `src/app.css`, `src/lib/components/planeacion/programa-nuevo.css`, `src/lib/components/views/PlaneacionView.svelte`.
+- Validación real: `npm run check` 0/0; `eslint src` sin errores; suite completa 62 archivos y 451 pruebas correctas; capturas del programa (claro, oscuro y original) y de «Historial» con la lista abierta en Chromium.
+- Pendientes: Firefox y Safari aún no admiten el selector personalizable; ahí se ve la lista nativa.
+
 ## 2026-11-05 — Optimización de carga y descarga del DOCX, y endurecimiento de seguridad
 
 - Motivo: el usuario pidió que la aplicación cargue mucho más rápido y que los documentos se descarguen rápido sin comprometer el contenido de los reportes (índice, tablas e imágenes); corregir fallas de seguridad críticas; registrar los cambios y entregar un markdown con los cambios y 10 propuestas de mejora. Nivel 2: optimizaciones y endurecimiento sin cambios de datos, contratos `api_*` ni reglas del documento; los permisos agregados aplican la regla D10 existente. Rama `feat/optimizacion-seguridad` desde `main`; respaldo previo de los archivos tocados fuera del repositorio.
@@ -11,6 +19,7 @@ Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 - Documento: `docs/OPTIMIZACION_SEGURIDAD_Y_PROPUESTAS.md` (mediciones, cambios de seguridad, riesgos abiertos y 10 propuestas).
 - Validación real: `npm run check` 0/0; `npm run lint` sin observaciones; suite completa 62 archivos y 448 pruebas correctas (client con el Chromium preinstalado mediante configuración temporal no versionada); pruebas nuevas de foto girada idéntica y reutilizada, descargas simultáneas, precalentado, caché de fotos, UUID, `Content-Disposition`, encabezados y bomba zip. Medición en Chromium sobre la build de producción: JavaScript por página de 423-612 KB a 123-212 KB (−65 a −73 %). DOCX de 48 fotos: ~540 → ~400 ms sin giros y ~1000 → ~400 ms con giros ya guardados; las 80 partes idénticas byte a byte a las de la versión anterior y el mismo PDF de 11 páginas en LibreOffice. 10 rutas sin violaciones de CSP ni errores de consola en build y desarrollo (solo el 404 de `favicon.ico`, preexistente).
 - Pendientes: autenticación (riesgo principal; no publicar en Internet sin ella); `vitest` crítico (solo pruebas) por conflicto de pares al actualizar a 4.1.12; avisos bajos que piden SvelteKit 3; límite de peticiones y `BODY_SIZE_LIMIT` en el despliegue; las 10 propuestas del documento.
+
 ## 2026-11-05 — Diseño «Panel claro» inspirado en DashStack y «SAAS Dashboard»; el programa conserva el original como opción
 
 - Motivo: el usuario compartió dos kits de Figma de inspiración (DashStack y «SAAS Dashboard») y pidió rediseñar la interfaz sin eliminar elementos (se pueden cambiar forma, color, tamaño y posición, o agregar componentes). El programa anual debía conservar su diseño original y además tener uno nuevo, con un botón para volver al original. Nivel 1–2 (estilos y una preferencia de interfaz, sin cambios de datos ni reglas); sin OpenSpec. Rama `claude/compassionate-archimedes-zwu00c`.

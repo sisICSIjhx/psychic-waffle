@@ -588,6 +588,52 @@ textarea[aria-invalid='true']:focus {
 select {
 	cursor: pointer;
 }
+/* Lista de opciones con el estilo de la plataforma (panel flotante redondeado, opción elegida en el
+   acento). Usa el selector personalizable donde el navegador lo admite; en los demás queda la lista
+   nativa. El diseño original del programa la conserva nativa (--apariencia-select: auto). */
+@supports (appearance: base-select) {
+	:root {
+		--apariencia-select: base-select;
+	}
+	select:not([multiple], [size])::picker(select) {
+		appearance: var(--apariencia-select);
+		margin-top: 6px;
+		padding: 6px;
+		border: 1px solid var(--linea);
+		border-radius: 12px;
+		background: var(--superficie-flotante);
+		box-shadow: var(--sombra-flotante);
+	}
+	select:not([multiple], [size])::picker-icon {
+		display: none;
+	}
+	select:not([multiple], [size]) option {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 36px;
+		padding: 8px 12px;
+		border-radius: 8px;
+		color: var(--tinta);
+		font-size: var(--texto-base);
+		cursor: pointer;
+	}
+	select:not([multiple], [size]) option:hover,
+	select:not([multiple], [size]) option:focus-visible {
+		outline: none;
+		background: var(--superficie-hover);
+	}
+	select:not([multiple], [size]) option:checked {
+		background: var(--accion-suave);
+		color: var(--accion);
+		font-weight: 700;
+	}
+	select:not([multiple], [size]) option::checkmark {
+		order: 1;
+		margin-left: auto;
+		color: var(--accion);
+	}
+}
 /* Flecha propia en los selectores; el diseño original del programa conserva la nativa. */
 select:not([multiple], [size]) {
 	appearance: var(--apariencia-select);
