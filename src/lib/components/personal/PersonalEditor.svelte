@@ -4,7 +4,8 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import type { SubmitFunction } from '@sveltejs/kit';
-	import { ROLES_PERSONAL, type Cliente, type Personal } from '$lib/dominio/esquemas';
+	import { ROLES_PERSONAL } from '$lib/dominio/constantes';
+	import type { Cliente, Personal } from '$lib/dominio/esquemas';
 	import { fechaEnZona } from '$lib/dominio/fechas';
 	import {
 		DESCRIPCIONES_ROL,

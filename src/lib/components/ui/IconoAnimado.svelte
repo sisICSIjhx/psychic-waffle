@@ -1,3 +1,6 @@
+<!-- Icono con animación Lottie al pasar el cursor o enfocar su enlace. El reproductor (versión ligera,
+     solo SVG y sin expresiones) se descarga con la primera intención, no al cargar la página: el SVG
+     de respaldo se ve mientras tanto. -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { AnimationItem } from 'lottie-web';
@@ -13,9 +16,15 @@
 		let vigente = true;
 		let solicitado = false;
 
+		let cargando: Promise<void> | null = null;
+
 		function reproducir() {
 			if (preferencia.matches) return;
 			solicitado = true;
+			cargando ??= cargar().catch(() => {
+				// El SVG de respaldo sigue visible si el navegador no pudo cargar el reproductor.
+				listo = false;
+			});
 			if (listo && animacion?.isPaused) animacion.goToAndPlay(0, true);
 		}
 
@@ -27,7 +36,7 @@
 		}
 
 		async function cargar() {
-			const { default: lottie } = await import('lottie-web');
+			const { default: lottie } = await import('lottie-web/build/player/lottie_light');
 			if (!vigente) return;
 			animacion = lottie.loadAnimation({
 				container: superficie,
@@ -45,10 +54,6 @@
 		enlace?.addEventListener('mouseenter', reproducir);
 		enlace?.addEventListener('focus', reproducir);
 		preferencia.addEventListener('change', ajustarMovimiento);
-		void cargar().catch(() => {
-			// El SVG de respaldo sigue visible si el navegador no pudo cargar el reproductor.
-			listo = false;
-		});
 		return () => {
 			vigente = false;
 			enlace?.removeEventListener('mouseenter', reproducir);

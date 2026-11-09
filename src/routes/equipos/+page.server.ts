@@ -3,6 +3,7 @@ import { fechaEnZona } from '$lib/dominio/fechas';
 import { datos } from '$lib/server/datos';
 import { mensajeDeError } from '$lib/server/errores';
 import { leerExcelEquipos } from '$lib/server/importacion/equipos';
+import { LIMITE_LIBRO_BYTES } from '$lib/server/importacion/xlsx';
 import { puedeEditarCatalogo } from '$lib/server/permisos';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -42,6 +43,12 @@ export const actions: Actions = {
 		const sitioId = texto(formulario, 'sitioId');
 		if (!(archivo instanceof File) || archivo.size === 0) {
 			return fail(400, { accion: 'importar', error: 'Elija el archivo de Excel (.xlsx).' });
+		}
+		if (archivo.size > LIMITE_LIBRO_BYTES) {
+			return fail(400, {
+				accion: 'importar',
+				error: `El archivo supera los ${LIMITE_LIBRO_BYTES / 1048576} MB.`
+			});
 		}
 		try {
 			const repos = await datos();

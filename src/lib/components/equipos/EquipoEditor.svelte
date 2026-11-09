@@ -4,12 +4,8 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import type { SubmitFunction } from '@sveltejs/kit';
-	import {
-		ESTADOS_EQUIPO,
-		type Cliente,
-		type EquipoCatalogo,
-		type Sitio
-	} from '$lib/dominio/esquemas';
+	import { ESTADOS_EQUIPO } from '$lib/dominio/constantes';
+	import type { Cliente, EquipoCatalogo, Sitio } from '$lib/dominio/esquemas';
 	import {
 		estadoCalibracion,
 		ETIQUETAS_CALIBRACION,

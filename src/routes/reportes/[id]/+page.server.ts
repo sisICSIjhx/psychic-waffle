@@ -20,8 +20,11 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 		throw error;
 	}
-	const { partida, cambiado } = await servicio.estadoCatalogo(reporte);
-	const contrato = await servicio.estadoContrato(reporte);
+	// Consultas independientes: en paralelo (con Supabase cada una es un viaje de red).
+	const [{ partida, cambiado }, contrato] = await Promise.all([
+		servicio.estadoCatalogo(reporte),
+		servicio.estadoContrato(reporte)
+	]);
 	return {
 		reporte,
 		equiposPartida: partida.equipos,
@@ -49,6 +52,9 @@ function fallo(error: unknown) {
 
 const numero = (formulario: FormData, campo: string) => Number(formulario.get(campo) ?? 0);
 
+/** El editor sube una foto por petición; el tope evita peticiones desmedidas en memoria. */
+const MAXIMO_FOTOS_POR_PETICION = 20;
+
 export const actions: Actions = {
 	guardar: async ({ request, params }) => {
 		const formulario = await request.formData();
@@ -68,6 +74,12 @@ export const actions: Actions = {
 	fotos: async ({ request, params }) => {
 		const formulario = await request.formData();
 		const archivos = formulario.getAll('archivo').filter((a): a is File => a instanceof File);
+		if (archivos.length > MAXIMO_FOTOS_POR_PETICION) {
+			return fail(413, {
+				error: `Suba como máximo ${MAXIMO_FOTOS_POR_PETICION} fotos a la vez.`,
+				observaciones: []
+			});
+		}
 		const momento = String(formulario.get('momento') ?? '');
 		// Un archivo excesivo se rechaza sin leerlo completo.
 		const rechazadas = archivos
@@ -105,9 +117,15 @@ export const actions: Actions = {
 			return fail(400, { error: 'Estado no válido', observaciones: [] });
 		}
 		try {
-			const reporte = await (
-				await captura()
-			).cambiarEstado(params.id, numero(formulario, 'version'), estado);
+			const servicio = await captura();
+			const reporte = await servicio.cambiarEstado(
+				params.id,
+				numero(formulario, 'version'),
+				estado
+			);
+			// Al enviar a revisión o emitir el contenido queda listo: el DOCX se prepara en segundo plano
+			// para que la descarga sea inmediata.
+			if (estado !== 'borrador') servicio.precalentarDocumento(reporte.id);
 			return { reporte };
 		} catch (error) {
 			return fallo(error);

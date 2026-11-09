@@ -2,6 +2,7 @@
 // fotos, cambios de estado con validaciones, aplicación explícita del catálogo y generación del DOCX.
 // Las rutas /captura y /reportes/[id] solo traducen formularios y respuestas.
 import { randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import {
 	aplicarCatalogo,
 	huellaCatalogo,
@@ -25,11 +26,13 @@ import type { Almacenamiento } from './almacenamiento.ts';
 import { ErrorDatos } from './bd/cliente.ts';
 import {
 	generarDocx,
+	PERFILES_IMAGEN,
 	VERSION_PLANTILLA,
 	type FirmanteDocumento,
+	type FotoDocumento,
 	type ReporteDocumento
 } from './documentos/generar.ts';
-import { prepararImagen } from './documentos/imagenes.ts';
+import { enParalelo, prepararImagen } from './documentos/imagenes.ts';
 import { ErrorFoto, procesarFoto } from './fotos.ts';
 import type { RutasFoto } from './repositorios/reportes.ts';
 import type { Repositorios } from './repositorios/index.ts';
@@ -74,6 +77,31 @@ export function rutaMiniatura(rutaOptimizada: string): string {
 	return `${rutaOptimizada.replace(/\.jpe?g$/i, '')}-mini.jpg`;
 }
 
+/** Giros que se guardan ya aplicados para el documento. */
+const GIROS = [90, 180, 270] as const;
+
+/**
+ * «fotos/<reporte>/<uuid>.jpg» → «fotos/<reporte>/<uuid>-g90.jpg»: la optimizada ya girada, tal como
+ * la prepara el generador del DOCX. Se crea la primera vez que se genera un documento con ese giro y
+ * se reutiliza en las siguientes versiones (la foto no cambia: cada carga tiene su propio id).
+ */
+export function rutaGirada(rutaOptimizada: string, giro: (typeof GIROS)[number]): string {
+	return `${rutaOptimizada.replace(/\.jpe?g$/i, '')}-g${giro}.jpg`;
+}
+
+/** Identificador con formato UUID (los de reportes, alcances y fotos). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function esUuid(valor: string): boolean {
+	return UUID.test(valor);
+}
+
+/** Fotos leídas del almacenamiento a la vez al armar un documento. */
+const LECTURAS_EN_PARALELO = 8;
+
+/** Fotos recordadas para servir sus archivos sin volver a leer el reporte completo. */
+const MAXIMO_FOTOS_RECORDADAS = 5000;
+
 /**
  * Ruta local de la versión optimizada. Las fotos en SharePoint solo guardan su URL y su lectura llega
  * con esa integración (cambio alcances-personal-esquema-bd, D4).
@@ -89,6 +117,13 @@ export class ServicioCaptura {
 	private readonly repos: Repositorios;
 	private readonly archivos: Almacenamiento;
 	private readonly plantilla: () => Promise<Uint8Array | undefined>;
+	/** Documentos que se están generando, por reporte: dos descargas simultáneas comparten el trabajo. */
+	private readonly enCurso = new Map<string, Promise<DocumentoDescargable>>();
+	/**
+	 * «reporte/foto» → foto. La ruta de sus archivos no cambia (cada carga tiene su propio id), así que
+	 * la galería del editor pide el reporte una vez y no una por miniatura.
+	 */
+	private readonly fotosRecordadas = new Map<string, Foto>();
 
 	/** `plantilla` entrega la plantilla DOCX vigente; sin ella el generador usa la del repositorio. */
 	constructor(
@@ -199,6 +234,10 @@ export class ServicioCaptura {
 		momento: MomentoFoto | null;
 		archivos: ArchivoCargado[];
 	}): Promise<ResultadoCargaFotos> {
+		// El id del reporte forma parte de la ruta de los archivos: solo se acepta un UUID.
+		if (!esUuid(entrada.reporteId) || !esUuid(entrada.alcanceId)) {
+			throw new ErrorDatos('no_encontrado', 'El reporte o el alcance no existen');
+		}
 		const resultado: ResultadoCargaFotos = { fotos: [], rechazadas: [], version: entrada.version };
 		for (const archivo of entrada.archivos) {
 			let procesada;
@@ -260,6 +299,41 @@ export class ServicioCaptura {
 		return this.guardarMiniatura(ruta, await this.archivos.leer(ruta));
 	}
 
+	/**
+	 * Foto `fotoId` del reporte `reporteId`, o null si no es suya. Consulta el reporte solo la primera
+	 * vez y recuerda todas sus fotos. Cuando haya autenticación, la ruta debe autorizar el acceso al
+	 * reporte antes de llamar aquí.
+	 */
+	async fotoDelReporte(reporteId: string, fotoId: string): Promise<Foto | null> {
+		if (!esUuid(reporteId) || !esUuid(fotoId)) return null;
+		const clave = `${reporteId}/${fotoId}`;
+		const recordada = this.fotosRecordadas.get(clave);
+		if (recordada) return recordada;
+		const reporte = await this.repos.reportes.obtener(reporteId);
+		for (const foto of reporte.alcances.flatMap((a) => a.fotos)) {
+			if (this.fotosRecordadas.size >= MAXIMO_FOTOS_RECORDADAS) {
+				// Se olvida la más antigua (Map conserva el orden de inserción).
+				this.fotosRecordadas.delete(this.fotosRecordadas.keys().next().value!);
+			}
+			this.fotosRecordadas.set(`${reporteId}/${foto.id}`, foto);
+		}
+		return this.fotosRecordadas.get(clave) ?? null;
+	}
+
+	/** Optimizada o miniatura de una foto del reporte; null si la foto no es del reporte. */
+	async leerArchivoFoto(
+		reporteId: string,
+		fotoId: string,
+		tamano: 'optimizada' | 'mini'
+	): Promise<Buffer | null> {
+		const foto = await this.fotoDelReporte(reporteId, fotoId);
+		if (!foto) return null;
+		const ruta = rutaOptimizadaLocal(foto);
+		if (tamano === 'optimizada') return this.archivos.leer(ruta);
+		const existente = await this.archivos.leer(rutaMiniatura(ruta)).catch(() => null);
+		return existente ?? this.guardarMiniatura(ruta, await this.archivos.leer(ruta));
+	}
+
 	private async guardarMiniatura(rutaOptimizada: string, optimizada: Uint8Array): Promise<Buffer> {
 		const { datos } = await prepararImagen(optimizada, MINIATURA);
 		await this.archivos.guardar(rutaMiniatura(rutaOptimizada), datos);
@@ -302,6 +376,28 @@ export class ServicioCaptura {
 	 * reutiliza; si no, se genera, se guarda y se registra en documentos_generados.
 	 */
 	async generarDocumento(id: string): Promise<DocumentoDescargable> {
+		const encurso = this.enCurso.get(id);
+		if (encurso) {
+			// Se aprovecha la generación en curso si sigue siendo de la versión vigente.
+			const resultado = await encurso.catch(() => null);
+			const vigente = await this.repos.reportes.obtener(id);
+			if (resultado && resultado.documento.reporteVersion === vigente.version) return resultado;
+			return this.generarDocumento(id);
+		}
+		const promesa = this.generarSinCompartir(id).finally(() => this.enCurso.delete(id));
+		this.enCurso.set(id, promesa);
+		return promesa;
+	}
+
+	/**
+	 * Genera en segundo plano el DOCX de la versión vigente (al enviar a revisión o emitir), para que
+	 * la descarga posterior lo encuentre listo. Los errores se ignoran: la descarga los mostrará.
+	 */
+	precalentarDocumento(id: string): void {
+		void this.generarDocumento(id).catch(() => undefined);
+	}
+
+	private async generarSinCompartir(id: string): Promise<DocumentoDescargable> {
 		// Si el reporte cambia mientras se genera (un autoguardado), se descarta y se genera de nuevo.
 		for (let intento = 1; ; intento++) {
 			const reporte = await this.repos.reportes.obtener(id);
@@ -351,27 +447,64 @@ export class ServicioCaptura {
 		}
 	}
 
-	private async documentoDe(reporte: Reporte): Promise<ReporteDocumento> {
-		const alcances = [];
-		for (const alcance of reporte.alcances) {
-			const fotos = [];
-			for (const foto of alcance.fotos) {
-				fotos.push({
-					datos: await this.archivos.leer(rutaOptimizadaLocal(foto)),
-					descripcion: foto.descripcion,
-					momento: foto.momento,
-					optimizada: { ancho: foto.ancho, alto: foto.alto },
-					rotacion: foto.rotacion
-				});
-			}
-			alcances.push({
-				titulo: alcance.titulo,
-				descripcion: alcance.descripcion,
-				fotos,
-				estado: alcance.estadoVerificacion,
-				observaciones: alcance.observaciones
-			});
+	/**
+	 * Foto lista para el generador. Sin giro, la optimizada tal cual. Con giro, la optimizada girada
+	 * con el mismo perfil del generador (mismos bytes que produciría él), guardada para reutilizarla.
+	 */
+	private async fotoDocumento(foto: Foto): Promise<FotoDocumento> {
+		const ruta = rutaOptimizadaLocal(foto);
+		const base = { descripcion: foto.descripcion, momento: foto.momento };
+		const giro = foto.rotacion ?? 0;
+		if (!giro) {
+			return {
+				...base,
+				datos: await this.archivos.leer(ruta),
+				optimizada: { ancho: foto.ancho, alto: foto.alto },
+				rotacion: 0
+			};
 		}
+		const rutaG = rutaGirada(ruta, giro);
+		const guardada = await this.archivos.leer(rutaG).catch(() => null);
+		if (guardada) {
+			const { width, height } = await sharp(guardada).metadata();
+			if (width && height) {
+				return {
+					...base,
+					datos: guardada,
+					optimizada: { ancho: width, alto: height },
+					rotacion: 0
+				};
+			}
+		}
+		const girada = await prepararImagen(await this.archivos.leer(ruta), {
+			...PERFILES_IMAGEN[0],
+			giro
+		});
+		// Si no se puede guardar, el documento sale igual; se vuelve a girar la próxima vez.
+		await this.archivos.guardar(rutaG, girada.datos).catch(() => undefined);
+		return {
+			...base,
+			datos: girada.datos,
+			optimizada: { ancho: girada.ancho, alto: girada.alto },
+			rotacion: 0
+		};
+	}
+
+	private async documentoDe(reporte: Reporte): Promise<ReporteDocumento> {
+		// Las fotos se leen (y, si hace falta, se giran) en paralelo, conservando su orden.
+		const fotos = await enParalelo(
+			reporte.alcances.flatMap((a) => a.fotos),
+			LECTURAS_EN_PARALELO,
+			(foto) => this.fotoDocumento(foto)
+		);
+		let siguiente = 0;
+		const alcances = reporte.alcances.map((alcance) => ({
+			titulo: alcance.titulo,
+			descripcion: alcance.descripcion,
+			fotos: alcance.fotos.map(() => fotos[siguiente++]),
+			estado: alcance.estadoVerificacion,
+			observaciones: alcance.observaciones
+		}));
 		const { elaboro, aprobo, recibio } = reporte.firmantes;
 		return {
 			numeroPartida: reporte.numeroPartida,
@@ -411,6 +544,9 @@ export class ServicioCaptura {
 			await this.archivos.eliminar(rutaOriginal).catch(() => undefined);
 			await this.archivos.eliminar(rutaOptimizada).catch(() => undefined);
 			await this.archivos.eliminar(rutaMiniatura(rutaOptimizada)).catch(() => undefined);
+			for (const giro of GIROS) {
+				await this.archivos.eliminar(rutaGirada(rutaOptimizada, giro)).catch(() => undefined);
+			}
 		}
 	}
 }

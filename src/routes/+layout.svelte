@@ -21,6 +21,10 @@
 	import '@fontsource-variable/nunito-sans';
 	import '@fontsource-variable/inter';
 	import '@fontsource-variable/manrope';
+	// Subconjunto latino (español) de cada fuente: se precarga para que el texto no espere al CSS.
+	// Vite les da la misma URL que usa el @font-face, así que no se descargan dos veces.
+	import interLatina from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+	import manropeLatina from '@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url';
 	import '../app.css';
 
 	let mobileMenuOpen = false;
@@ -96,6 +100,8 @@
 
 <svelte:head>
 	<title>{pageTitle} · ICSI Reportes</title>
+	<link rel="preload" href={interLatina} as="font" type="font/woff2" crossorigin="anonymous" />
+	<link rel="preload" href={manropeLatina} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
 
 <a class="saltar-contenido" href="#contenido" on:click={saltarAlContenido}>Saltar al contenido</a>

@@ -8,6 +8,7 @@ import {
 } from '$lib/dominio/esquemas';
 import { datos } from '$lib/server/datos';
 import { mensajeDeError } from '$lib/server/errores';
+import { puedeEditarCatalogo } from '$lib/server/permisos';
 import type { Actions, PageServerLoad } from './$types';
 
 const texto = (formulario: FormData, campo: string) => String(formulario.get(campo) ?? '').trim();
@@ -57,7 +58,10 @@ export const load: PageServerLoad = async ({ params, url }) => {
 };
 
 export const actions: Actions = {
-	guardar: async ({ request, params }) => {
+	guardar: async ({ request, params, locals }) => {
+		if (!puedeEditarCatalogo(locals)) {
+			return fail(403, { error: 'No tiene permiso para editar el catálogo.' });
+		}
 		const formulario = await request.formData();
 		let id: string;
 		try {

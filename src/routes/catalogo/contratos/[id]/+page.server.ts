@@ -111,7 +111,10 @@ export const actions: Actions = {
 		}
 	},
 
-	guardarEquipo: async ({ request, params }) => {
+	guardarEquipo: async ({ request, params, locals }) => {
+		if (!puedeEditarCatalogo(locals)) {
+			return fail(403, { accion: 'guardarEquipo', error: SIN_PERMISO });
+		}
 		const formulario = await request.formData();
 		try {
 			const repos = await datos();
@@ -227,7 +230,10 @@ export const actions: Actions = {
 		}
 	},
 
-	confirmarPartida: async ({ request }) => {
+	confirmarPartida: async ({ request, locals }) => {
+		if (!puedeEditarCatalogo(locals)) {
+			return fail(403, { accion: 'confirmarPartida', error: SIN_PERMISO });
+		}
 		const formulario = await request.formData();
 		try {
 			const partida = await (await datos()).catalogo.confirmarPartida(texto(formulario, 'id'));
@@ -237,7 +243,8 @@ export const actions: Actions = {
 		}
 	},
 
-	importarEnsayo: async ({ request, params }) => {
+	importarEnsayo: async ({ request, params, locals }) => {
+		if (!puedeEditarCatalogo(locals)) return fail(403, { accion: 'importar', error: SIN_PERMISO });
 		const formulario = await request.formData();
 		const archivo = formulario.get('archivo');
 		const sitioId = texto(formulario, 'sitioId');
@@ -312,7 +319,8 @@ export const actions: Actions = {
 		}
 	},
 
-	importarAplicar: async ({ request, params }) => {
+	importarAplicar: async ({ request, params, locals }) => {
+		if (!puedeEditarCatalogo(locals)) return fail(403, { accion: 'importar', error: SIN_PERMISO });
 		const formulario = await request.formData();
 		const carga = await tomarImportacionPendiente(
 			almacenamiento(),

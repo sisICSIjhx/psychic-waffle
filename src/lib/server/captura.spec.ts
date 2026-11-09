@@ -9,7 +9,10 @@ import type { Partida, Reporte } from '../dominio/esquemas';
 import { AlmacenamientoLocal } from './almacenamiento';
 import type { ClienteSql } from './bd/cliente';
 import { crearClientePglite } from './bd/pglite';
-import { ErrorValidacion, rutaMiniatura, ServicioCaptura } from './captura';
+import { ErrorDatos } from './bd/cliente';
+import { ErrorValidacion, rutaGirada, rutaMiniatura, ServicioCaptura } from './captura';
+import { PERFILES_IMAGEN } from './documentos/generar';
+import { prepararImagen } from './documentos/imagenes';
 import { texto } from './documentos/ooxml';
 import { crearRepositorios, type Repositorios } from './repositorios/index';
 
@@ -549,5 +552,116 @@ describe('datos del contrato corregidos', () => {
 		const delEmitido = await textoDocx((await servicio.generarDocumento(emitido.id)).datos);
 		expect(delEmitido).toContain(anterior);
 		expect(delEmitido).not.toContain('OC-FICTICIA-CORREGIDA');
+	});
+});
+
+describe('optimizaciones de la descarga y de las fotos', () => {
+	const medios = async (docx: Buffer) => {
+		const zip = await JSZip.loadAsync(docx);
+		return Promise.all(
+			Object.keys(zip.files)
+				.filter((n) => n.startsWith('word/media/') && !zip.files[n].dir)
+				.map((n) => zip.file(n)!.async('nodebuffer'))
+		);
+	};
+
+	/** Reporte listo para el documento, con una foto girada 90°. */
+	async function conFotoGirada() {
+		const reporte = await crear();
+		await servicio.cargarFotos({
+			reporteId: reporte.id,
+			alcanceId: reporte.alcances[0].id,
+			version: reporte.version,
+			momento: null,
+			archivos: [{ nombre: 'uno.jpg', datos: await jpeg() }]
+		});
+		const guardado = aGuardado(await servicio.obtener(reporte.id));
+		guardado.diasEjecucion = [{ desde: '2026-06-18', hasta: '2026-06-18' }];
+		guardado.alcances[0].fotos[0].rotacion = 90;
+		return servicio.guardar(guardado);
+	}
+
+	it('la foto girada sale con los mismos bytes que antes y se guarda para reutilizarla', async () => {
+		const reporte = await conFotoGirada();
+		const foto = reporte.alcances[0].fotos[0];
+		const almacen = new AlmacenamientoLocal(carpeta);
+		const optimizada = await almacen.leer(foto.rutaOptimizada!);
+		// Lo que producía el generador al girar la optimizada con el perfil preferido.
+		const esperada = await prepararImagen(optimizada, { ...PERFILES_IMAGEN[0], giro: 90 });
+
+		const primera = await servicio.generarDocumento(reporte.id);
+		expect((await medios(primera.datos)).some((m) => m.equals(esperada.datos))).toBe(true);
+		const girada = await almacen.leer(rutaGirada(foto.rutaOptimizada!, 90));
+		expect(girada.equals(esperada.datos)).toBe(true);
+
+		// La siguiente generación toma la girada guardada en lugar de volver a girarla.
+		const marca = await sharp({
+			create: { width: 240, height: 320, channels: 3, background: '#aa3311' }
+		})
+			.jpeg()
+			.toBuffer();
+		await almacen.guardar(rutaGirada(foto.rutaOptimizada!, 90), marca);
+		await almacen.eliminar(primera.documento.ruta);
+		const segunda = await servicio.generarDocumento(reporte.id);
+		expect((await medios(segunda.datos)).some((m) => m.equals(marca))).toBe(true);
+	});
+
+	it('dos descargas simultáneas comparten una sola generación', async () => {
+		const reporte = await conFotoGirada();
+		const [una, otra] = await Promise.all([
+			servicio.generarDocumento(reporte.id),
+			servicio.generarDocumento(reporte.id)
+		]);
+		expect(otra.documento.id).toBe(una.documento.id);
+		expect((await servicio.obtener(reporte.id)).documentos).toHaveLength(1);
+	});
+
+	it('precalentar deja el documento listo para la descarga', async () => {
+		const reporte = await conFotoGirada();
+		servicio.precalentarDocumento(reporte.id);
+		const descarga = await servicio.generarDocumento(reporte.id);
+		expect((await servicio.obtener(reporte.id)).documentos.map((d) => d.id)).toEqual([
+			descarga.documento.id
+		]);
+	});
+
+	it('sirve las fotos de un reporte consultándolo una sola vez y solo las suyas', async () => {
+		const reporte = await conFotoGirada();
+		const foto = reporte.alcances[0].fotos[0];
+		let consultas = 0;
+		const contado = new ServicioCaptura(
+			{
+				...repos,
+				reportes: {
+					...repos.reportes,
+					obtener: (id: string) => {
+						consultas++;
+						return repos.reportes.obtener(id);
+					}
+				}
+			} as Repositorios,
+			new AlmacenamientoLocal(carpeta)
+		);
+		const mini = await contado.leerArchivoFoto(reporte.id, foto.id, 'mini');
+		const optimizada = await contado.leerArchivoFoto(reporte.id, foto.id, 'optimizada');
+		expect((await sharp(mini!).metadata()).width).toBe(320);
+		expect(optimizada!.length).toBeGreaterThan(0);
+		expect(consultas).toBe(1);
+		// Una foto de otro reporte o un id que no es UUID no se sirven.
+		const otro = await crear();
+		expect(await contado.fotoDelReporte(otro.id, foto.id)).toBeNull();
+		expect(await contado.fotoDelReporte('../otro', foto.id)).toBeNull();
+	});
+
+	it('rechaza cargar fotos en un reporte cuyo id no es UUID', async () => {
+		await expect(
+			servicio.cargarFotos({
+				reporteId: '../../etc',
+				alcanceId: '00000000-0000-4000-8000-000000000000',
+				version: 1,
+				momento: null,
+				archivos: [{ nombre: 'uno.jpg', datos: await jpeg() }]
+			})
+		).rejects.toBeInstanceOf(ErrorDatos);
 	});
 });

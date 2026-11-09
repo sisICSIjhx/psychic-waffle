@@ -16,15 +16,15 @@
 		ocurrenciasDelMes
 	} from '$lib/dominio/captura';
 	import type { Ocurrencia } from '$lib/dominio/documento';
-	import {
-		ETIQUETA_MOTIVO_AJUSTE,
-		type Ajuste,
-		type Cliente,
-		type Contrato,
-		type Partida,
-		type PartidaResumen,
-		type ReporteResumen,
-		type Sitio
+	import { ETIQUETA_MOTIVO_AJUSTE } from '$lib/dominio/constantes';
+	import type {
+		Ajuste,
+		Cliente,
+		Contrato,
+		Partida,
+		PartidaResumen,
+		ReporteResumen,
+		Sitio
 	} from '$lib/dominio/esquemas';
 	import {
 		buscarPartidas,
