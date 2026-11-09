@@ -20,6 +20,22 @@
 	color: var(--pa-segmento-activo);
 }
 
+/* Distribución y periodicidad: en el diseño nuevo el icono va dentro del selector (como Contrato y
+   Sitio); en el original sigue junto a la etiqueta. */
+html[data-diseno-programa='original'] .programa-anual .icono-en-selector .icono-campo {
+	display: none;
+}
+html:not([data-diseno-programa='original']) .programa-anual .filtro label .icono-etiqueta {
+	display: none;
+}
+/* Los selectores del programa usan la lista de opciones de la plataforma (app.css). */
+html:not([data-diseno-programa='original']) .programa-anual .control select {
+	appearance: var(--apariencia-select);
+}
+html:not([data-diseno-programa='original']) .programa-anual .icono-en-selector select {
+	padding-left: 37px;
+}
+
 /* =========================================
    Tokens del diseño nuevo
    ========================================= */

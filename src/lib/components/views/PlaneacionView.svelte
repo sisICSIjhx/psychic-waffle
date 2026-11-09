@@ -669,6 +669,7 @@
 			<div class="filtro">
 				<label for="distribucion"
 					><svg
+						class="icono-etiqueta"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -680,7 +681,20 @@
 						{@html ICONOS.cuadricula}</svg
 					>Distribución</label
 				>
-				<div class="control">
+				<!-- Diseño nuevo: el icono va dentro del selector, como en Contrato y Sitio. -->
+				<div class="control icono-en-selector">
+					<svg
+						class="icono-campo"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+						{@html ICONOS.cuadricula}</svg
+					>
 					<select id="distribucion" name="distribucion" on:change={enviarAlCambiar}>
 						<option value="">Todas</option>
 						<option value="produccion" selected={filtro.distribucion === 'produccion'}
@@ -695,6 +709,7 @@
 			<div class="filtro">
 				<label for="periodicidad"
 					><svg
+						class="icono-etiqueta"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -706,7 +721,20 @@
 						{@html ICONOS.calendario}</svg
 					>Periodicidad</label
 				>
-				<div class="control">
+				<!-- Diseño nuevo: el icono va dentro del selector, como en Contrato y Sitio. -->
+				<div class="control icono-en-selector">
+					<svg
+						class="icono-campo"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+						{@html ICONOS.calendario}</svg
+					>
 					<select id="periodicidad" name="periodicidad" on:change={enviarAlCambiar}>
 						<option value="">Todas</option>
 						{#each Object.entries(ETIQUETA_PERIODICIDAD) as [valor, etiqueta] (valor)}
