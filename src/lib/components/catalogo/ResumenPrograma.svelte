@@ -69,7 +69,7 @@
 <div class="resumen-importacion" aria-live="polite">
 	<h3>Ensayo del programa «{nombreArchivo}»</h3>
 	<p class="view-note">
-		Sitio {sitio} · Periodo {textoMes(resultado.programa.periodoInicio)} a {textoMes(
+		Centro de costo {sitio} · Periodo {textoMes(resultado.programa.periodoInicio)} a {textoMes(
 			resultado.programa.periodoFin
 		)} · {PROGRAMA[resultado.programa.accion]}.
 	</p>
@@ -144,8 +144,8 @@
 	{#if resultado.noIncluidas.length}
 		<p class="view-note">
 			El libro no trae {resultado.noIncluidas.length === 1
-				? 'esta partida del sitio, que no cambia'
-				: 'estas partidas del sitio, que no cambian'}:
+				? 'esta partida del centro de costo, que no cambia'
+				: 'estas partidas del centro de costo, que no cambian'}:
 			{resultado.noIncluidas.map((p) => `${p.numero} ${p.actividad}`).join('; ')}.
 		</p>
 	{/if}

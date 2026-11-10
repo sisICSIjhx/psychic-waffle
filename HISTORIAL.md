@@ -3,6 +3,39 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-11-10 — Inicio de sesión propio, roles y carga del personal (cambio `inicio-sesion-roles`)
+
+- Motivo: etapa 1 del plan de seguimiento por centro de costo. El usuario decidió que el inicio de sesión entra en la fase 1 con cuentas propias de correo y contraseña (sin esperar a Supabase ni a Microsoft), respondió las dudas del plan y entregó la lista del personal. Nivel 3, con OpenSpec.
+- Resultado:
+  - Migración `0022_autenticacion.sql`: tablas `credenciales` y `sesiones` (con RLS), roles mesa directiva y contabilidad, `sede`, fecha de nacimiento opcional, personas sin proyectos, guardas del último administrador con acceso y `api_importar_personal`. `supabase/esquema_completo.sql` regenerado.
+  - Servidor: resumen de contraseñas con scrypt (`node:crypto`, sin dependencias nuevas), identificador de sesión opaco cuya base solo guarda el SHA-256, cookie `icsi_sesion` (HttpOnly, SameSite=Lax, Secure sobre HTTPS), 7 días o 12 horas sin uso, bloqueo de 15 minutos al quinto fallo y tope de 20 intentos por dirección en 10 minutos. `hooks.server.ts` valida la sesión y aplica la política de `autenticacion/acceso.ts`: sin sesión, las páginas van a `/acceso` y lo demás responde 401; modificar exige la capacidad de la ruta y lo no declarado solo lo modifica el administrador.
+  - Interfaz: `/acceso` y `/acceso/configurar` fuera del armazón, `/perfil` con cambio de contraseña, «Acceso al sistema» en la ficha de personal (contraseña temporal mostrada una vez, quitar acceso), menú con la persona, su rol, «Mi perfil» y «Cerrar sesión», y solo los destinos que el rol usa. Editor de reportes y programa en solo consulta para quien no captura o no ajusta.
+  - Mientras no exista ninguna cuenta la aplicación sigue abierta como antes; la primera cuenta debe ser de un administrador.
+  - Scripts `npm run importar:personal` (ensayo por omisión) y `npm run cuenta`.
+- Corrección de paso: en la ficha de personal, tras recargar la página, elegir un rol que deshabilita los proyectos borraba lo escrito en los campos (Svelte reaplica el valor inicial de los `value={…}` sin enlace que comparten efecto con ese cambio). Los campos pasan a `bind:value`. Otros formularios con `value={…}` y partes reactivas pueden tener el mismo defecto; no se revisaron.
+- Decisiones: el alcance de los datos por proyecto no se aplica aquí; pasa a la etapa 2, cuando la unidad de asignación sea el centro de costo. La regla «al menos un proyecto» del cambio `alcances-personal-esquema-bd` se retiró, porque la mayoría del personal trabaja en centros de costo que aún no existen en el sistema.
+- Datos: la lista del personal (47 personas) quedó en `insumos/personal/` (ignorado) y cargada en la base local con `--aplicar`: todas como reporteador, sin proyectos y sin cuenta. Respaldo previo de la base en `storage/respaldos/pglite-antes-0022`. El inicio de sesión **no se activó** en la base de trabajo.
+- Archivos: `supabase/migrations/0022_autenticacion.sql`, `src/hooks.server.ts`, `src/lib/server/autenticacion/`, `src/lib/server/repositorios/autenticacion.ts`, `src/lib/dominio/permisos.ts`, `src/lib/server/permisos.ts`, `src/routes/acceso/`, `src/routes/perfil/`, `src/routes/personal/`, `src/routes/+layout.server.ts`, barra lateral y cabecera, `scripts/importar-personal.ts`, `scripts/cuenta.ts`, `openspec/changes/inicio-sesion-roles/`.
+- Validación real: `npm run check` (0 errores), `npm run lint`, `npm run test` (514 pruebas en 67 archivos, 63 más que en la etapa 0), `npm run spec:check` (12 correctos) y `npm run verificar:datos` (sin coincidencias). En Chromium, con una base aislada (`vite dev --mode prueba`) y personas ficticias: activación, entrada con error y con acierto, contraseña temporal con cambio obligado, cierre de sesión, redirección con destino al entrar sin sesión, 401 en foto y acción sin sesión, y mesa directiva sin «Capturar» ni «Nuevo reporte» y con 403 al guardar un reporte, ajustar el programa, editar el catálogo y dar de alta personal.
+- Pendientes: activar el inicio de sesión en la base de trabajo y asignar rol y proyectos a cada persona; alcance por centro de costo (etapa 2); sin correo saliente, quien olvida su contraseña depende de un administrador; el límite por dirección es en memoria (complementar con el proxy al desplegar); revisar los demás formularios con `value={…}`; con una carpeta `STORAGE_DIR` inexistente, PGlite no arranca (hay que crearla antes).
+
+## 2026-11-10 — «Centro de costo» en la interfaz y tabla de cumplimiento con el contrato combinado
+
+- Motivo: dirección pidió sustituir el Excel de seguimiento por un módulo por centro de costo; esta es la etapa 0 del plan (`docs/PLAN_SEGUIMIENTO_CENTROS_COSTO.md`, con la solicitud redactada, las etapas y el prompt). Nivel 1–2, sin cambio de datos.
+- Resultado: la interfaz dice «Centro de costo» donde decía «Sitio» (filtros, catálogo, captura, historial, equipos, planeación, bitácora y mensajes del servidor). El nivel «Cliente» deja de mostrarse: se quitó su filtro de cumplimiento e historial (el parámetro `?cliente=` se conserva) y en el catálogo se llama «Proyecto», como ya lo hacían equipos y personal. En /cumplimiento la tabla «Por contrato y centro de costo» tiene dos columnas y la celda del contrato abarca sus centros de costo.
+- Sin cambios: los campos «Cliente» y «Sitio» del reporte (son los del formato FOR-ICSI-RMT-01), la columna «Sitio» del Excel de equipos, los mensajes de la importación del programa, los nombres internos (`sitio`, `cliente`) y la base.
+- Archivos: `src/lib/components/cumplimiento/TablaCumplimiento.svelte`, vistas de cumplimiento, historial, captura, catálogo y planeación, componentes de catálogo y equipos, `src/lib/dominio/bitacora.ts`, cargadores de cumplimiento e historial, mensajes de `src/routes/catalogo`, `src/routes/equipos` y `src/lib/server/captura.ts`, y cuatro pruebas de componentes.
+- Validación real: `npm run check` (0 errores), `npm run lint` y `npm run test` (451 pruebas) correctos; /cumplimiento revisado en Chromium con la base local: columnas separadas, contrato de Proagro con `rowspan` 2, subtotal y total.
+- Pendientes: etapas 1 a 5 del plan y sus puntos por confirmar; las demás pantallas renombradas no se revisaron a simple vista.
+
+## 2026-11-08 — Programa anual: cabecera fija y en el azul de acento
+
+- Motivo: el usuario pidió que la cabecera de la tabla del programa quede fija junto con las columnas #, Partida y Periodicidad, y que su gris (se perdía con el fondo) pase al blanco de las columnas o al azul de acento. Nivel 1.
+- Resultado: la tabla se desplaza dentro de su panel (alto máximo según la ventana) con las dos filas de cabecera fijas arriba y las tres columnas a la izquierda; cabecera azul de acento (más oscuro en el tema oscuro) con texto blanco y el mes actual resaltado en claro. El diseño original conserva sus colores, con la cabecera también fija.
+- Archivos: `src/lib/components/planeacion/programa.css`, `src/lib/components/planeacion/programa-nuevo.css`.
+- Validación real: Prettier correcto; medición y captura en Chromium (tema oscuro) con la tabla desplazada. No se ejecutaron `check` ni la suite.
+- Pendientes: revisar el tema claro a simple vista.
+
 ## 2026-11-09 — Programa: iconos dentro del selector y lista de opciones con el estilo de la plataforma
 
 - Motivo: el usuario pidió que en el diseño nuevo del programa los iconos de «Distribución» y «Periodicidad» vayan dentro del selector, como en «Contrato» y «Sitio», y que las opciones de los selectores sigan el diseño de la plataforma. Nivel 1.

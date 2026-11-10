@@ -71,7 +71,7 @@
 	</h2>
 	{#if !editando}
 		<dl class="datos">
-			<dt>Cliente</dt>
+			<dt>Proyecto</dt>
 			<dd>{contrato.cliente?.razonSocial ?? '—'}</dd>
 			<dt>Número</dt>
 			<dd>{contrato.numero}</dd>
@@ -91,10 +91,10 @@
 			<input type="hidden" name="tipo" value="contrato" />
 			<input type="hidden" name="actualizadoEn" value={contrato.actualizadoEn} />
 			<div class="form-group fijo">
-				<span class="etiqueta-campo">Cliente</span>
+				<span class="etiqueta-campo">Proyecto</span>
 				<p class="valor-fijo">{contrato.cliente?.razonSocial ?? '—'}</p>
 				<p class="nota">
-					El cliente no cambia: una renovación u orden de compra nueva se registra como contrato
+					El proyecto no cambia: una renovación u orden de compra nueva se registra como contrato
 					nuevo.
 				</p>
 			</div>

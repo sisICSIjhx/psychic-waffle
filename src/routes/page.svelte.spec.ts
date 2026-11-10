@@ -1,12 +1,14 @@
 import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { SESION_ABIERTA } from '$lib/dominio/permisos';
 import Page from './+page.svelte';
 
 describe('/+page.svelte', () => {
 	it('muestra «Mi trabajo» con el avance del mes y el siguiente trabajo', async () => {
 		render(Page, {
 			data: {
+				sesion: SESION_ABIERTA,
 				hoy: '2026-07-15',
 				resumen: { programadas: 12, cumplidas: 3, pendientes: 9, vencidas: 2 },
 				programasVigentes: 1,

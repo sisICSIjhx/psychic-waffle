@@ -10,6 +10,7 @@
 	<PersonalEditor
 		persona={data.persona}
 		clientes={data.clientes}
+		sesionActivada={data.sesionActivada}
 		form={form ?? (data.creado ? { mensaje: 'Persona registrada.' } : null)}
 	/>
 {/key}

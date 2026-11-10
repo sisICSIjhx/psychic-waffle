@@ -82,7 +82,7 @@
 				<h2 id="titulo-identificacion" class="view-heading">Identificación</h2>
 				<div class="form-grid">
 					<div class="form-group">
-						<label for="sitioId">Sitio</label>
+						<label for="sitioId">Centro de costo</label>
 						<select id="sitioId" name="sitioId" value={equipo?.sitioId ?? sitios[0].id} required>
 							{#each sitios as sitio (sitio.id)}
 								<option value={sitio.id}

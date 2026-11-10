@@ -53,7 +53,6 @@ export const load: PageServerLoad = async ({ url }) => {
 		});
 	}
 	return {
-		clientes,
 		contratos,
 		sitios,
 		partidas,

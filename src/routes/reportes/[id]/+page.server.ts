@@ -7,9 +7,10 @@ import { ErrorValidacion } from '$lib/server/captura';
 import { captura } from '$lib/server/datos';
 import { mensajeDeError } from '$lib/server/errores';
 import { LIMITE_FOTO_BYTES } from '$lib/server/fotos';
+import { puede } from '$lib/server/permisos';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
 	const servicio = await captura();
 	let reporte;
 	try {
@@ -31,7 +32,8 @@ export const load: PageServerLoad = async ({ params }) => {
 		catalogoCambiado: cambiado,
 		contratoCambiado: contrato.cambiado,
 		camposContrato: contrato.datos.map((d) => d.campo),
-		partidaPorConfirmar: partida.estadoCatalogo === 'por_confirmar'
+		partidaPorConfirmar: partida.estadoCatalogo === 'por_confirmar',
+		puedeEditar: puede(locals, 'capturar')
 	};
 };
 

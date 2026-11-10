@@ -1,6 +1,6 @@
 // Selección guiada para crear un reporte: contrato vigente, sitio, partida, TAG y periodo. Cada paso
 // es un parámetro de la URL; la acción «crear» genera el reporte prellenado y abre el editor.
-import { fail, redirect } from '@sveltejs/kit';
+import { error as errorHttp, fail, redirect } from '@sveltejs/kit';
 import { mesesDeVigencia, modosDePeriodo, tipoOcurrencia } from '$lib/dominio/captura';
 import type { Partida } from '$lib/dominio/esquemas';
 import { fechaEnZona } from '$lib/dominio/fechas';
@@ -8,11 +8,13 @@ import { ErrorValidacion } from '$lib/server/captura';
 import { captura, datos } from '$lib/server/datos';
 import { datosDeSeleccion } from '$lib/server/seleccion-captura';
 import { mensajeDeError } from '$lib/server/errores';
+import { puede } from '$lib/server/permisos';
 import type { Actions, PageServerLoad } from './$types';
 
 const hoy = () => fechaEnZona();
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
+	if (!puede(locals, 'capturar')) errorHttp(403, 'Su rol no captura reportes.');
 	const repos = await datos();
 	const cliente = url.searchParams.get('cliente');
 	const clientes = await repos.catalogo.listarClientes();

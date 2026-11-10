@@ -1,8 +1,14 @@
-<!-- Lista del personal con rol, proyectos y estado; el alta y la edición van a /personal/[id]. -->
+<!-- Lista del personal con sede, rol, proyectos, cuenta y estado; el alta y la edición van a
+     /personal/[id]. -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { Personal } from '$lib/dominio/esquemas';
-	import { ETIQUETAS_ROL, nombreCompleto, textoProyectos } from '$lib/dominio/personal';
+	import {
+		ETIQUETAS_ROL,
+		nombreCompleto,
+		textoAcceso,
+		textoProyectos
+	} from '$lib/dominio/personal';
 	import { plural } from '$lib/dominio/textos';
 
 	export let personal: Personal[] = [];
@@ -43,8 +49,10 @@
 				<thead>
 					<tr>
 						<th>Nombre</th>
+						<th>Sede</th>
 						<th>Rol</th>
 						<th>Proyectos</th>
+						<th>Acceso</th>
 						<th>Estado</th>
 						{#if puedeEditar}<th><span class="sr-only">Acciones</span></th>{/if}
 					</tr>
@@ -53,8 +61,10 @@
 					{#each visibles as persona (persona.id)}
 						<tr>
 							<td>{nombreCompleto(persona)}</td>
+							<td>{persona.sede ?? '—'}</td>
 							<td>{ETIQUETAS_ROL[persona.rol]}</td>
 							<td>{textoProyectos(persona)}</td>
+							<td>{textoAcceso(persona)}</td>
 							<td>
 								{#if persona.activo}
 									<span class="status-badge ok">Activo</span>

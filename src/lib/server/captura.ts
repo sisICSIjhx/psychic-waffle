@@ -152,7 +152,10 @@ export class ServicioCaptura {
 			(s) => s.id === partida.sitioId
 		);
 		if (!contrato || !sitio) {
-			throw new ErrorDatos('no_encontrado', 'El contrato o el sitio de la partida no existen');
+			throw new ErrorDatos(
+				'no_encontrado',
+				'El contrato o el centro de costo de la partida no existen'
+			);
 		}
 		if (
 			!mesesDeVigencia(contrato.vigenciaInicio, contrato.vigenciaFin).includes(entrada.periodoMes)

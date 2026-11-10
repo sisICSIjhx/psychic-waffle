@@ -29,6 +29,8 @@
 	export let mes: string;
 	export let meses: string[] = [];
 	export let hoy: string;
+	/** Sin permiso para ajustar el programa no se ofrece «Ajustar». */
+	export let puedeAjustar = true;
 	export let formato: 'matriz' | 'lista' = 'matriz';
 	export let ejecuciones: EjecucionDelMes[] = [];
 	/** Consulta de la captura con contrato, sitio, partida, mes y, si aplica, la reprogramación. */
@@ -261,7 +263,7 @@
 								>
 							{/if}
 							<!-- eslint-enable svelte/no-navigation-without-resolve -->
-							{#if faltan(celda) > 0 || celda.ajustes.length}
+							{#if puedeAjustar && (faltan(celda) > 0 || celda.ajustes.length)}
 								<button
 									type="button"
 									class="boton contorno"

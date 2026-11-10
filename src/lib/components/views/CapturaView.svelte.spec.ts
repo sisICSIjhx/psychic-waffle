@@ -111,7 +111,7 @@ describe('CapturaView', () => {
 		expect(page.getByLabelText('Contrato').elements()).toHaveLength(0);
 		await page.getByRole('button', { name: 'Cambiar' }).click();
 		await expect.element(page.getByLabelText('Contrato')).toBeInTheDocument();
-		await expect.element(page.getByLabelText('Sitio')).toBeInTheDocument();
+		await expect.element(page.getByLabelText('Centro de costo')).toBeInTheDocument();
 	});
 
 	it('con varios contratos también resume el contexto si ya viene elegido', async () => {

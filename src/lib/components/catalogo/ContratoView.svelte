@@ -170,10 +170,10 @@
 <Aviso form={aviso} />
 
 <section class="card" aria-labelledby="titulo-sitios">
-	<h2 id="titulo-sitios" class="view-heading">Sitios</h2>
+	<h2 id="titulo-sitios" class="view-heading">Centros de costo</h2>
 	{#if sitios.length}
 		<form method="GET" class="toolbar">
-			<label for="sitio">Sitio</label>
+			<label for="sitio">Centro de costo</label>
 			<select id="sitio" name="sitio" on:change={enviarAlCambiar}>
 				{#each sitios as s (s.id)}
 					<option value={s.id} selected={s.id === sitio?.id}>{s.clave} {s.nombre}</option>
@@ -189,11 +189,11 @@
 			error={errorDe(['sitio', 'quitarSitio'])}
 		/>
 	{:else}
-		<p class="view-note">El contrato aún no tiene sitios.</p>
+		<p class="view-note">El contrato aún no tiene centros de costo.</p>
 	{/if}
 	{#if permisos.editarCatalogo}
 		<details>
-			<summary>Asociar un sitio</summary>
+			<summary>Asociar un centro de costo</summary>
 			<form method="POST" action="?/asociarSitio" use:enhance class="form-grid">
 				<TextField label="Clave (EM/ERM)" name="clave" placeholder="EM-30167" />
 				<TextField label="Nombre" name="nombre" placeholder="CERRITOS" />
@@ -283,9 +283,9 @@
 		<h2 id="titulo-importar" class="view-heading">Importar catálogo o programa desde Excel</h2>
 		<p class="view-note">
 			Se aceptan dos formatos: el libro del catálogo (hojas del programa anual y del catálogo de
-			alcances) o un programa anual solo, con uno o varios sitios; de este se toma el bloque de {sitio.clave}.
-			Primero se muestra un ensayo con lo que se creará o actualizará; nada se guarda hasta
-			confirmar.
+			alcances) o un programa anual solo, con uno o varios centros de costo; de este se toma el
+			bloque de {sitio.clave}. Primero se muestra un ensayo con lo que se creará o actualizará; nada
+			se guarda hasta confirmar.
 		</p>
 		<form
 			method="POST"
@@ -321,7 +321,9 @@
 	</section>
 
 	<section class="card" aria-labelledby="titulo-equipos">
-		<h2 id="titulo-equipos" class="view-heading">Equipos e instrumentos (TAG) del sitio</h2>
+		<h2 id="titulo-equipos" class="view-heading">
+			Equipos e instrumentos (TAG) del centro de costo
+		</h2>
 		{#if equipos.length}
 			<div class="tabla-desplazable">
 				<table>
@@ -352,7 +354,7 @@
 				</table>
 			</div>
 		{:else}
-			<p class="view-note">Sin equipos registrados en este sitio.</p>
+			<p class="view-note">Sin equipos registrados en este centro de costo.</p>
 		{/if}
 		<details bind:open={equipoAbierto}>
 			<summary>{equipo.id ? `Editar equipo ${equipo.tag}` : 'Agregar equipo'}</summary>

@@ -52,6 +52,8 @@
 	/** Campos del contrato que cambiaron («contrato», «sitio», «firmantes.aprobo»…). */
 	export let camposContrato: string[] = [];
 	export let partidaPorConfirmar = false;
+	/** Quien no captura reportes (mesa directiva, contabilidad) solo consulta y descarga. */
+	export let puedeEditar = true;
 	/** Pausa del autoguardado tras el último cambio, en milisegundos. */
 	export let espera = 1500;
 	export let enviar: EnviarAccion = llamarAccion;
@@ -203,7 +205,8 @@
 	let cola: Promise<unknown> = Promise.resolve();
 
 	// Mientras cambia el estado o se aplica el catálogo no se edita: lo escrito se perdería.
-	$: editable = reporte.estado === 'borrador' && estadoGuardado !== 'conflicto' && !ocupado;
+	$: editable =
+		puedeEditar && reporte.estado === 'borrador' && estadoGuardado !== 'conflicto' && !ocupado;
 	$: ruta = resolve('/reportes/[id]', { id: reporte.id });
 	$: huellaActual = huella(reporte);
 	$: if (
@@ -920,7 +923,9 @@
 					><span class="texto-largo">Descargar </span>DOCX</button
 				>
 			{/if}
-			{#if reporte.estado === 'borrador'}
+			{#if !puedeEditar}
+				<span class="motivo-descarga">Solo consulta</span>
+			{:else if reporte.estado === 'borrador'}
 				{#if pendientes.length}
 					<button
 						class="boton primario"
@@ -1041,7 +1046,7 @@
 			</section>
 		{/if}
 
-		{#if catalogoCambiado && reporte.estado === 'borrador'}
+		{#if puedeEditar && catalogoCambiado && reporte.estado === 'borrador'}
 			<div class="aviso aviso-alerta" role="status">
 				<p>
 					La partida cambió en el catálogo después de crear este borrador. El borrador conserva su
@@ -1068,7 +1073,7 @@
 						: 'Para actualizarlos, regrese el reporte a borrador.'}
 				</p>
 				<div class="acciones-aviso">
-					{#if reporte.estado === 'borrador'}
+					{#if puedeEditar && reporte.estado === 'borrador'}
 						<button
 							class="boton"
 							type="button"

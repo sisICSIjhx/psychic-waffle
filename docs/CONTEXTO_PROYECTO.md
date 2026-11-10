@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-11-05 contra los archivos locales (rama `feat/optimizacion-seguridad`).
+Verificado el 2026-11-10 contra los archivos locales (rama `feat/inicio-sesion-roles`).
 
 ## Producto y arquitectura
 
@@ -18,10 +18,16 @@ Verificado el 2026-11-05 contra los archivos locales (rama `feat/optimizacion-se
   - Seguridad web: CSP en `svelte.config.js` (`kit.csp`, hash del script del tema de `app.html`) y
     encabezados y `handleError` en `src/hooks.server.ts`. Constantes del dominio sin Zod en
     `dominio/constantes.ts` (el navegador no descarga Zod; `esquemas.ts` las reexporta).
+  - Acceso (cambio `inicio-sesion-roles`): cuentas propias de correo y contraseña sobre `personal`
+    (`credenciales`, resumen scrypt) y sesiones en la base (`sesiones`, cookie `icsi_sesion`).
+    `src/hooks.server.ts` llena `locals.autenticacion` y `locals.usuario` y aplica la política de
+    `src/lib/server/autenticacion/acceso.ts` antes de cada carga o acción; la matriz rol → capacidades
+    está en `src/lib/dominio/permisos.ts` y la usan `src/lib/server/permisos.ts` y el menú. Sin
+    ninguna cuenta la aplicación sigue abierta; se activa en `/acceso/configurar`.
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
     resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0021`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0022`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
     `npm run bd:script` genera `supabase/esquema_completo.sql` (todo en un script para una base vacía
     de Supabase; una prueba exige que esté al día). Proyecto = cliente. Fotos: local o SharePoint
     (solo URL en `reporte_fotos`).
@@ -43,15 +49,20 @@ Verificado el 2026-11-05 contra los archivos locales (rama `feat/optimizacion-se
   motivo e historial; `/catalogo/alcances` biblioteca de alcances predeterminados por proyecto, que
   el editor de partida agrega); `/personal` (en el menú) y `/personal/[id]` alta y edición con rol y
   proyectos; `/equipos` (en el menú) catálogo de equipos por proyecto con calibración, importación del
-  Excel y CSV, y `/equipos/[id]` la ficha; `/perfil` existe pero no está en el menú hasta que haya
-  autenticación.
+  Excel y CSV, y `/equipos/[id]` la ficha; `/acceso` inicio y cierre de sesión y
+  `/acceso/configurar` activación (ambas sin menú); `/perfil` cuenta y cambio de contraseña. En
+  `/personal/[id]`, «Acceso al sistema» genera la contraseña temporal o quita la cuenta.
 - Datos locales: sin `.env` se usa PGlite en `storage/pglite`; fotos y documentos en `storage/`
   (ignorado). Supabase se activa con `PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (tarea 3.8,
   pendiente del usuario). PGlite no admite dos procesos: detener el servidor antes de usar los scripts.
 - Scripts: `npm run importar` (Excel del catálogo, o `--programa` para un programa anual por sitio;
   ensayo por omisión), `node scripts/derivar-partidas.ts`
   (partidas por confirmar desde reportes; `--complementar` para las confirmadas),
-  `npm run verificar:datos` (nombres de los insumos fuera de lo versionable), `npm run prueba:documental`.
+  `npm run verificar:datos` (nombres de los insumos fuera de lo versionable), `npm run prueba:documental`,
+  `npm run importar:personal` (lista de nombre, sede y correo; ensayo por omisión) y
+  `npm run cuenta -- --correo <correo>` (contraseña temporal desde la consola: recuperación del
+  administrador). Para probar en el navegador sin tocar la base de trabajo: `vite dev --mode prueba`
+  con `STORAGE_DIR` en `.env.prueba` (ignorado).
 
 ## Reglas que deben conservarse
 
@@ -109,12 +120,21 @@ Verificado el 2026-11-05 contra los archivos locales (rama `feat/optimizacion-se
 - Cambio `catalogo-equipos-proyecto` (2026-11-05, migración 0021): módulo «Equipos» sobre la tabla
   `equipos` ampliada (TAG único por sitio y nombre); falta importar el Excel real en la base de
   trabajo.
+- Seguimiento por centro de costo (`docs/PLAN_SEGUIMIENTO_CENTROS_COSTO.md`): etapa 0 hecha
+  (2026-11-10, «Centro de costo» en la interfaz y tabla de cumplimiento con el contrato combinado).
+  Etapa 1, cambio `inicio-sesion-roles` (2026-11-10, migración 0022): inicio de sesión propio, roles
+  mesa directiva y contabilidad, permisos por rol comprobados en el servidor, sede y fecha de
+  nacimiento opcional en personal, y las 47 personas de la lista cargadas en la base local (sin rol
+  definitivo ni cuenta). El inicio de sesión **no está activado** en la base de trabajo. Los datos
+  aún no se filtran por proyecto: llega con los centros de costo (etapa 2).
 - Rendimiento y seguridad (2026-11-05): JavaScript por página −65 a −73 %, DOCX con `noSandbox`,
   giradas guardadas, generación compartida y precalentada; CSP, encabezados y permisos completos en
   el catálogo. Detalle y 10 propuestas en `docs/OPTIMIZACION_SEGURIDAD_Y_PROPUESTAS.md`.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); carga del
   histórico antes de usar el tablero; proyecto de
-  Supabase (3.8); autenticación y permisos; almacenamiento en SharePoint; destino de despliegue
+  Supabase (3.8); activar el inicio de sesión y asignar rol y proyectos al personal; alcance de los
+  datos por centro de costo; inicio de sesión con Microsoft; almacenamiento en SharePoint; destino de
+  despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas
   derivadas por confirmar; probar HEIC con una foto real.
 - Herramientas: OpenSpec 1.14.2 y CodeGraph 1.6.2 (MCP en `.mcp.json`; `npm run graph:sync` tras cambios

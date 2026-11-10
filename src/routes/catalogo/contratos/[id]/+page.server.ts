@@ -105,7 +105,7 @@ export const actions: Actions = {
 				sitioId = existente.id;
 			}
 			await repos.catalogo.asociarSitio(params.id, sitioId, contexto);
-			return { accion: 'asociarSitio', mensaje: 'Sitio asociado al contrato.' };
+			return { accion: 'asociarSitio', mensaje: 'Centro de costo asociado al contrato.' };
 		} catch (error) {
 			return fail(400, { accion: 'asociarSitio', error: mensajeDeError(error) });
 		}
@@ -129,7 +129,7 @@ export const actions: Actions = {
 			if (!sitioDelContrato || !equipoDelSitio) {
 				return fail(400, {
 					accion: 'guardarEquipo',
-					error: 'El equipo no pertenece a un sitio de este contrato.'
+					error: 'El equipo no pertenece a un centro de costo de este contrato.'
 				});
 			}
 			const equipo = await repos.catalogo.guardarEquipo({
@@ -269,7 +269,7 @@ export const actions: Actions = {
 				const contrato = (await repos.catalogo.listarContratos()).find((c) => c.id === params.id);
 				const sitio = (await repos.catalogo.listarSitios(params.id)).find((s) => s.id === sitioId);
 				if (!contrato || !sitio) {
-					return fail(400, { accion: 'importar', error: 'Elija un sitio del contrato.' });
+					return fail(400, { accion: 'importar', error: 'Elija un centro de costo del contrato.' });
 				}
 				const analisis = analizarProgramaAnual(hojas, { claveSitio: sitio.clave });
 				const carga = cargaDePrograma(analisis, contrato.id, sitio.id);

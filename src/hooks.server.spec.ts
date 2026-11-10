@@ -1,8 +1,24 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import { describe, expect, it } from 'vitest';
-import { handle } from './hooks.server';
+import { describe, expect, it, vi } from 'vitest';
 
-const evento = (url: string) => ({ url: new URL(url) }) as unknown as RequestEvent;
+// Sin cuentas la guardia de acceso deja pasar todo; sus casos con sesión están en
+// routes/acceso/page.server.spec.ts.
+vi.mock('$lib/server/datos', () => ({
+	datos: async () => ({
+		autenticacion: { contexto: async () => ({ activada: false, usuario: null }) }
+	})
+}));
+
+const { handle } = await import('./hooks.server');
+
+const evento = (url: string) =>
+	({
+		url: new URL(url),
+		request: new Request(url),
+		cookies: { get: () => undefined, delete: () => undefined },
+		locals: {},
+		isDataRequest: false
+	}) as unknown as RequestEvent;
 
 describe('encabezados de seguridad', () => {
 	it('se agregan a toda respuesta sin reemplazar los propios', async () => {

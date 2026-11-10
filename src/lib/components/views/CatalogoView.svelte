@@ -29,14 +29,14 @@
 	<h2 id="titulo-contratos" class="view-heading">Contratos</h2>
 	{#if contratos.length === 0}
 		<p class="view-note">
-			Aún no hay contratos. Registre un cliente y su contrato para cargar el catálogo de partidas.
+			Aún no hay contratos. Registre un proyecto y su contrato para cargar el catálogo de partidas.
 		</p>
 	{:else}
 		<div class="tabla-desplazable">
 			<table>
 				<thead>
 					<tr>
-						<th>Cliente</th>
+						<th>Proyecto</th>
 						<th>Contrato / OC</th>
 						<th>Vigencia</th>
 						<th>Partidas</th>
@@ -75,19 +75,19 @@
 
 <div class="form-grid">
 	<details class="card" open={clientes.length === 0}>
-		<summary class="view-heading">Nuevo cliente</summary>
+		<summary class="view-heading">Nuevo proyecto</summary>
 		<form method="POST" action="?/crearCliente" use:enhance>
 			<TextField label="Clave (para el menú de Captura)" name="clave" placeholder="cerritos" />
 			<TextField label="Nombre" name="nombre" placeholder="Cerritos" />
 			<TextField label="Razón social" name="razonSocial" placeholder="TEMEX GAS" />
-			<button class="boton primario" type="submit">Registrar cliente</button>
+			<button class="boton primario" type="submit">Registrar proyecto</button>
 		</form>
 	</details>
 
 	<details class="card" open={clientes.length > 0 && contratos.length === 0}>
 		<summary class="view-heading">Nuevo contrato</summary>
 		<form method="POST" action="?/crearContrato" use:enhance>
-			<SelectField label="Cliente" name="clienteId" options={opcionesCliente} required />
+			<SelectField label="Proyecto" name="clienteId" options={opcionesCliente} required />
 			<TextField label="Número de contrato u OC" name="numero" />
 			<TextField label="Descripción (opcional)" name="descripcion" />
 			<DateField label="Vigente desde" name="vigenciaInicio" required />

@@ -150,12 +150,14 @@ describe('personal', () => {
 		expect((await repos.personal.listar()).some((p) => p.id === persona.id)).toBe(true);
 	});
 
-	it('exige proyectos salvo al administrador, al que no se le guardan', async () => {
-		expect(
-			await mensajeError(
-				repos.personal.guardar({ ...base, rol: 'lider_operativo', clienteIds: [] })
-			)
-		).toBe('Asigne al menos un proyecto');
+	it('los roles con proyectos pueden quedar sin ninguno y al administrador no se le guardan', async () => {
+		// Desde la 0022 ya no se exige un proyecto: la lista del personal llega sin ellos.
+		const sinProyectos = await repos.personal.guardar({
+			...base,
+			rol: 'lider_operativo',
+			clienteIds: []
+		});
+		expect(sinProyectos.proyectos).toEqual([]);
 		const admin = await repos.personal.guardar({
 			...base,
 			nombre: 'Admin',

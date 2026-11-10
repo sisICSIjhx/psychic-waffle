@@ -419,8 +419,41 @@ html:not([data-diseno-programa='original']) .programa-anual .leyenda .punto {
 }
 
 /* Matriz: cabecera gris como las tablas de los kits, celdas-tarjeta más redondeadas. */
+html:not([data-diseno-programa='original']) .programa-anual .matriz {
+	--pa-cab-fondo: var(--pa-anio-actual);
+	--pa-cab-fondo-par: #2f58d4;
+	--pa-cab-linea: rgba(255, 255, 255, 0.28);
+	--pa-cab-texto: #ffffff;
+}
+html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .matriz {
+	--pa-cab-fondo: #2b4a9a;
+	--pa-cab-fondo-par: #264287;
+}
+/* Cabecera en el azul de acento, opaca para que no se transparenten las celdas al desplazar. */
 html:not([data-diseno-programa='original']) .programa-anual .matriz thead th {
-	color: var(--pa-texto-3);
+	background: var(--pa-cab-fondo);
+	border-color: var(--pa-cab-linea);
+	color: var(--pa-cab-texto);
+}
+html:not([data-diseno-programa='original']) .programa-anual .matriz thead th.anio,
+html:not([data-diseno-programa='original']) .programa-anual .matriz thead th.anio-actual {
+	color: var(--pa-cab-texto);
+}
+html:not([data-diseno-programa='original']) .programa-anual .matriz thead th.anio-par {
+	background: var(--pa-cab-fondo-par);
+}
+html:not([data-diseno-programa='original']) .programa-anual .matriz thead th.mes-actual {
+	background: #ffffff;
+	border-color: var(--pa-mes-actual-borde);
+	color: #2a52cc;
+}
+html[data-theme='dark']:not([data-diseno-programa='original'])
+	.programa-anual
+	.matriz
+	thead
+	th.mes-actual {
+	background: #dbe6ff;
+	color: #1b3a8a;
 }
 html:not([data-diseno-programa='original']) .programa-anual .tarjeta-celda {
 	border-radius: 10px;

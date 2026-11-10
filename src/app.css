@@ -331,6 +331,48 @@ time,
 	scroll-padding-top: 150px;
 }
 
+/* Entrar y activar el inicio de sesión: una tarjeta centrada, sin menú ni cabecera. */
+.pagina-acceso {
+	display: grid;
+	place-items: center;
+	min-height: 100dvh;
+	padding: 24px 16px;
+}
+.pagina-acceso:focus {
+	outline: none;
+}
+.tarjeta-acceso {
+	display: grid;
+	gap: 16px;
+	width: min(440px, 100%);
+	margin: 0;
+}
+.tarjeta-acceso form {
+	display: grid;
+	gap: 14px;
+}
+.tarjeta-acceso .view-heading,
+.tarjeta-acceso .view-note,
+.tarjeta-acceso .aviso {
+	margin: 0;
+}
+.marca-acceso {
+	margin: 0;
+	color: var(--accion);
+	font-family: var(--fuente-marca);
+	font-size: 1.5rem;
+	font-weight: 800;
+	letter-spacing: -0.01em;
+}
+.marca-acceso span {
+	color: var(--tinta-tenue);
+	font-family: var(--fuente);
+	font-size: var(--texto-sm);
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
 /* Visible solo con el foco del teclado (WCAG 2.4.1). */
 .saltar-contenido {
 	position: fixed;

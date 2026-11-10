@@ -1,5 +1,5 @@
 <!-- Tablero de cumplimiento del programa: filtros y mes de corte en la dirección, indicadores con
-     semáforo, tabla por contrato y sitio (por partida con un sitio elegido), tendencia mensual y
+     semáforo, tabla por contrato y centro de costo (por partida con uno elegido), tendencia mensual y
      reportes que faltan. Los datos son los de hoy: no hay instantáneas históricas. -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
@@ -21,7 +21,6 @@
 	export let hoy: string;
 	export let corte: string;
 	export let corteLimitado = false;
-	export let clientes: Cliente[] = [];
 	export let cliente: Cliente | null = null;
 	export let contratos: Contrato[] = [];
 	export let contrato: Contrato | null = null;
@@ -65,15 +64,7 @@
 <section class="card" aria-labelledby="titulo-cumplimiento">
 	<h2 id="titulo-cumplimiento" class="view-heading">Filtros</h2>
 	<form method="GET" class="filtros">
-		<div class="form-group">
-			<label for="filtro-cliente">Cliente</label>
-			<select id="filtro-cliente" name="cliente" on:change={enviarAlCambiar}>
-				<option value="">Todos</option>
-				{#each clientes as c (c.id)}
-					<option value={c.clave} selected={c.id === cliente?.id}>{c.nombre}</option>
-				{/each}
-			</select>
-		</div>
+		{#if cliente}<input type="hidden" name="cliente" value={cliente.clave} />{/if}
 		<div class="form-group">
 			<label for="filtro-contrato">Contrato</label>
 			<select id="filtro-contrato" name="contrato" on:change={enviarAlCambiar}>
@@ -84,7 +75,7 @@
 			</select>
 		</div>
 		<div class="form-group">
-			<label for="filtro-sitio">Sitio</label>
+			<label for="filtro-sitio">Centro de costo</label>
 			<select id="filtro-sitio" name="sitio" on:change={enviarAlCambiar} disabled={!contrato}>
 				<option value="">Todos</option>
 				{#each sitios as s (s.id)}
@@ -137,7 +128,7 @@
 
 	<section class="card" aria-labelledby="titulo-tabla">
 		<h2 id="titulo-tabla" class="view-heading">
-			{desglose ? `Por partida · ${sitio?.clave ?? ''}` : 'Por contrato y sitio'}
+			{desglose ? `Por partida · ${sitio?.clave ?? ''}` : 'Por contrato y centro de costo'}
 		</h2>
 		<TablaCumplimiento
 			contratos={tabla.contratos}
