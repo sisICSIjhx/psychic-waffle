@@ -3,6 +3,14 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-11-08 — Programa anual: cabecera fija y en el azul de acento
+
+- Motivo: el usuario pidió que la cabecera de la tabla del programa quede fija junto con las columnas #, Partida y Periodicidad, y que su gris (se perdía con el fondo) pase al blanco de las columnas o al azul de acento. Nivel 1.
+- Resultado: la tabla se desplaza dentro de su panel (alto máximo según la ventana) con las dos filas de cabecera fijas arriba y las tres columnas a la izquierda; cabecera azul de acento (más oscuro en el tema oscuro) con texto blanco y el mes actual resaltado en claro. El diseño original conserva sus colores, con la cabecera también fija.
+- Archivos: `src/lib/components/planeacion/programa.css`, `src/lib/components/planeacion/programa-nuevo.css`.
+- Validación real: Prettier correcto; medición y captura en Chromium (tema oscuro) con la tabla desplazada. No se ejecutaron `check` ni la suite.
+- Pendientes: revisar el tema claro a simple vista.
+
 ## 2026-11-09 — Programa: iconos dentro del selector y lista de opciones con el estilo de la plataforma
 
 - Motivo: el usuario pidió que en el diseño nuevo del programa los iconos de «Distribución» y «Periodicidad» vayan dentro del selector, como en «Contrato» y «Sitio», y que las opciones de los selectores sigan el diseño de la plataforma. Nivel 1.

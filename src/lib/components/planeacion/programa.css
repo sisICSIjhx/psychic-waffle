@@ -778,6 +778,25 @@ html[data-theme='dark'] .programa-anual .vencidos {
 	border-right-color: var(--pa-mes-actual-borde);
 	color: var(--pa-mes-actual-texto);
 }
+/* La tabla se desplaza dentro de su panel: la cabecera queda fija arriba y las tres primeras
+   columnas a la izquierda. */
+.programa-anual .matriz-programa .tabla-desplazable {
+	max-height: max(24rem, calc(100vh - 14rem));
+	overflow: auto;
+}
+.programa-anual .matriz thead th {
+	position: sticky;
+	top: 0;
+	z-index: 3;
+}
+.programa-anual .matriz thead th.columna-numero,
+.programa-anual .matriz thead th.columna-partida,
+.programa-anual .matriz thead th.columna-periodicidad {
+	z-index: 4;
+}
+.programa-anual .matriz thead .fila-meses th {
+	top: 33px;
+}
 .programa-anual .columna-numero,
 .programa-anual .columna-partida,
 .programa-anual .columna-periodicidad {
@@ -788,7 +807,7 @@ html[data-theme='dark'] .programa-anual .vencidos {
 .programa-anual thead .columna-numero,
 .programa-anual thead .columna-partida,
 .programa-anual thead .columna-periodicidad {
-	z-index: 2;
+	z-index: 4;
 	background: var(--pa-cabecera);
 }
 .programa-anual .columna-numero {
