@@ -9,6 +9,7 @@
 	import Notificaciones from '$lib/components/ui/Notificaciones.svelte';
 	import { encabezadoDePagina, tituloDePagina, vistaDesdeRuta } from '$lib/layout/navegacion';
 	import { nombreCompleto } from '$lib/dominio/personal';
+	import { SESION_ABIERTA, type SesionArmazon } from '$lib/dominio/permisos';
 	import {
 		CLAVE_TEMA,
 		guardarPreferencia,
@@ -35,6 +36,9 @@
 	$: pathname = $page.url.pathname;
 	$: cliente = $page.url.searchParams.get('cliente');
 	$: currentView = vistaDesdeRuta(pathname);
+	// Entrar y activar el inicio de sesión se muestran sin menú ni cabecera.
+	$: enAcceso = ($page.route.id ?? '').startsWith('/acceso');
+	$: sesion = ($page.data as { sesion?: SesionArmazon }).sesion ?? SESION_ABIERTA;
 	$: tituloReporte = ($page.data as { reporte?: { titulo?: string } }).reporte?.titulo ?? null;
 	$: pageTitle = tituloDePagina(pathname, cliente, tituloReporte);
 	$: datosPagina = $page.data as {
@@ -99,40 +103,51 @@
 </script>
 
 <svelte:head>
-	<title>{pageTitle} · ICSI Reportes</title>
+	<title>{enAcceso ? 'Acceso' : pageTitle} · ICSI Reportes</title>
 	<link rel="preload" href={interLatina} as="font" type="font/woff2" crossorigin="anonymous" />
 	<link rel="preload" href={manropeLatina} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
 
 <a class="saltar-contenido" href="#contenido" on:click={saltarAlContenido}>Saltar al contenido</a>
 
-<div
-	class="sidebar-overlay"
-	class:active={mobileMenuOpen}
-	role="presentation"
-	on:click={toggleMobileMenu}
-></div>
-
-<div class="layout">
-	<Sidebar
-		activeView={currentView}
-		activeCliente={cliente}
-		isMobileOpen={mobileMenuOpen}
-		{theme}
-		on:navigate={handleNavigate}
-		on:toggleTheme={toggleTheme}
-	/>
-
-	<HeaderBar menuAbierto={mobileMenuOpen} on:toggleMobileMenu={toggleMobileMenu} />
-
-	<main class="main" id="contenido" tabindex="-1">
-		<div class="view-section">
-			{#if encabezado}
-				<EncabezadoPagina ceja={encabezado.ceja} titulo={encabezado.titulo} />
-			{/if}
-			<slot />
-		</div>
+{#if enAcceso}
+	<main class="pagina-acceso" id="contenido" tabindex="-1">
+		<slot />
 	</main>
-</div>
+{:else}
+	<div
+		class="sidebar-overlay"
+		class:active={mobileMenuOpen}
+		role="presentation"
+		on:click={toggleMobileMenu}
+	></div>
+
+	<div class="layout">
+		<Sidebar
+			activeView={currentView}
+			activeCliente={cliente}
+			isMobileOpen={mobileMenuOpen}
+			{theme}
+			{sesion}
+			on:navigate={handleNavigate}
+			on:toggleTheme={toggleTheme}
+		/>
+
+		<HeaderBar
+			menuAbierto={mobileMenuOpen}
+			puedeCapturar={sesion.permisos.capturar}
+			on:toggleMobileMenu={toggleMobileMenu}
+		/>
+
+		<main class="main" id="contenido" tabindex="-1">
+			<div class="view-section">
+				{#if encabezado}
+					<EncabezadoPagina ceja={encabezado.ceja} titulo={encabezado.titulo} />
+				{/if}
+				<slot />
+			</div>
+		</main>
+	</div>
+{/if}
 
 <Notificaciones />

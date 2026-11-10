@@ -1,6 +1,8 @@
 import { page } from 'vitest/browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import type { RolPersonal } from '$lib/dominio/constantes';
+import { permisosDe } from '$lib/dominio/permisos';
 import Sidebar from './Sidebar.svelte';
 
 // Evita que los clics de prueba naveguen fuera del documento de pruebas.
@@ -32,8 +34,8 @@ describe('Sidebar', () => {
 				.toHaveAttribute('href', ruta);
 		}
 		expect(page.getByRole('link', { name: 'Prosasa' }).elements()).toHaveLength(0);
-		// Sin pantallas vacías: Mi Perfil vuelve con la autenticación.
-		expect(page.getByRole('link', { name: 'Mi Perfil' }).elements()).toHaveLength(0);
+		// Sin sesión no hay perfil que ofrecer.
+		expect(page.getByRole('link', { name: 'Mi perfil' }).elements()).toHaveLength(0);
 		await expect
 			.element(page.getByRole('link', { name: 'ICSI Reportes' }))
 			.toHaveAttribute('href', '/');
@@ -82,6 +84,57 @@ describe('Sidebar', () => {
 		expect(navigate).toHaveBeenCalledTimes(2);
 		expect(navigate.mock.calls[0][0].detail).toEqual({ view: 'historial', cliente: undefined });
 		expect(navigate.mock.calls[1][0].detail).toEqual({ view: 'captura', cliente: 'virtual' });
+	});
+
+	it('sin inicio de sesión activado ofrece activarlo y no muestra cuenta', async () => {
+		render(Sidebar, { activeView: 'dashboard' });
+		await expect
+			.element(page.getByRole('link', { name: 'Activar inicio de sesión' }))
+			.toHaveAttribute('href', '/acceso/configurar');
+		expect(page.getByRole('button', { name: 'Cerrar sesión' }).elements()).toHaveLength(0);
+	});
+
+	it('con sesión muestra a la persona, su perfil y el cierre, y solo lo que su rol usa', async () => {
+		const sesion = (rol: RolPersonal) => ({
+			activada: true,
+			usuario: {
+				nombre: 'Persona Ficticia',
+				correo: 'persona@ficticio.test',
+				rol,
+				debeCambiar: false
+			},
+			permisos: permisosDe({ activada: true, rol })
+		});
+		const { rerender } = render(Sidebar, {
+			activeView: 'perfil',
+			sesion: sesion('mesa_directiva')
+		});
+
+		await expect.element(page.getByText('Persona Ficticia')).toBeInTheDocument();
+		await expect.element(page.getByText('Mesa directiva')).toBeInTheDocument();
+		const perfil = page.getByRole('link', { name: 'Mi perfil' });
+		await expect.element(perfil).toHaveAttribute('href', '/perfil');
+		await expect.element(perfil).toHaveAttribute('aria-current', 'page');
+		const formulario = page
+			.getByRole('button', { name: 'Cerrar sesión' })
+			.element()
+			.closest('form');
+		expect(formulario?.getAttribute('action')).toBe('/acceso?/salir');
+		expect(formulario?.getAttribute('method')?.toUpperCase()).toBe('POST');
+		expect(page.getByRole('link', { name: 'Activar inicio de sesión' }).elements()).toHaveLength(0);
+
+		// Mesa directiva consulta el personal y no captura.
+		await expect.element(page.getByRole('link', { name: 'Personal' })).toBeInTheDocument();
+		expect(page.getByRole('link', { name: 'Capturar', exact: true }).elements()).toHaveLength(0);
+		expect(page.getByRole('link', { name: 'Cerritos' }).elements()).toHaveLength(0);
+
+		// El reporteador captura y no ve el personal.
+		await rerender({ sesion: sesion('reporteador') });
+		await expect
+			.element(page.getByRole('link', { name: 'Capturar', exact: true }))
+			.toBeInTheDocument();
+		await expect.element(page.getByRole('link', { name: 'Cerritos' })).toBeInTheDocument();
+		expect(page.getByRole('link', { name: 'Personal' }).elements()).toHaveLength(0);
 	});
 
 	it('aplica la clase de menú móvil abierto', async () => {

@@ -28,7 +28,9 @@ export const ROLES_PERSONAL = [
 	'administrador',
 	'lider_administrativo',
 	'lider_operativo',
-	'reporteador'
+	'reporteador',
+	'mesa_directiva',
+	'contabilidad'
 ] as const;
 export type RolPersonal = (typeof ROLES_PERSONAL)[number];
 

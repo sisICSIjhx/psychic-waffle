@@ -7,14 +7,13 @@ declare global {
 			message: string;
 			id?: string;
 		}
-		/** Sesión validada por el servidor; vacía mientras no haya autenticación (D10). */
+		/**
+		 * Sesión validada por el servidor en hooks.server.ts: si el inicio de sesión está activado
+		 * (existe alguna cuenta) y quién hace la petición. Sin activar, todo se permite (D10).
+		 */
 		interface Locals {
 			autenticacion?: boolean;
-			usuario?: {
-				id: string;
-				nombre: string;
-				rol: import('$lib/dominio/esquemas').RolPersonal;
-			} | null;
+			usuario?: import('$lib/dominio/esquemas').UsuarioSesion | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

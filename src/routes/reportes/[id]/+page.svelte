@@ -29,5 +29,6 @@
 		contratoCambiado={data.contratoCambiado}
 		camposContrato={data.camposContrato}
 		partidaPorConfirmar={data.partidaPorConfirmar}
+		puedeEditar={data.puedeEditar}
 	/>
 {/key}

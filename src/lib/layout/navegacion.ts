@@ -32,7 +32,7 @@ export const titulosPorVista: Record<VistaId, string> = {
 	catalogo: 'Catálogo de contratos',
 	equipos: 'Catálogo de equipos',
 	personal: 'Personal',
-	perfil: 'Mi Perfil'
+	perfil: 'Mi perfil'
 };
 
 /** Ceja del encabezado de cada vista: la ruta dentro del producto. */

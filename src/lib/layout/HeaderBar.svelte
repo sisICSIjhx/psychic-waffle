@@ -7,6 +7,8 @@
 	import { ZONA_HORARIA } from '$lib/dominio/fechas';
 
 	export let menuAbierto = false;
+	/** «Nuevo reporte» solo se ofrece a quien puede capturar. */
+	export let puedeCapturar = true;
 
 	/** Fecha de hoy en la zona del proyecto, con mayúscula inicial («Jueves, 5 de noviembre de 2026»). */
 	const textoHoy = new Intl.DateTimeFormat('es-MX', {
@@ -107,17 +109,19 @@
 				</span>
 			{/if}
 		</div>
-		<a class="boton primario compacto acceso-captura" href={resolve('/captura')}>
-			<svg
-				aria-hidden="true"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2.25"
-				stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg
-			>
-			Nuevo reporte
-		</a>
+		{#if puedeCapturar}
+			<a class="boton primario compacto acceso-captura" href={resolve('/captura')}>
+				<svg
+					aria-hidden="true"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.25"
+					stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg
+				>
+				Nuevo reporte
+			</a>
+		{/if}
 	</div>
 </header>
 

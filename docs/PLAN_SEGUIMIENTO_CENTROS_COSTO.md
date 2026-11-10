@@ -134,8 +134,15 @@ utilizable. El orden atiende a que los montos no deben cargarse antes de tener a
 | 5     | **Concentrado.** Lista de centros de costo con porcentaje ejecutado contra planeado y accesos al detalle; integra el tablero de cumplimiento actual.                                                                                                               | 2     | 3          |
 | 6     | **Fase 2.** Automatizaciones del apartado 2.6.                                                                                                                                                                                                                     | 3     | 3 y 4      |
 
+Estado al 2026-11-10: etapas 0 y 1 hechas. La etapa 1 (cambio OpenSpec `inicio-sesion-roles`)
+dejó el inicio de sesión construido y **sin activar** en la base de trabajo, y los permisos por
+rol; el alcance de los datos por centro de costo se movió a la etapa 2, porque la unidad de
+asignación pasa de proyecto a centro de costo justo ahí.
+
 Notas de diseño para las etapas 2 a 4:
 
+- La etapa 2 incluye asignar al personal sus centros de costo y filtrar con eso lo que cada
+  persona ve; hoy, quien entra consulta todos.
 - La fusión Cliente/Sitio es de interfaz. En los datos, el cliente sigue siendo la razón social del
   contrato (el DOCX la usa); no se elimina la tabla.
 - La plantilla de seguimiento es **configuración por centro de costo**, no código por centro: una

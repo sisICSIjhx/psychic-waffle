@@ -76,6 +76,8 @@
 	export let semana: number | null = null;
 	export let ejecucionesMes: EjecucionDelMes[] = [];
 	export let form: Record<string, unknown> | null = null;
+	/** Quien no puede ajustar el programa lo consulta sin los controles de ajuste ni de registro. */
+	export let puedeAjustar = true;
 
 	/** Trazos de los iconos (24 × 24, línea de 2 px), como en el riel de navegación. */
 	const ICONOS = {
@@ -777,6 +779,7 @@
 				enlaceFormato={(otro) => enlaceVista('mensual', mesVista, otro)}
 				enlaceReportes={(partidaId, mes) =>
 					`${resolve('/historial')}?${consultaHistorial(partidaId, mes)}`}
+				{puedeAjustar}
 				on:ajustar={(e) => abrirAjuste(e.detail.partida, e.detail.celda)}
 			/>
 		{:else if vista === 'semanal' && mesVista}
@@ -1315,7 +1318,7 @@
 								>
 							{/if}
 							<!-- eslint-enable svelte/no-navigation-without-resolve -->
-							{#if falta > 0 || celda.ajustes.length}
+							{#if puedeAjustar && (falta > 0 || celda.ajustes.length)}
 								<button
 									type="button"
 									class="boton contorno"
@@ -1324,90 +1327,94 @@
 								>
 								<p class="nota-panel">Al ajustar: reprogramar o marcar no ejecutado.</p>
 							{/if}
-							<button
-								class="enlace-accion"
-								type="button"
-								on:click={() => registrarExterno(p.id, celda.mes)}
-								>Registrar realizado externo <svg
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-									><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
-									{@html ICONOS.siguiente}</svg
-								></button
-							>
+							{#if puedeAjustar}
+								<button
+									class="enlace-accion"
+									type="button"
+									on:click={() => registrarExterno(p.id, celda.mes)}
+									>Registrar realizado externo <svg
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+										><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+										{@html ICONOS.siguiente}</svg
+									></button
+								>
+							{/if}
 						</div>
 					</aside>
 				{/if}
 			</div>
 		{/if}
 
-		<section class="registro-externo" aria-labelledby="titulo-manual">
-			<details bind:open={registroAbierto}>
-				<summary id="titulo-manual"
-					>Registrar realizado externo <svg
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-						><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
-						{@html ICONOS.siguiente}</svg
-					></summary
-				>
-				<div class="card cuerpo-registro">
-					<p class="view-note">
-						Para trabajos documentados con un reporte anterior (por ejemplo, en Word). Cuenta en el
-						realizado sin crear un reporte emitido.
-					</p>
-					<Aviso form={avisoGeneral} />
-					<form method="POST" action="?/registrarRealizado" use:enhance class="form-grid">
-						<input type="hidden" name="programaId" value={programa.id} />
-						<div class="form-group">
-							<label for="manual-partida">Partida</label>
-							<select id="manual-partida" name="partidaId" required bind:value={manualPartida}>
-								{#each partidas as p (p.id)}
-									<option value={p.id}>{p.numero}.- {textoOracion(p.actividad)}</option>
-								{/each}
-							</select>
-						</div>
-						<div class="form-group">
-							<label for="manual-mes">Mes</label>
-							<select id="manual-mes" name="mes" required bind:value={manualMes}>
-								{#each meses as mes (mes)}
-									<option value={mes}>{textoMes(mes, { inicial: true })}</option>
-								{/each}
-							</select>
-						</div>
-						<div class="form-group">
-							<label for="manual-cantidad">Cantidad</label>
-							<input
-								id="manual-cantidad"
-								name="cantidad"
-								type="number"
-								min="1"
-								step="1"
-								value="1"
-							/>
-						</div>
-						<div class="form-group">
-							<label for="manual-nota">Nota (obligatoria)</label>
-							<input id="manual-nota" name="nota" required placeholder="Reporte Word de mayo" />
-						</div>
-						<div class="form-group acciones-formulario">
-							<button class="boton primario" type="submit">Registrar</button>
-						</div>
-					</form>
-				</div>
-			</details>
-			<p class="nota-registro">No crea un reporte emitido.</p>
-		</section>
+		{#if puedeAjustar}
+			<section class="registro-externo" aria-labelledby="titulo-manual">
+				<details bind:open={registroAbierto}>
+					<summary id="titulo-manual"
+						>Registrar realizado externo <svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+							{@html ICONOS.siguiente}</svg
+						></summary
+					>
+					<div class="card cuerpo-registro">
+						<p class="view-note">
+							Para trabajos documentados con un reporte anterior (por ejemplo, en Word). Cuenta en
+							el realizado sin crear un reporte emitido.
+						</p>
+						<Aviso form={avisoGeneral} />
+						<form method="POST" action="?/registrarRealizado" use:enhance class="form-grid">
+							<input type="hidden" name="programaId" value={programa.id} />
+							<div class="form-group">
+								<label for="manual-partida">Partida</label>
+								<select id="manual-partida" name="partidaId" required bind:value={manualPartida}>
+									{#each partidas as p (p.id)}
+										<option value={p.id}>{p.numero}.- {textoOracion(p.actividad)}</option>
+									{/each}
+								</select>
+							</div>
+							<div class="form-group">
+								<label for="manual-mes">Mes</label>
+								<select id="manual-mes" name="mes" required bind:value={manualMes}>
+									{#each meses as mes (mes)}
+										<option value={mes}>{textoMes(mes, { inicial: true })}</option>
+									{/each}
+								</select>
+							</div>
+							<div class="form-group">
+								<label for="manual-cantidad">Cantidad</label>
+								<input
+									id="manual-cantidad"
+									name="cantidad"
+									type="number"
+									min="1"
+									step="1"
+									value="1"
+								/>
+							</div>
+							<div class="form-group">
+								<label for="manual-nota">Nota (obligatoria)</label>
+								<input id="manual-nota" name="nota" required placeholder="Reporte Word de mayo" />
+							</div>
+							<div class="form-group acciones-formulario">
+								<button class="boton primario" type="submit">Registrar</button>
+							</div>
+						</form>
+					</div>
+				</details>
+				<p class="nota-registro">No crea un reporte emitido.</p>
+			</section>
+		{/if}
 
 		{#if ajuste}
 			<DialogoAjuste

@@ -18,6 +18,14 @@ describe('HeaderBar', () => {
 			.toHaveAttribute('aria-expanded', 'true');
 	});
 
+	it('ofrece «Nuevo reporte» solo a quien puede capturar', async () => {
+		// En ventanas estrechas el acceso se oculta con CSS: se comprueba que exista en el documento.
+		const { container, rerender } = render(HeaderBar);
+		expect(container.querySelector('a.acceso-captura')?.getAttribute('href')).toBe('/captura');
+		await rerender({ puedeCapturar: false });
+		expect(container.querySelector('a.acceso-captura')).toBeNull();
+	});
+
 	it('avisa solo cuando el navegador pierde la conexión', async () => {
 		const enLinea = vi.spyOn(Navigator.prototype, 'onLine', 'get').mockReturnValue(true);
 		render(HeaderBar);

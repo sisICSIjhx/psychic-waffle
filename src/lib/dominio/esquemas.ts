@@ -712,12 +712,21 @@ export const esquemaPersonal = z.object({
 	nombre: z.string(),
 	apellidoPaterno: z.string(),
 	apellidoMaterno: textoOpcional,
-	fechaNacimiento: fecha,
+	fechaNacimiento: fecha.nullable(),
 	correo: textoOpcional,
+	sede: textoOpcional,
 	rol: z.enum(ROLES_PERSONAL),
 	activo: z.boolean(),
 	actualizadoEn: marcaDeTiempo,
-	proyectos: z.array(z.object({ id, clave: z.string(), nombre: z.string() }))
+	proyectos: z.array(z.object({ id, clave: z.string(), nombre: z.string() })),
+	/** Estado de la cuenta para iniciar sesión; null si la persona no tiene. */
+	acceso: z
+		.object({
+			debeCambiar: z.boolean(),
+			bloqueadaHasta: marcaDeTiempo.nullable(),
+			ultimoAccesoEn: marcaDeTiempo.nullable()
+		})
+		.nullable()
 });
 export type Personal = z.infer<typeof esquemaPersonal>;
 
@@ -727,10 +736,67 @@ export const esquemaPersonalEntrada = z.object({
 	nombre: z.string(),
 	apellidoPaterno: z.string(),
 	apellidoMaterno: textoOpcional,
-	fechaNacimiento: z.string(),
+	fechaNacimiento: z.string().nullable(),
 	correo: textoOpcional,
+	sede: textoOpcional.optional(),
 	rol: z.string(),
 	activo: z.boolean(),
 	clienteIds: z.array(id)
 });
 export type PersonalEntrada = z.input<typeof esquemaPersonalEntrada>;
+
+/** Persona de un archivo de carga, con el nombre ya dividido; `linea` es la del archivo. */
+export const esquemaPersonaImportada = z.object({
+	linea: z.number().int().positive(),
+	nombre: z.string(),
+	apellidoPaterno: z.string(),
+	apellidoMaterno: textoOpcional,
+	sede: textoOpcional,
+	correo: textoOpcional
+});
+export type PersonaImportada = z.infer<typeof esquemaPersonaImportada>;
+
+export const esquemaResultadoImportacionPersonal = z.object({
+	ensayo: z.boolean(),
+	resumen: z.object({
+		nuevas: z.number().int(),
+		existentes: z.number().int(),
+		invalidas: z.number().int()
+	}),
+	filas: z.array(
+		z.object({
+			linea: z.number().int().nullable(),
+			correo: textoOpcional,
+			estado: z.enum(['nueva', 'existente', 'invalida']),
+			motivo: textoOpcional
+		})
+	)
+});
+export type ResultadoImportacionPersonal = z.infer<typeof esquemaResultadoImportacionPersonal>;
+
+/** Persona con la sesión iniciada: lo que el servidor pone en `locals.usuario`. */
+export const esquemaUsuarioSesion = z.object({
+	id,
+	nombre: z.string(),
+	correo: z.string(),
+	rol: z.enum(ROLES_PERSONAL),
+	/** Entró con una contraseña temporal y debe cambiarla antes de seguir. */
+	debeCambiar: z.boolean()
+});
+export type UsuarioSesion = z.infer<typeof esquemaUsuarioSesion>;
+
+/** Estado del acceso en una petición: si el inicio de sesión está activado y quién la hace. */
+export const esquemaContextoAcceso = z.object({
+	activada: z.boolean(),
+	usuario: esquemaUsuarioSesion.nullable()
+});
+export type ContextoAcceso = z.infer<typeof esquemaContextoAcceso>;
+
+/** Datos para comprobar una contraseña; solo viven en el servidor. */
+export const esquemaCredencial = z.object({
+	personalId: id,
+	hash: z.string(),
+	activo: z.boolean(),
+	bloqueadaHasta: marcaDeTiempo.nullable()
+});
+export type Credencial = z.infer<typeof esquemaCredencial>;

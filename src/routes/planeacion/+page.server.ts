@@ -12,11 +12,12 @@ import {
 } from '$lib/dominio/planeacion';
 import { datos } from '$lib/server/datos';
 import { mensajeDeError } from '$lib/server/errores';
+import { puede } from '$lib/server/permisos';
 import type { Actions, PageServerLoad } from './$types';
 
 const hoy = () => fechaEnZona();
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals }) => {
 	const repos = await datos();
 	const fecha = hoy();
 	const contratos = await repos.catalogo.listarContratos();
@@ -85,7 +86,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		partidas,
 		totalPartidas: avance?.partidas.length ?? 0,
 		vencidos: pendientesVencidos(partidas, fecha),
-		filtro
+		filtro,
+		puedeAjustar: puede(locals, 'ajustarPrograma')
 	};
 };
 
