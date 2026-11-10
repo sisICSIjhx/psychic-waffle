@@ -37,7 +37,6 @@ export const load: PageServerLoad = async ({ url }) => {
 		hoy,
 		corte,
 		corteLimitado,
-		clientes,
 		cliente,
 		contratos,
 		contrato,

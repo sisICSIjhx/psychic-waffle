@@ -62,11 +62,11 @@ const impacto = (cambios: Partial<ResultadoEdicion['impacto']> = {}) => ({
 const destino = () => document.body.appendChild(document.createElement('div'));
 
 describe('DatosContrato', () => {
-	it('muestra el cliente fijo con la nota de renovación y avisa si no hay cambios', async () => {
+	it('muestra el proyecto fijo con la nota de renovación y avisa si no hay cambios', async () => {
 		render(DatosContrato, { contrato });
 		await page.getByRole('button', { name: 'Editar datos del contrato' }).click();
 		await expect
-			.element(page.getByText(/El cliente no cambia: una renovación/))
+			.element(page.getByText(/El proyecto no cambia: una renovación/))
 			.toBeInTheDocument();
 		await expect.element(page.getByLabelText('Número')).toHaveValue('OC-PROVISIONAL');
 		await page.getByRole('button', { name: 'Revisar cambios' }).click();
@@ -299,7 +299,7 @@ describe('ContratoView con permisos y resultados', () => {
 			expect(page.getByRole('button', { name: nombre }).elements()).toHaveLength(0);
 		}
 		expect(page.getByText('Registrar firmante').elements()).toHaveLength(0);
-		expect(page.getByText('Asociar un sitio').elements()).toHaveLength(0);
+		expect(page.getByText('Asociar un centro de costo').elements()).toHaveLength(0);
 		await expect.element(page.getByText(/Historial de cambios/)).toBeInTheDocument();
 	});
 

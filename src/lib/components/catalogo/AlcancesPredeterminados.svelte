@@ -89,7 +89,7 @@
 {#if !proyecto}
 	<section class="card">
 		<p class="view-note">
-			Aún no hay proyectos. Registre primero un cliente en el
+			Aún no hay proyectos. Registre primero un proyecto en el
 			<a class="enlace" href={resolve('/catalogo')}>catálogo</a>.
 		</p>
 	</section>

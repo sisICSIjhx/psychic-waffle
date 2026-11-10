@@ -56,7 +56,7 @@ describe('ResumenPrograma', () => {
 			]
 		});
 		await expect
-			.element(page.getByText(/Sitio ERM 11111 · Periodo marzo 2026 a febrero 2027/))
+			.element(page.getByText(/Centro de costo ERM 11111 · Periodo marzo 2026 a febrero 2027/))
 			.toBeInTheDocument();
 		await expect.element(page.getByText('ERM 11111: aviso general ficticio.')).toBeInTheDocument();
 		const celdas = [...document.querySelectorAll('tbody tr td')].map((c) =>

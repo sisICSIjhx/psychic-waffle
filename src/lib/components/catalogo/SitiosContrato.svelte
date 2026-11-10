@@ -92,7 +92,7 @@
 					<input type="hidden" name="actualizadoEn" value={sitio.actualizadoEn} />
 					{#if r?.otrosContratos.length}
 						<p class="nota aviso-compartido">
-							El sitio también está en {plural(
+							El centro de costo también está en {plural(
 								r.otrosContratos.length,
 								'otro contrato',
 								'otros contratos'

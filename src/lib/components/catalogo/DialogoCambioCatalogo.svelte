@@ -27,8 +27,8 @@
 
 	const TITULOS: Record<string, string> = {
 		contrato: 'Confirmar la corrección del contrato',
-		sitio: 'Confirmar la corrección del sitio',
-		quitarSitio: 'Confirmar que se quita el sitio del contrato',
+		sitio: 'Confirmar la corrección del centro de costo',
+		quitarSitio: 'Confirmar que se quita el centro de costo del contrato',
 		corregirFirmante: 'Confirmar la corrección del firmante',
 		cambiarFirmante: 'Confirmar el cambio de firmante'
 	};

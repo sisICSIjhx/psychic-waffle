@@ -54,7 +54,7 @@ export const actions: Actions = {
 			const repos = await datos();
 			const sitios = await repos.equipos.sitiosDeProyecto(texto(formulario, 'clienteId'));
 			if (!sitios.some((s) => s.id === sitioId)) {
-				return fail(400, { accion: 'importar', error: 'Elija un sitio del proyecto.' });
+				return fail(400, { accion: 'importar', error: 'Elija un centro de costo del proyecto.' });
 			}
 			const lectura = await leerExcelEquipos(await archivo.arrayBuffer());
 			if (lectura.equipos.length === 0) {

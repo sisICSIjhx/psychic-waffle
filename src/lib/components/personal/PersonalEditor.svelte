@@ -133,7 +133,7 @@
 			{#if !conProyectos}
 				El administrador tiene acceso a todos los proyectos.
 			{:else if clientes.length === 0}
-				No hay proyectos: registre primero un cliente en el
+				No hay proyectos: registre primero un proyecto en el
 				<a class="enlace" href={resolve('/catalogo')}>catálogo</a>.
 			{:else}
 				Elija al menos un proyecto.

@@ -173,15 +173,11 @@
 				<div class="contexto-resumen">
 					<dl class="rotulo">
 						<div>
-							<dt>Cliente</dt>
-							<dd>{contrato.cliente?.nombre ?? '—'}</dd>
-						</div>
-						<div>
 							<dt>Contrato</dt>
 							<dd>{contrato.numero}</dd>
 						</div>
 						<div>
-							<dt>Sitio</dt>
+							<dt>Centro de costo</dt>
 							<dd>{sitio.clave} {sitio.nombre}</dd>
 						</div>
 					</dl>
@@ -206,9 +202,9 @@
 					</div>
 					{#if contrato}
 						<div class="form-group">
-							<label for="sitio">Sitio</label>
+							<label for="sitio">Centro de costo</label>
 							<select id="sitio" name="sitio" on:change={enviarAlCambiar}>
-								{#if !sitio}<option value="">Elija el sitio</option>{/if}
+								{#if !sitio}<option value="">Elija el centro de costo</option>{/if}
 								{#each sitios as s (s.id)}
 									<option value={s.id} selected={s.id === sitio?.id}>{s.clave} {s.nombre}</option>
 								{/each}

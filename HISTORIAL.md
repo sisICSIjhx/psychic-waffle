@@ -3,6 +3,15 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-11-10 — «Centro de costo» en la interfaz y tabla de cumplimiento con el contrato combinado
+
+- Motivo: dirección pidió sustituir el Excel de seguimiento por un módulo por centro de costo; esta es la etapa 0 del plan (`docs/PLAN_SEGUIMIENTO_CENTROS_COSTO.md`, con la solicitud redactada, las etapas y el prompt). Nivel 1–2, sin cambio de datos.
+- Resultado: la interfaz dice «Centro de costo» donde decía «Sitio» (filtros, catálogo, captura, historial, equipos, planeación, bitácora y mensajes del servidor). El nivel «Cliente» deja de mostrarse: se quitó su filtro de cumplimiento e historial (el parámetro `?cliente=` se conserva) y en el catálogo se llama «Proyecto», como ya lo hacían equipos y personal. En /cumplimiento la tabla «Por contrato y centro de costo» tiene dos columnas y la celda del contrato abarca sus centros de costo.
+- Sin cambios: los campos «Cliente» y «Sitio» del reporte (son los del formato FOR-ICSI-RMT-01), la columna «Sitio» del Excel de equipos, los mensajes de la importación del programa, los nombres internos (`sitio`, `cliente`) y la base.
+- Archivos: `src/lib/components/cumplimiento/TablaCumplimiento.svelte`, vistas de cumplimiento, historial, captura, catálogo y planeación, componentes de catálogo y equipos, `src/lib/dominio/bitacora.ts`, cargadores de cumplimiento e historial, mensajes de `src/routes/catalogo`, `src/routes/equipos` y `src/lib/server/captura.ts`, y cuatro pruebas de componentes.
+- Validación real: `npm run check` (0 errores), `npm run lint` y `npm run test` (451 pruebas) correctos; /cumplimiento revisado en Chromium con la base local: columnas separadas, contrato de Proagro con `rowspan` 2, subtotal y total.
+- Pendientes: etapas 1 a 5 del plan y sus puntos por confirmar; las demás pantallas renombradas no se revisaron a simple vista.
+
 ## 2026-11-08 — Programa anual: cabecera fija y en el azul de acento
 
 - Motivo: el usuario pidió que la cabecera de la tabla del programa quede fija junto con las columnas #, Partida y Periodicidad, y que su gris (se perdía con el fondo) pase al blanco de las columnas o al azul de acento. Nivel 1.

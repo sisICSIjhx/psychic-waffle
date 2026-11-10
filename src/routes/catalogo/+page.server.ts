@@ -35,7 +35,7 @@ export const actions: Actions = {
 				nombre: texto(formulario, 'nombre'),
 				razonSocial: texto(formulario, 'razonSocial')
 			});
-			return { accion: 'crearCliente', mensaje: `Cliente ${cliente.nombre} registrado.` };
+			return { accion: 'crearCliente', mensaje: `Proyecto ${cliente.nombre} registrado.` };
 		} catch (error) {
 			return fail(400, { accion: 'crearCliente', error: mensajeDeError(error) });
 		}

@@ -631,7 +631,7 @@
 				</div>
 			</div>
 			<div class="filtro">
-				<label for="sitio">Sitio</label>
+				<label for="sitio">Centro de costo</label>
 				<div class="control con-icono">
 					<svg
 						class="icono-campo"

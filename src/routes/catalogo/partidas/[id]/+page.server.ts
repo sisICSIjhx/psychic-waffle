@@ -29,7 +29,8 @@ export const load: PageServerLoad = async ({ params, url }) => {
 					(s) => s.id === url.searchParams.get('sitio')
 				)
 			: undefined;
-		if (!contrato || !sitio) errorHttp(400, 'Indique el contrato y el sitio de la partida');
+		if (!contrato || !sitio)
+			errorHttp(400, 'Indique el contrato y el centro de costo de la partida');
 		return {
 			partida: null,
 			contrato,

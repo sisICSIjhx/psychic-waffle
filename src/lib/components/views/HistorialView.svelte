@@ -4,15 +4,8 @@
 	import InsigniaEstado from '$lib/components/reportes/InsigniaEstado.svelte';
 	import { ETIQUETA_ESTADO_REPORTE } from '$lib/dominio/captura';
 	import { textoMes } from '$lib/dominio/textos';
-	import type {
-		Cliente,
-		Contrato,
-		PaginaReportes,
-		PartidaResumen,
-		Sitio
-	} from '$lib/dominio/esquemas';
+	import type { Contrato, PaginaReportes, PartidaResumen, Sitio } from '$lib/dominio/esquemas';
 
-	export let clientes: Cliente[] = [];
 	export let contratos: Contrato[] = [];
 	export let sitios: Sitio[] = [];
 	export let partidas: PartidaResumen[] = [];
@@ -55,15 +48,7 @@
 <section class="card" aria-labelledby="titulo-historial">
 	<h2 id="titulo-historial" class="view-heading">Buscar reportes</h2>
 	<form method="GET" class="filtros">
-		<div class="form-group">
-			<label for="cliente">Cliente</label>
-			<select id="cliente" name="cliente" on:change={enviarAlCambiar}>
-				<option value="">Todos</option>
-				{#each clientes as c (c.id)}
-					<option value={c.clave} selected={c.clave === seleccion.cliente}>{c.nombre}</option>
-				{/each}
-			</select>
-		</div>
+		{#if seleccion.cliente}<input type="hidden" name="cliente" value={seleccion.cliente} />{/if}
 		<div class="form-group">
 			<label for="contrato">Contrato</label>
 			<select id="contrato" name="contrato" on:change={enviarAlCambiar}>
@@ -76,7 +61,7 @@
 			</select>
 		</div>
 		<div class="form-group">
-			<label for="sitio">Sitio</label>
+			<label for="sitio">Centro de costo</label>
 			<select id="sitio" name="sitio" on:change={enviarAlCambiar} disabled={!seleccion.contrato}>
 				<option value="">Todos</option>
 				{#each sitios as s (s.id)}
@@ -135,7 +120,7 @@
 				<thead>
 					<tr>
 						<th>Reporte</th>
-						<th>Sitio</th>
+						<th>Centro de costo</th>
 						<th>TAG</th>
 						<th>Periodo</th>
 						<th>Estado</th>

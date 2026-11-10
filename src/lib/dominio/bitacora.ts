@@ -20,7 +20,7 @@ export const ETIQUETA_CAMPO: Record<string, string> = {
 	empresa: 'Empresa',
 	vigenteDesde: 'Vigente desde',
 	vigenteHasta: 'Vigente hasta',
-	sitio: 'Sitio',
+	sitio: 'Centro de costo',
 	usuario: 'Usuario',
 	contrato: 'Número de contrato',
 	'firmantes.elaboro': 'Firma de Elaboró',
@@ -30,9 +30,9 @@ export const ETIQUETA_CAMPO: Record<string, string> = {
 
 export const ETIQUETA_ENTIDAD: Record<string, string> = {
 	contrato: 'Contrato',
-	sitio: 'Sitio',
+	sitio: 'Centro de costo',
 	firmante: 'Firmante',
-	contrato_sitio: 'Sitio del contrato'
+	contrato_sitio: 'Centro de costo del contrato'
 };
 
 export const ETIQUETA_ACCION: Record<string, string> = {
@@ -157,11 +157,11 @@ export function textoFueraDeVigencia(
 	return fuera.map((f) => {
 		const meses = f.meses.map((m) => textoMesAnio(m)).join(', ');
 		return f.tipo === 'programa'
-			? `Programa de ${f.sitio ?? 'un sitio'}: ${meses}`
+			? `Programa de ${f.sitio ?? 'un centro de costo'}: ${meses}`
 			: f.tipo === 'meses'
-				? `Meses programados de ${f.sitio ?? 'un sitio'}: ${meses}`
+				? `Meses programados de ${f.sitio ?? 'un centro de costo'}: ${meses}`
 				: f.tipo === 'realizados'
-					? `Realizados registrados de ${f.sitio ?? 'un sitio'}: ${meses}`
+					? `Realizados registrados de ${f.sitio ?? 'un centro de costo'}: ${meses}`
 					: `Reportes de ${meses}`;
 	});
 }

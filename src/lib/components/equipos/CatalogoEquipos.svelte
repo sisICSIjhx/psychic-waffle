@@ -136,7 +136,7 @@
 {#if !proyecto}
 	<section class="card">
 		<p class="view-note">
-			Aún no hay proyectos. Registre primero un cliente en el
+			Aún no hay proyectos. Registre primero un proyecto en el
 			<a class="enlace" href={resolve('/catalogo')}>catálogo</a>.
 		</p>
 	</section>
@@ -151,8 +151,8 @@
 			on:change={cambiarProyecto}
 		/>
 		<p class="view-note">
-			Equipos e instrumentos de los sitios de los contratos de {proyecto.nombre}. Son los mismos TAG
-			que se eligen en las partidas y los reportes.
+			Equipos e instrumentos de los centros de costo de los contratos de {proyecto.nombre}. Son los
+			mismos TAG que se eligen en las partidas y los reportes.
 		</p>
 	</section>
 
@@ -236,7 +236,8 @@
 				<p class="view-note separado-abajo">
 					El archivo debe tener los encabezados del catálogo («Equipo ID», «Nombre», «Marca/Modelo»,
 					«Estado», «Intervalo», «Última» y «Próxima calibración», etc.). Los equipos con el mismo
-					TAG y nombre en el sitio se actualizan; los demás se agregan. «Revisar» no cambia nada.
+					TAG y nombre en el centro de costo se actualizan; los demás se agregan. «Revisar» no
+					cambia nada.
 				</p>
 				<form
 					method="POST"
@@ -247,7 +248,7 @@
 					<input type="hidden" name="clienteId" value={proyecto.id} />
 					<div class="form-grid">
 						<div class="form-group">
-							<label for="importar-sitio">Sitio</label>
+							<label for="importar-sitio">Centro de costo</label>
 							<select id="importar-sitio" name="sitioId" bind:value={sitioImportacion} required>
 								{#each sitios as sitio (sitio.id)}
 									<option value={sitio.id}
@@ -334,7 +335,7 @@
 				</div>
 				{#if variosSitios}
 					<div class="form-group">
-						<label for="filtro-sitio">Sitio</label>
+						<label for="filtro-sitio">Centro de costo</label>
 						<select id="filtro-sitio" bind:value={sitioId}>
 							<option value="">Todos</option>
 							{#each sitios as sitio (sitio.id)}<option value={sitio.id}>{sitio.clave}</option
@@ -385,7 +386,7 @@
 							<tr>
 								<th class="fija">Equipo ID</th>
 								<th>Nombre</th>
-								{#if variosSitios}<th>Sitio</th>{/if}
+								{#if variosSitios}<th>Centro de costo</th>{/if}
 								<th>Marca / modelo</th>
 								<th>No. de serie</th>
 								<th>Rango</th>
