@@ -2,7 +2,7 @@
 // hooks.server.ts trae aquí a la persona hasta que la cambie.
 import { fail, redirect } from '@sveltejs/kit';
 import { resolve } from '$app/paths';
-import { ETIQUETAS_ROL, textoProyectos } from '$lib/dominio/personal';
+import { ETIQUETAS_ROL, textoCentros } from '$lib/dominio/personal';
 import { LARGO_MINIMO } from '$lib/server/autenticacion/contrasenas';
 import { cambiarContrasena } from '$lib/server/autenticacion/servicio';
 import { COOKIE_SESION } from '$lib/server/autenticacion/sesiones';
@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			correo: usuario.correo,
 			rol: ETIQUETAS_ROL[usuario.rol],
 			sede: persona.sede,
-			proyectos: textoProyectos(persona),
+			centrosCosto: textoCentros(persona),
 			debeCambiar: usuario.debeCambiar
 		},
 		largoMinimo: LARGO_MINIMO

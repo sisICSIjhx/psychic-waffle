@@ -298,7 +298,7 @@ time,
 	grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
 	grid-template-rows: 64px minmax(0, 1fr);
 	grid-template-areas:
-		'sidebar header'
+		'header header'
 		'sidebar main';
 	height: 100dvh;
 }
@@ -308,13 +308,15 @@ time,
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	padding: 0 32px;
+	padding-inline: 16px 32px;
 	border-bottom: 1px solid var(--linea);
 	background: var(--lienzo-riel);
-	z-index: 40;
+	z-index: 51;
 }
-.mobile-menu-trigger {
-	display: none;
+@media (width > 768px) {
+	.layout.panel-colapsado {
+		grid-template-columns: 72px minmax(0, 1fr);
+	}
 }
 .main {
 	/* Rellenos en variables: el encabezado del editor los usa para llegar a los bordes y pegarse. */
@@ -1148,38 +1150,23 @@ details[open] > summary.view-heading {
 	}
 	/* Menú como panel superpuesto. Cerrado no se ve ni recibe el foco; «visibility» espera a que
 	   termine la salida. */
-	.sidebar {
+	.layout > aside.sidebar {
 		position: fixed;
-		top: 0;
+		top: 56px;
 		left: 0;
 		width: 272px;
+		height: calc(100dvh - 56px);
 		transform: translateX(-100%);
 		visibility: hidden;
 		transition:
 			transform 0.22s var(--curva-salida),
 			visibility 0s linear 0.22s;
 	}
-	.sidebar.mobile-open {
+	.layout > aside.sidebar.mobile-open {
 		transform: translateX(0);
 		visibility: visible;
 		box-shadow: var(--sombra-flotante);
 		transition: transform 0.22s var(--curva-salida);
-	}
-	.mobile-menu-trigger {
-		display: grid;
-		place-items: center;
-		width: 44px;
-		height: 44px;
-		margin-left: -10px;
-		padding: 0;
-		border: none;
-		border-radius: var(--radio-control);
-		background: transparent;
-		color: var(--tinta);
-		cursor: pointer;
-	}
-	.mobile-menu-trigger:hover {
-		background: var(--superficie-hover);
 	}
 	.header {
 		gap: 8px;

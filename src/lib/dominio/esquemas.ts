@@ -18,7 +18,12 @@ import {
 	ACCIONES_CATALOGO,
 	ORIGENES_CAMBIO,
 	TIPOS_AJUSTE,
-	MOTIVOS_AJUSTE
+	MOTIVOS_AJUSTE,
+	BLOQUES_SEGUIMIENTO,
+	TIPOS_CONCEPTO,
+	NIVELES_CONCEPTO,
+	MODOS_CONTRATO,
+	ORIGENES_ACTIVIDADES
 } from './constantes.ts';
 
 // Las constantes viven sin Zod en constantes.ts para que el cliente no cargue Zod al usarlas.
@@ -701,12 +706,17 @@ export const esquemaFiltroReportes = z
 		desde: fecha,
 		hasta: fecha,
 		pagina: z.number().int().positive(),
-		tamano: z.number().int().positive().max(100)
+		tamano: z.number().int().positive().max(100),
+		/** Alcance de quien consulta; sin él, todos los centros de costo. */
+		sitioIds: z.array(id)
 	})
 	.partial();
 export type FiltroReportes = z.input<typeof esquemaFiltroReportes>;
 
-/** Persona del personal; los proyectos son clientes. Datos personales: nunca en semillas. */
+/** Centro de costo en pocas palabras (clave y nombre). */
+const centroBreve = z.object({ id, clave: z.string(), nombre: z.string() });
+
+/** Persona del personal con sus centros de costo. Datos personales: nunca en semillas. */
 export const esquemaPersonal = z.object({
 	id,
 	nombre: z.string(),
@@ -718,7 +728,7 @@ export const esquemaPersonal = z.object({
 	rol: z.enum(ROLES_PERSONAL),
 	activo: z.boolean(),
 	actualizadoEn: marcaDeTiempo,
-	proyectos: z.array(z.object({ id, clave: z.string(), nombre: z.string() })),
+	centrosCosto: z.array(centroBreve),
 	/** Estado de la cuenta para iniciar sesión; null si la persona no tiene. */
 	acceso: z
 		.object({
@@ -730,7 +740,7 @@ export const esquemaPersonal = z.object({
 });
 export type Personal = z.infer<typeof esquemaPersonal>;
 
-/** Alta o edición; la base valida los obligatorios, la fecha, el correo y los proyectos. */
+/** Alta o edición; la base valida los obligatorios, la fecha, el correo y los centros de costo. */
 export const esquemaPersonalEntrada = z.object({
 	id: id.optional(),
 	nombre: z.string(),
@@ -741,7 +751,7 @@ export const esquemaPersonalEntrada = z.object({
 	sede: textoOpcional.optional(),
 	rol: z.string(),
 	activo: z.boolean(),
-	clienteIds: z.array(id)
+	centroCostoIds: z.array(id)
 });
 export type PersonalEntrada = z.input<typeof esquemaPersonalEntrada>;
 
@@ -781,7 +791,9 @@ export const esquemaUsuarioSesion = z.object({
 	correo: z.string(),
 	rol: z.enum(ROLES_PERSONAL),
 	/** Entró con una contraseña temporal y debe cambiarla antes de seguir. */
-	debeCambiar: z.boolean()
+	debeCambiar: z.boolean(),
+	/** Ids de sus centros de costo; null si el rol los abarca todos. */
+	centrosCosto: z.array(id).nullable()
 });
 export type UsuarioSesion = z.infer<typeof esquemaUsuarioSesion>;
 
@@ -800,3 +812,142 @@ export const esquemaCredencial = z.object({
 	bloqueadaHasta: marcaDeTiempo.nullable()
 });
 export type Credencial = z.infer<typeof esquemaCredencial>;
+
+// Centros de costo y plantillas de seguimiento (cambio centros-costo-plantillas).
+
+export const esquemaConceptoSeguimiento = z.object({
+	id,
+	bloque: z.enum(BLOQUES_SEGUIMIENTO),
+	etiqueta: z.string(),
+	tipo: z.enum(TIPOS_CONCEPTO),
+	nivel: z.enum(NIVELES_CONCEPTO),
+	orden: z.number().int().positive()
+});
+export type ConceptoSeguimiento = z.infer<typeof esquemaConceptoSeguimiento>;
+
+export const esquemaPlantillaSeguimiento = z.object({
+	id,
+	nombre: z.string(),
+	descripcion: textoOpcional,
+	modoContrato: z.enum(MODOS_CONTRATO),
+	origenActividades: z.enum(ORIGENES_ACTIVIDADES),
+	actualizadoEn: marcaDeTiempo,
+	conceptos: z.array(esquemaConceptoSeguimiento),
+	centros: z.array(centroBreve)
+});
+export type PlantillaSeguimiento = z.infer<typeof esquemaPlantillaSeguimiento>;
+
+const esquemaConceptoEntrada = z.object({
+	id: id.optional(),
+	bloque: z.enum(BLOQUES_SEGUIMIENTO),
+	etiqueta: z.string(),
+	tipo: z.enum(TIPOS_CONCEPTO),
+	nivel: z.enum(NIVELES_CONCEPTO).optional()
+});
+
+/** Alta o edición con la lista completa de conceptos; la base valida bloque, tipo y nivel. */
+export const esquemaPlantillaSeguimientoEntrada = z.object({
+	id: id.optional(),
+	nombre: z.string(),
+	descripcion: textoOpcional.optional(),
+	modoContrato: z.enum(MODOS_CONTRATO),
+	origenActividades: z.enum(ORIGENES_ACTIVIDADES),
+	conceptos: z.array(esquemaConceptoEntrada)
+});
+export type PlantillaSeguimientoEntrada = z.input<typeof esquemaPlantillaSeguimientoEntrada>;
+
+export const esquemaCentroCosto = z.object({
+	id,
+	clave: z.string(),
+	nombre: z.string(),
+	plantilla: z
+		.object({
+			id,
+			nombre: z.string(),
+			modoContrato: z.enum(MODOS_CONTRATO),
+			origenActividades: z.enum(ORIGENES_ACTIVIDADES)
+		})
+		.nullable(),
+	contratos: z.array(
+		z.object({
+			id,
+			numero: z.string(),
+			cliente: z.string(),
+			vigenciaFin: fecha,
+			vigente: z.boolean()
+		})
+	),
+	partidas: z.number().int(),
+	personas: z.number().int()
+});
+export type CentroCosto = z.infer<typeof esquemaCentroCosto>;
+
+/** Alta (con clave) o edición del nombre y la plantilla. */
+export const esquemaCentroCostoEntrada = z.object({
+	id: id.optional(),
+	clave: z.string().optional(),
+	nombre: z.string(),
+	plantillaId: id.nullable()
+});
+export type CentroCostoEntrada = z.input<typeof esquemaCentroCostoEntrada>;
+
+/** Archivo de `npm run importar:centros`: plantillas (por nombre) y centros (por clave). */
+export const esquemaCargaCentrosCosto = z.object({
+	plantillas: z
+		.array(
+			z.object({
+				nombre: z.string(),
+				descripcion: textoOpcional.optional(),
+				modoContrato: z.enum(MODOS_CONTRATO),
+				origenActividades: z.enum(ORIGENES_ACTIVIDADES),
+				conceptos: z.array(esquemaConceptoEntrada.omit({ id: true }))
+			})
+		)
+		.default([]),
+	centros: z
+		.array(
+			z.object({
+				clave: z.string(),
+				nombre: z.string().default(''),
+				plantilla: z.string().nullable().default(null)
+			})
+		)
+		.default([])
+});
+export type CargaCentrosCosto = z.input<typeof esquemaCargaCentrosCosto>;
+
+export const esquemaResultadoCargaCentros = z.object({
+	ensayo: z.boolean(),
+	aplicado: z.boolean(),
+	resumen: z.object({
+		plantillasNuevas: z.number().int(),
+		plantillasExistentes: z.number().int(),
+		centrosNuevos: z.number().int(),
+		centrosAsignados: z.number().int(),
+		centrosExistentes: z.number().int(),
+		invalidas: z.number().int()
+	}),
+	plantillas: z.array(
+		z.object({
+			nombre: textoOpcional,
+			estado: z.enum(['nueva', 'existente', 'invalida']),
+			motivo: textoOpcional
+		})
+	),
+	centros: z.array(
+		z.object({
+			clave: textoOpcional,
+			estado: z.enum(['nuevo', 'asignado', 'existente', 'invalida']),
+			motivo: textoOpcional
+		})
+	)
+});
+export type ResultadoCargaCentros = z.infer<typeof esquemaResultadoCargaCentros>;
+
+/** Contrato con su cliente y sus centros de costo, para filtrar por alcance. */
+export const esquemaContratoCentros = z.object({
+	contratoId: id,
+	clienteId: id,
+	sitioIds: z.array(id)
+});
+export type ContratoCentros = z.infer<typeof esquemaContratoCentros>;

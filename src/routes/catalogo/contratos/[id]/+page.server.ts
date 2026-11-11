@@ -1,4 +1,5 @@
 import { error as errorHttp, fail } from '@sveltejs/kit';
+import { alcanceDe, filtrarPor } from '$lib/server/alcance';
 import { ErrorDatos } from '$lib/server/bd/cliente';
 import { almacenamiento, datos } from '$lib/server/datos';
 import {
@@ -45,7 +46,15 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const repos = await datos();
 	const contrato = (await repos.catalogo.listarContratos()).find((c) => c.id === params.id);
 	if (!contrato) errorHttp(404, 'Contrato no encontrado');
-	const sitios = await repos.catalogo.listarSitios(contrato.id);
+	// La guardia ya rechazó el contrato sin ninguno de sus centros de costo; aquí solo se muestran
+	// los suyos (cambio centros-costo-plantillas).
+	const alcance = await alcanceDe(repos, locals);
+	const sitios = filtrarPor(
+		alcance,
+		'sitios',
+		await repos.catalogo.listarSitios(contrato.id),
+		(s) => s.id
+	);
 	const sitio = sitios.find((s) => s.id === url.searchParams.get('sitio')) ?? sitios[0] ?? null;
 	const estado = url.searchParams.get('estado') === 'por_confirmar' ? 'por_confirmar' : undefined;
 	const paginaCambios = Math.max(1, Number(url.searchParams.get('cambios')) || 1);
@@ -74,7 +83,7 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		equipos,
 		firmantes,
 		programas,
-		resumenSitios,
+		resumenSitios: filtrarPor(alcance, 'sitios', resumenSitios, (r) => r.sitioId),
 		cambios,
 		historialAbierto: url.searchParams.has('cambios'),
 		permisos: { editarCatalogo: puedeEditarCatalogo(locals) }

@@ -1,9 +1,14 @@
-<!-- Tablero de cumplimiento del programa: filtros y mes de corte en la dirección, indicadores con
+<!-- Concentrado de centros de costo y tablero de cumplimiento del programa: filtros y mes de corte en la dirección, indicadores con
      semáforo, tabla por contrato y centro de costo (por partida con uno elegido), tendencia mensual y
      reportes que faltan. Los datos son los de hoy: no hay instantáneas históricas. -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { ETIQUETA_PERIODICIDAD } from '$lib/dominio/captura';
+	import {
+		filasConcentrado,
+		type ActividadesDelMes,
+		type CentroConcentrado
+	} from '$lib/dominio/concentrado';
 	import {
 		desglosePorPartida,
 		reportesQueFaltan,
@@ -13,6 +18,7 @@
 	} from '$lib/dominio/cumplimiento';
 	import type { Cliente, Contrato, CumplimientoPrograma, Sitio } from '$lib/dominio/esquemas';
 	import { textoMes } from '$lib/dominio/textos';
+	import ConcentradoCentros from '$lib/components/cumplimiento/ConcentradoCentros.svelte';
 	import IndicadoresCumplimiento from '$lib/components/cumplimiento/IndicadoresCumplimiento.svelte';
 	import ReportesQueFaltan from '$lib/components/cumplimiento/ReportesQueFaltan.svelte';
 	import TablaCumplimiento from '$lib/components/cumplimiento/TablaCumplimiento.svelte';
@@ -28,6 +34,12 @@
 	export let sitio: Sitio | null = null;
 	export let periodicidad: string | null = null;
 	export let programas: CumplimientoPrograma[] = [];
+	/** Centros de costo del concentrado; null con un contrato elegido (la página es su detalle). */
+	export let concentrado: {
+		centros: CentroConcentrado[];
+		actividades: Record<string, ActividadesDelMes>;
+	} | null = null;
+	export let verCobranza = false;
 
 	$: lista = programas as unknown as ProgramaCumplimiento[];
 	$: tabla = tablaCumplimiento(lista, corte, hoy, periodicidad);
@@ -36,6 +48,16 @@
 	$: meses = tendencia(lista, corte, hoy, periodicidad);
 	$: faltan = reportesQueFaltan(lista, corte, hoy, periodicidad);
 	$: mesesCorte = mesesHasta(hoy);
+	$: filas = concentrado
+		? filasConcentrado(
+				concentrado.centros,
+				lista,
+				concentrado.actividades,
+				corte,
+				hoy,
+				periodicidad
+			)
+		: null;
 
 	/** Los 18 meses anteriores al en curso, para elegir el corte. */
 	function mesesHasta(fecha: string): string[] {
@@ -112,6 +134,22 @@
 	</p>
 </section>
 
+{#if filas}
+	<section class="card" aria-labelledby="titulo-concentrado">
+		<h2 id="titulo-concentrado" class="view-heading">
+			Concentrado de centros de costo a {textoMes(corte)}
+		</h2>
+		<ConcentradoCentros {filas} {corte} {verCobranza} />
+	</section>
+{:else}
+	<p class="volver">
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- resolve() va en la ruta; el corte, en la consulta -->
+		<a class="enlace" href={`${resolve('/cumplimiento')}?corte=${corte.slice(0, 7)}`}
+			>Ver el concentrado de centros de costo</a
+		>
+	</p>
+{/if}
+
 {#if lista.length === 0}
 	<section class="card">
 		<p>
@@ -154,6 +192,9 @@
 {/if}
 
 <style>
+	.volver {
+		margin: 0 0 12px;
+	}
 	.filtros {
 		display: grid;
 		gap: 12px;

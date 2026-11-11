@@ -4,6 +4,7 @@
 import { error, json, redirect, type Handle, type HandleServerError } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 import { base } from '$app/paths';
+import { centrosVisibles, recursoDeRuta } from '$lib/server/alcance';
 import { decidirAcceso } from '$lib/server/autenticacion/acceso';
 import { contextoDeAcceso } from '$lib/server/autenticacion/contexto';
 import { COOKIE_SESION } from '$lib/server/autenticacion/sesiones';
@@ -47,16 +48,25 @@ async function aplicarAcceso(event: Evento): Promise<Response | null> {
 		navegacion:
 			event.isDataRequest || (event.request.headers.get('accept') ?? '').includes('text/html')
 	});
-	if (decision.tipo === 'permitir') return null;
 	if (decision.tipo === 'redirigir') redirect(303, `${base}${decision.a}`);
+	if (decision.tipo === 'rechazar') return rechazar(event, decision.estado, decision.mensaje);
+	// Un reporte, partida, contrato o equipo de un centro de costo ajeno no existe para quien lo pide
+	// (cambio centros-costo-plantillas, D8): cubre la carga, las acciones, el documento y las fotos.
+	const visibles = centrosVisibles(event.locals);
+	const recurso = visibles ? recursoDeRuta(ruta) : null;
+	if (visibles && recurso) {
+		const centros = await (await datos()).centrosCosto.centrosDeRecurso(recurso.tipo, recurso.id);
+		if (!centros.some((id) => visibles.includes(id))) return rechazar(event, 404, 'No encontrado');
+	}
+	return null;
+}
+
+function rechazar(event: Evento, estado: number, mensaje: string): Response {
 	// Las acciones de formulario esperan un resultado con esta forma para mostrar el mensaje.
 	if (event.request.headers.get('x-sveltekit-action') === 'true') {
-		return json(
-			{ type: 'error', status: decision.estado, error: { message: decision.mensaje } },
-			{ status: decision.estado }
-		);
+		return json({ type: 'error', status: estado, error: { message: mensaje } }, { status: estado });
 	}
-	error(decision.estado, decision.mensaje);
+	error(estado, mensaje);
 }
 
 export const handle: Handle = async ({ event, resolve }) => {

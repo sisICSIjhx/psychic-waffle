@@ -1,4 +1,4 @@
-// Reglas de presentación del personal: etiquetas de rol, nombre completo, proyectos visibles y
+// Reglas de presentación del personal: etiquetas de rol, nombre completo, centros de costo y
 // división del nombre completo de una lista.
 import type { Personal, RolPersonal } from './esquemas.ts';
 
@@ -12,23 +12,26 @@ export const ETIQUETAS_ROL: Record<RolPersonal, string> = {
 };
 
 export const DESCRIPCIONES_ROL: Record<RolPersonal, string> = {
-	administrador: 'Acceso total: catálogo, personal y todos los proyectos.',
-	lider_administrativo: 'Da seguimiento al programa y a los reportes de sus proyectos.',
-	lider_operativo: 'Coordina la ejecución y revisa los reportes de sus proyectos.',
-	reporteador: 'Solo genera reportes de sus proyectos.',
+	administrador: 'Acceso total: catálogo, personal y todos los centros de costo.',
+	lider_administrativo: 'Da seguimiento al programa y a los reportes de sus centros de costo.',
+	lider_operativo: 'Coordina la ejecución y revisa los reportes de sus centros de costo.',
+	reporteador: 'Solo genera reportes de sus centros de costo.',
 	mesa_directiva: 'Consulta todo, sin editar.',
 	contabilidad: 'Consulta todo y registra la cobranza de los centros de costo.'
 };
 
-const ROLES_SIN_PROYECTOS: readonly RolPersonal[] = [
+const ROLES_TODOS_LOS_CENTROS: readonly RolPersonal[] = [
 	'administrador',
 	'mesa_directiva',
 	'contabilidad'
 ];
 
-/** Administrador, mesa directiva y contabilidad abarcan todos los proyectos sin asignación (D3). */
-export function requiereProyectos(rol: RolPersonal): boolean {
-	return !ROLES_SIN_PROYECTOS.includes(rol);
+/**
+ * Administrador, mesa directiva y contabilidad abarcan todos los centros de costo sin asignación; los
+ * demás roles llevan la lista de los suyos (cambio centros-costo-plantillas, D6).
+ */
+export function requiereCentros(rol: RolPersonal): boolean {
+	return !ROLES_TODOS_LOS_CENTROS.includes(rol);
 }
 
 /** «Nombre Paterno Materno», sin dobles espacios cuando falta el materno. */
@@ -41,9 +44,9 @@ export function nombreCompleto(
 		.join(' ');
 }
 
-export function textoProyectos(persona: Pick<Personal, 'rol' | 'proyectos'>): string {
-	if (!requiereProyectos(persona.rol)) return 'Todos los proyectos';
-	return persona.proyectos.map((p) => p.nombre).join(', ') || 'Sin proyectos';
+export function textoCentros(persona: Pick<Personal, 'rol' | 'centrosCosto'>): string {
+	if (!requiereCentros(persona.rol)) return 'Todos los centros de costo';
+	return persona.centrosCosto.map((c) => c.clave).join(', ') || 'Sin centros de costo';
 }
 
 /** Estado de la cuenta de una persona, para la lista y la ficha. */

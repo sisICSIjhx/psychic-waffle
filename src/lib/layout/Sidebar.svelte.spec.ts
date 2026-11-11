@@ -12,17 +12,35 @@ describe('Sidebar', () => {
 	beforeEach(() => document.addEventListener('click', cancelarNavegacion));
 	afterEach(() => document.removeEventListener('click', cancelarNavegacion));
 
-	it('enlaza cada destino con su ruta y la captura por cliente', async () => {
+	it('conserva los enlaces y sus nombres accesibles al mostrar solo los iconos', async () => {
+		const { container } = render(Sidebar, { activeView: 'personal', colapsado: true });
+		for (const nombre of [
+			'Mi trabajo',
+			'Programa',
+			'Seguimiento',
+			'Cumplimiento',
+			'Historial',
+			'Catálogo',
+			'Equipos',
+			'Personal'
+		]) {
+			await expect.element(page.getByRole('link', { name: nombre, exact: true })).toBeVisible();
+		}
+		await expect
+			.element(page.getByRole('link', { name: 'Personal', exact: true }))
+			.toHaveAttribute('aria-current', 'page');
+		expect(container.querySelectorAll('.nav-item')).toHaveLength(8);
+		expect(container.querySelector('.sidebar')?.classList.contains('colapsado')).toBe(true);
+	});
+
+	it('enlaza cada destino con su ruta', async () => {
 		render(Sidebar, { activeView: 'dashboard' });
 
 		const esperados: [string, string][] = [
 			['Mi trabajo', '/'],
 			['Programa', '/planeacion'],
+			['Seguimiento', '/seguimiento'],
 			['Cumplimiento', '/cumplimiento'],
-			['Capturar', '/captura'],
-			['Cerritos', '/captura?cliente=cerritos'],
-			['Proagro', '/captura?cliente=proagro'],
-			['Virtual', '/captura?cliente=virtual'],
 			['Historial', '/historial'],
 			['Catálogo', '/catalogo'],
 			['Equipos', '/equipos'],
@@ -41,25 +59,10 @@ describe('Sidebar', () => {
 			.toHaveAttribute('href', '/');
 	});
 
-	it('marca como activo solo el acceso del cliente elegido', async () => {
-		render(Sidebar, { activeView: 'captura', activeCliente: 'proagro' });
-
-		await expect.element(page.getByRole('link', { name: 'Proagro' })).toHaveClass(/active/);
-		await expect.element(page.getByRole('link', { name: 'Cerritos' })).not.toHaveClass(/active/);
-		await expect
-			.element(page.getByRole('link', { name: 'Programa', exact: true }))
-			.not.toHaveClass(/active/);
-		// «Capturar» queda resaltado como sección, sin anunciarse como la página actual.
-		await expect
-			.element(page.getByRole('link', { name: 'Capturar', exact: true }))
-			.not.toHaveAttribute('aria-current');
-		// La página activa se anuncia también a los lectores de pantalla.
-		await expect
-			.element(page.getByRole('link', { name: 'Proagro' }))
-			.toHaveAttribute('aria-current', 'page');
-		await expect
-			.element(page.getByRole('link', { name: 'Cerritos' }))
-			.not.toHaveAttribute('aria-current');
+	it('no ofrece accesos de captura ni resalta otro destino al capturar', () => {
+		const { container } = render(Sidebar, { activeView: 'captura' });
+		expect(container.querySelector('a[href^="/captura"]')).toBeNull();
+		expect(container.querySelector('[aria-current="page"]')).toBeNull();
 	});
 
 	it('anuncia la vista activa con aria-current', async () => {
@@ -79,11 +82,11 @@ describe('Sidebar', () => {
 		render(Sidebar, { target, props: { activeView: 'dashboard' }, events: { navigate } });
 
 		await page.getByRole('link', { name: 'Historial' }).click();
-		await page.getByRole('link', { name: 'Virtual' }).click();
+		await page.getByRole('link', { name: 'Catálogo' }).click();
 
 		expect(navigate).toHaveBeenCalledTimes(2);
-		expect(navigate.mock.calls[0][0].detail).toEqual({ view: 'historial', cliente: undefined });
-		expect(navigate.mock.calls[1][0].detail).toEqual({ view: 'captura', cliente: 'virtual' });
+		expect(navigate.mock.calls[0][0].detail).toEqual({ view: 'historial' });
+		expect(navigate.mock.calls[1][0].detail).toEqual({ view: 'catalogo' });
 	});
 
 	it('sin inicio de sesión activado ofrece activarlo y no muestra cuenta', async () => {
@@ -123,17 +126,11 @@ describe('Sidebar', () => {
 		expect(formulario?.getAttribute('method')?.toUpperCase()).toBe('POST');
 		expect(page.getByRole('link', { name: 'Activar inicio de sesión' }).elements()).toHaveLength(0);
 
-		// Mesa directiva consulta el personal y no captura.
+		// Mesa directiva puede consultar el personal.
 		await expect.element(page.getByRole('link', { name: 'Personal' })).toBeInTheDocument();
-		expect(page.getByRole('link', { name: 'Capturar', exact: true }).elements()).toHaveLength(0);
-		expect(page.getByRole('link', { name: 'Cerritos' }).elements()).toHaveLength(0);
 
-		// El reporteador captura y no ve el personal.
+		// El reporteador no puede consultar el personal.
 		await rerender({ sesion: sesion('reporteador') });
-		await expect
-			.element(page.getByRole('link', { name: 'Capturar', exact: true }))
-			.toBeInTheDocument();
-		await expect.element(page.getByRole('link', { name: 'Cerritos' })).toBeInTheDocument();
 		expect(page.getByRole('link', { name: 'Personal' }).elements()).toHaveLength(0);
 	});
 

@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { TIPOS_ALCANCE } from '$lib/dominio/esquemas';
+import { alcanceDe, filtrarPor } from '$lib/server/alcance';
 import { datos } from '$lib/server/datos';
 import { mensajeDeError } from '$lib/server/errores';
 import { puedeEditarCatalogo } from '$lib/server/permisos';
@@ -17,7 +18,13 @@ function tipoDe(formulario: FormData) {
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const repos = await datos();
-	const clientes = await repos.catalogo.listarClientes();
+	// Solo los proyectos con alguno de los centros de costo de quien consulta.
+	const clientes = filtrarPor(
+		await alcanceDe(repos, locals),
+		'clientes',
+		await repos.catalogo.listarClientes(),
+		(c) => c.id
+	);
 	const proyecto =
 		clientes.find((c) => c.clave === url.searchParams.get('proyecto')) ?? clientes[0] ?? null;
 	const alcances = proyecto

@@ -25,10 +25,12 @@
 		"verificar:datos": "node scripts/verificar-datos-personales.ts",
 		"importar": "node scripts/importar-catalogo.ts",
 		"importar:personal": "node scripts/importar-personal.ts",
+		"importar:centros": "node scripts/importar-centros.ts",
 		"cuenta": "node scripts/cuenta.ts",
 		"verificar:indice": "node scripts/verificar-indice-word.ts",
 		"anchos:extraer": "node scripts/extraer-anchos-fuentes.ts",
-		"bd:script": "node scripts/generar-esquema-bd.ts"
+		"bd:script": "node scripts/generar-esquema-bd.ts",
+		"bd:iniciar": "powershell -NoProfile -File scripts/iniciar-supabase-local.ps1"
 	},
 	"devDependencies": {
 		"@colbymchenry/codegraph": "1.6.2",
@@ -53,6 +55,7 @@
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
 		"prettier-plugin-tailwindcss": "^0.7.1",
+		"supabase": "2.122.0",
 		"svelte": "^5.43.8",
 		"svelte-check": "^4.3.4",
 		"tailwindcss": "^4.1.17",

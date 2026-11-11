@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-11-10 contra los archivos locales (rama `feat/inicio-sesion-roles`).
+Verificado el 2026-11-11 contra los archivos locales (rama `feat/concentrado-centros`).
 
 ## Producto y arquitectura
 
@@ -24,10 +24,15 @@ Verificado el 2026-11-10 contra los archivos locales (rama `feat/inicio-sesion-r
     `src/lib/server/autenticacion/acceso.ts` antes de cada carga o acción; la matriz rol → capacidades
     está en `src/lib/dominio/permisos.ts` y la usan `src/lib/server/permisos.ts` y el menú. Sin
     ninguna cuenta la aplicación sigue abierta; se activa en `/acceso/configurar`.
+  - Alcance por centro de costo (cambio `centros-costo-plantillas`): la sesión lleva los centros de
+    costo del usuario (null si su rol los abarca todos); `src/lib/server/alcance.ts` filtra listas y
+    acciones, y la guardia responde 404 a un reporte, partida, contrato o equipo ajeno. Centro de
+    costo = `sitios`, con plantilla de seguimiento (`plantillas_seguimiento`, `plantilla_conceptos`;
+    reglas en `dominio/seguimiento.ts`).
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
     resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0022`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0025`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
     `npm run bd:script` genera `supabase/esquema_completo.sql` (todo en un script para una base vacía
     de Supabase; una prueba exige que esté al día). Proyecto = cliente. Fotos: local o SharePoint
     (solo URL en `reporte_fotos`).
@@ -42,20 +47,30 @@ Verificado el 2026-11-10 contra los archivos locales (rama `feat/inicio-sesion-r
     «Foco operativo», tokens en `planeacion/diseno-original.css`).
 - Rutas: `/` «Mi trabajo» (avance del mes, tarjetas y siguiente trabajo; `?ver=`); `/planeacion`
   matriz P/R con estados de ejecución y documental y ajustes (`?vista=mensual` y `?vista=semanal`);
-  `/cumplimiento` tablero de indicadores en el menú; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección
+  `/seguimiento?centro=&mes=` captura manual de actividades, documentos, atenciones nocturnas y
+  carpetas según la plantilla. Los adjuntos de carpeta se guardan en la base y se sirven con
+  alcance por centro de costo; `/cobranza?centro=&anio=` contrato, órdenes de compra, carta de
+  finalización, enlace del programa anual y cobranza mensual, visible solo con sesión y según el rol
+  (capacidades `verContrato`, `editarContrato`, `verEnlacePrograma` y `editarCobranza`);
+  `/cumplimiento` concentrado de centros de costo (avance de cada uno, reglas en
+  `dominio/concentrado.ts`) y tablero de indicadores en el menú; `/captura` (`?cliente=`, `?contrato=`, `?sitio=`, `?partida=`, `?mes=`) selección
   guiada con búsqueda; `/reportes/[id]` editor (autoguardado, fotos, estados),
   `/reportes/[id]/documento` DOCX y `/reportes/[id]/fotos/[fotoId]` (`?tamano=mini` para la miniatura); `/historial`; `/catalogo` con
   contratos y partidas (en `/catalogo/contratos/[id]`, corrección del contrato, sitios y firmantes con
   motivo e historial; `/catalogo/alcances` biblioteca de alcances predeterminados por proyecto, que
   el editor de partida agrega); `/personal` (en el menú) y `/personal/[id]` alta y edición con rol y
-  proyectos; `/equipos` (en el menú) catálogo de equipos por proyecto con calibración, importación del
+  centros de costo; `/catalogo/centros-costo` y `/catalogo/plantillas` (con `/[id]`, editor por
+  bloques); `/equipos` (en el menú) catálogo de equipos por proyecto con calibración, importación del
   Excel y CSV, y `/equipos/[id]` la ficha; `/acceso` inicio y cierre de sesión y
   `/acceso/configurar` activación (ambas sin menú); `/perfil` cuenta y cambio de contraseña. En
   `/personal/[id]`, «Acceso al sistema» genera la contraseña temporal o quita la cuenta.
-- Datos locales: sin `.env` se usa PGlite en `storage/pglite`; fotos y documentos en `storage/`
-  (ignorado). Supabase se activa con `PUBLIC_SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (tarea 3.8,
-  pendiente del usuario). PGlite no admite dos procesos: detener el servidor antes de usar los scripts.
-- Scripts: `npm run importar` (Excel del catálogo, o `--programa` para un programa anual por sitio;
+- Datos locales: sin variables de Supabase se usa PGlite en `storage/pglite`; fotos y documentos en
+  `storage/` (ignorado). Supabase local corre en Docker con las migraciones de `supabase/migrations/`. Arranque y
+  puertos en [Supabase local](SUPABASE_LOCAL.md). El modo `supabase` usa `.env.supabase.local` y un
+  directorio de archivos separado. PGlite no admite dos procesos: detener el servidor antes de usar
+  los scripts que abren esa base.
+- Scripts: `npm run importar:centros` (plantillas y centros de costo; ensayo por omisión),
+  `npm run importar` (Excel del catálogo, o `--programa` para un programa anual por sitio;
   ensayo por omisión), `node scripts/derivar-partidas.ts`
   (partidas por confirmar desde reportes; `--complementar` para las confirmadas),
   `npm run verificar:datos` (nombres de los insumos fuera de lo versionable), `npm run prueba:documental`,
@@ -125,15 +140,26 @@ Verificado el 2026-11-10 contra los archivos locales (rama `feat/inicio-sesion-r
   Etapa 1, cambio `inicio-sesion-roles` (2026-11-10, migración 0022): inicio de sesión propio, roles
   mesa directiva y contabilidad, permisos por rol comprobados en el servidor, sede y fecha de
   nacimiento opcional en personal, y las 47 personas de la lista cargadas en la base local (sin rol
-  definitivo ni cuenta). El inicio de sesión **no está activado** en la base de trabajo. Los datos
-  aún no se filtran por proyecto: llega con los centros de costo (etapa 2).
+  definitivo ni cuenta). La base de trabajo ya tiene una cuenta de administrador (inicio de sesión
+  activado; comprobado el 2026-11-10). Etapa 2, cambio `centros-costo-plantillas` (2026-11-10,
+  migración 0023, rama `feat/centros-costo-alta`): plantillas de seguimiento, centros de costo sin
+  contrato, personal por centro de costo y datos filtrados por centro de costo. Los 12 centros nuevos
+  y las 10 plantillas están cargados en la base de trabajo (`npm run importar:centros`, archivo en
+  `insumos/centros-costo/`). Etapa 3, cambio `seguimiento-operativo` (migración 0024): seguimiento
+  manual por centro y mes con permisos de edición, marcado de actividades y documentos, atenciones
+  y entregas con enlace de SharePoint o adjunto de hasta 8 MiB. La migración se aplicó en la base
+  local de trabajo con respaldo previo y verificación de las 28 tablas existentes. Etapa 4, cambio
+  `contrato-cobranza` (2026-11-11, migración 0025, rama `feat/contrato-cobranza`): contrato y
+  órdenes de compra por conceptos de la plantilla, carta con aviso, enlace del programa y cobranza
+  por mes; la 0025 está aplicada en la base local de trabajo. Etapa 5 (2026-11-11, rama
+  `feat/concentrado-centros`, sin migración): concentrado en `/cumplimiento`. Sigue la etapa 6
+  (automatizaciones de la fase 2).
 - Rendimiento y seguridad (2026-11-05): JavaScript por página −65 a −73 %, DOCX con `noSandbox`,
   giradas guardadas, generación compartida y precalentada; CSP, encabezados y permisos completos en
   el catálogo. Detalle y 10 propuestas en `docs/OPTIMIZACION_SEGURIDAD_Y_PROPUESTAS.md`.
 - Pendientes: medir con el usuario el tiempo real de un reporte (meta de 30 minutos); carga del
-  histórico antes de usar el tablero; proyecto de
-  Supabase (3.8); activar el inicio de sesión y asignar rol y proyectos al personal; alcance de los
-  datos por centro de costo; inicio de sesión con Microsoft; almacenamiento en SharePoint; destino de
+  histórico antes de usar el tablero; proyecto alojado de
+  Supabase (3.8); asignar rol y centros de costo al personal; contratos de los centros de costo nuevos; inicio de sesión con Microsoft; almacenamiento en SharePoint; destino de
   despliegue
   (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas
   derivadas por confirmar; probar HEIC con una foto real.

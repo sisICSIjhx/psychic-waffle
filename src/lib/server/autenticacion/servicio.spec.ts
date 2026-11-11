@@ -41,7 +41,7 @@ function alta(rol: RolPersonal, extra: Record<string, unknown> = {}) {
 		correo: `persona${numero}@ficticio.test`,
 		rol,
 		activo: true,
-		clienteIds: [],
+		centroCostoIds: [],
 		...extra
 	});
 }
@@ -240,6 +240,6 @@ function entrada(persona: Personal) {
 		correo: persona.correo,
 		rol: persona.rol,
 		activo: persona.activo,
-		clienteIds: []
+		centroCostoIds: []
 	};
 }

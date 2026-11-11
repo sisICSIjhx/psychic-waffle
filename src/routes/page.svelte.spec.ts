@@ -15,7 +15,8 @@ describe('/+page.svelte', () => {
 				trabajo: [],
 				ver: null,
 				borradores: 3,
-				enRevision: 1
+				enRevision: 1,
+				sinCentros: false
 			}
 		});
 

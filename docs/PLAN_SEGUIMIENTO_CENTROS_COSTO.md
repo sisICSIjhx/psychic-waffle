@@ -134,15 +134,26 @@ utilizable. El orden atiende a que los montos no deben cargarse antes de tener a
 | 5     | **Concentrado.** Lista de centros de costo con porcentaje ejecutado contra planeado y accesos al detalle; integra el tablero de cumplimiento actual.                                                                                                               | 2     | 3          |
 | 6     | **Fase 2.** Automatizaciones del apartado 2.6.                                                                                                                                                                                                                     | 3     | 3 y 4      |
 
-Estado al 2026-11-10: etapas 0 y 1 hechas. La etapa 1 (cambio OpenSpec `inicio-sesion-roles`)
-dejó el inicio de sesión construido y **sin activar** en la base de trabajo, y los permisos por
-rol; el alcance de los datos por centro de costo se movió a la etapa 2, porque la unidad de
-asignación pasa de proyecto a centro de costo justo ahí.
+Estado al 2026-11-11: etapas 0 a 5 implementadas. La etapa 3 está en la rama
+`codex/seguimiento-operativo`, con la pantalla `/seguimiento` y la migración 0024 aplicada en la
+base local de trabajo. La etapa 4 (cambio `contrato-cobranza`, migración 0025, rama
+`feat/contrato-cobranza`) dejó la pantalla `/cobranza` con contrato, órdenes de compra, carta de
+finalización, enlace del programa anual y cobranza mensual, con la 0025 aplicada en la base local
+de trabajo. La etapa 5 (cambio directo, rama `feat/concentrado-centros`) puso el concentrado de
+centros de costo al inicio de `/cumplimiento`. Sigue la etapa 6, las automatizaciones de la fase 2.
+La etapa 1 (cambio OpenSpec `inicio-sesion-roles`)
+dejó el inicio de sesión y los permisos por rol. La etapa 2 (cambio `centros-costo-plantillas`,
+migración 0023) dejó las plantillas de seguimiento, los centros de costo sin contrato, el personal
+asignado por centro de costo y el filtrado de los datos por centro de costo; los doce centros
+nuevos y sus diez plantillas ya están cargados en la base de trabajo (archivo en
+`insumos/centros-costo/`). En las plantillas cargadas, los centros sin programa (EM-30017, EM-30043,
+Vitromex, Yazbek, Tremec y Vipro) llevan sus casillas por mes en el bloque «programa», porque sin
+actividades no hay dónde marcar documentos por actividad.
 
 Notas de diseño para las etapas 2 a 4:
 
-- La etapa 2 incluye asignar al personal sus centros de costo y filtrar con eso lo que cada
-  persona ve; hoy, quien entra consulta todos.
+- La etapa 2 permite asignar al personal sus centros de costo. El seguimiento y la descarga de
+  carpetas usan ese mismo alcance.
 - La fusión Cliente/Sitio es de interfaz. En los datos, el cliente sigue siendo la razón social del
   contrato (el DOCX la usa); no se elimina la tabla.
 - La plantilla de seguimiento es **configuración por centro de costo**, no código por centro: una
@@ -238,10 +249,22 @@ Respondido el 2026-11-10:
 7. **Vitromex 1, Vitromex 2 y Yazbek:** llevan el apartado del contrato, sin que sea obligatorio.
 8. **Personal:** el usuario entregó la lista (nombre, sede y correo). Se carga en `/personal` con
    `npm run importar:personal`; el archivo queda en `insumos/`, fuera de lo versionable.
+9. **Etapa 3:** confirmado que OMA EDOMEX sigue con captura mensual y EM-30017 y EM-30043
+   mantienen el estado de reporte por mes.
+
+Decidido al implementar la etapa 4, por confirmar:
+
+1. **Quién llena el contrato:** administrador y líder administrativo llenan contrato, órdenes de
+   compra, carta de finalización y enlace del programa anual. Mesa directiva solo consulta.
+2. **Cobranza:** estimación, prefactura y factura son casillas de «hecho»; el monto cobrado es el
+   único importe del mes.
+3. **Carta de finalización:** falta cuando el contrato del catálogo ya terminó y no tiene fecha de
+   carta; un centro sin contrato en el catálogo no genera aviso.
 
 Sigue abierto:
 
-1. **OMA EDOMEX:** no se sabe aún si hay programa anual; mientras tanto se captura por mes.
-2. **EM-30017 y EM-30043:** cómo se hará su reporte.
+1. **OMA EDOMEX:** falta saber si existe un programa anual. Se usa la captura por mes.
+2. **EM-30017 y EM-30043:** queda por definir la elaboración de su reporte. El seguimiento
+   registra su estado mensual.
 3. **Rol y proyectos de cada persona:** la lista no los trae; se asignan en `/personal` antes de
    generar cada contraseña.

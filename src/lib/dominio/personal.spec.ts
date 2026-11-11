@@ -3,15 +3,15 @@ import {
 	dividirNombre,
 	leerListaPersonal,
 	nombreCompleto,
-	requiereProyectos,
+	requiereCentros,
 	textoAcceso,
-	textoProyectos
+	textoCentros
 } from './personal';
 
-const proyecto = (nombre: string) => ({
+const centro = (clave: string) => ({
 	id: '00000000-0000-4000-8000-000000000001',
-	clave: nombre.toLowerCase(),
-	nombre
+	clave,
+	nombre: ''
 });
 
 describe('personal', () => {
@@ -24,24 +24,28 @@ describe('personal', () => {
 		).toBe('Ana Ficticia Prueba');
 	});
 
-	it('el administrador no requiere proyectos y los ve todos', () => {
-		expect(requiereProyectos('administrador')).toBe(false);
-		expect(requiereProyectos('reporteador')).toBe(true);
-		expect(textoProyectos({ rol: 'administrador', proyectos: [] })).toBe('Todos los proyectos');
+	it('el administrador no requiere centros de costo y los ve todos', () => {
+		expect(requiereCentros('administrador')).toBe(false);
+		expect(requiereCentros('reporteador')).toBe(true);
+		expect(textoCentros({ rol: 'administrador', centrosCosto: [] })).toBe(
+			'Todos los centros de costo'
+		);
 		expect(
-			textoProyectos({
+			textoCentros({
 				rol: 'lider_operativo',
-				proyectos: [proyecto('Cerritos'), proyecto('Proagro')]
+				centrosCosto: [centro('EM-90001'), centro('EM-90002')]
 			})
-		).toBe('Cerritos, Proagro');
+		).toBe('EM-90001, EM-90002');
 	});
 
-	it('mesa directiva y contabilidad abarcan todos los proyectos', () => {
-		expect(requiereProyectos('mesa_directiva')).toBe(false);
-		expect(requiereProyectos('contabilidad')).toBe(false);
-		expect(requiereProyectos('lider_administrativo')).toBe(true);
-		expect(textoProyectos({ rol: 'contabilidad', proyectos: [] })).toBe('Todos los proyectos');
-		expect(textoProyectos({ rol: 'reporteador', proyectos: [] })).toBe('Sin proyectos');
+	it('mesa directiva y contabilidad abarcan todos los centros de costo', () => {
+		expect(requiereCentros('mesa_directiva')).toBe(false);
+		expect(requiereCentros('contabilidad')).toBe(false);
+		expect(requiereCentros('lider_administrativo')).toBe(true);
+		expect(textoCentros({ rol: 'contabilidad', centrosCosto: [] })).toBe(
+			'Todos los centros de costo'
+		);
+		expect(textoCentros({ rol: 'reporteador', centrosCosto: [] })).toBe('Sin centros de costo');
 	});
 
 	it('describe el estado de la cuenta', () => {

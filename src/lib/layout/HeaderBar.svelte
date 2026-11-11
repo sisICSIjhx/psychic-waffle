@@ -1,12 +1,11 @@
-<!-- Barra superior: en escritorio, la fecha de hoy, el aviso de conexión y el acceso rápido a
-     capturar (como la barra de búsqueda y acciones de DashStack); en ventanas estrechas, además, el
-     botón del menú y la marca. El título de cada página vive en su contenido. -->
+<!-- Barra superior: fecha de hoy, aviso de conexión y acceso rápido a capturar. -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { ZONA_HORARIA } from '$lib/dominio/fechas';
+	import BotonPanel from './BotonPanel.svelte';
 
-	export let menuAbierto = false;
+	export let menuAbierto = true;
 	/** «Nuevo reporte» solo se ofrece a quien puede capturar. */
 	export let puedeCapturar = true;
 
@@ -20,8 +19,6 @@
 	})
 		.format(new Date())
 		.replace(/^./, (letra) => letra.toUpperCase());
-
-	const dispatch = createEventDispatcher<{ toggleMobileMenu: void }>();
 
 	// Estado real de la red del navegador; solo se avisa cuando falta. El guardado del editor
 	// informa su propio estado junto al reporte.
@@ -37,33 +34,11 @@
 			window.removeEventListener('offline', actualizar);
 		};
 	});
-
-	function toggleMobileMenu() {
-		dispatch('toggleMobileMenu');
-	}
 </script>
 
 <header class="header">
 	<div class="header-left">
-		<button
-			class="mobile-menu-trigger"
-			type="button"
-			aria-label={menuAbierto ? 'Cerrar el menú' : 'Abrir el menú'}
-			aria-expanded={menuAbierto}
-			aria-controls="menu-principal"
-			on:click={toggleMobileMenu}
-		>
-			<svg
-				aria-hidden="true"
-				width="20"
-				height="20"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg
-			>
-		</button>
+		<BotonPanel abierto={menuAbierto} on:click />
 		<span class="marca-cabecera">ICSI <span>Reportes</span></span>
 		<p class="fecha-hoy">
 			<svg
@@ -110,7 +85,12 @@
 			{/if}
 		</div>
 		{#if puedeCapturar}
-			<a class="boton primario compacto acceso-captura" href={resolve('/captura')}>
+			<a
+				class="boton primario compacto acceso-captura"
+				href={resolve('/captura')}
+				aria-label="Nuevo reporte"
+				title="Nuevo reporte"
+			>
 				<svg
 					aria-hidden="true"
 					viewBox="0 0 24 24"
@@ -119,7 +99,7 @@
 					stroke-width="2.25"
 					stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg
 				>
-				Nuevo reporte
+				<span>Nuevo reporte</span>
 			</a>
 		{/if}
 	</div>
@@ -200,6 +180,12 @@
 	}
 	@media (max-width: 420px) {
 		.acceso-captura {
+			flex-shrink: 0;
+			width: 44px;
+			height: 44px;
+			padding: 0;
+		}
+		.acceso-captura span {
 			display: none;
 		}
 	}

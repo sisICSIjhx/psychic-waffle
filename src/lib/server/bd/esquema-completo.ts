@@ -9,9 +9,11 @@ const ENCABEZADO = `-- esquema_completo.sql: GENERADO con «npm run bd:script» 
 -- No editar a mano: cambie o agregue una migración y vuelva a generarlo.
 --
 -- Crea en una base VACÍA de Supabase todo el esquema de ICSI Reportes: catálogo (clientes =
--- proyectos, contratos, sitios, partidas, alcances predeterminados, equipos y firmantes), programa
--- anual con ajustes, reportes con fotos y documentos, bitácora del catálogo y personal con rol y
--- proyectos. La aplicación solo usa las funciones public.api_* con la clave de servicio.
+-- proyectos, contratos, centros de costo (sitios) con su plantilla de seguimiento, partidas,
+-- alcances predeterminados, equipos y firmantes), programa anual con ajustes, reportes con fotos y
+-- documentos, bitácora del catálogo, personal con rol y centros de costo, cuentas y sesiones,
+-- y seguimiento operativo con entregas de carpetas. La aplicación solo usa las funciones
+-- public.api_* con la clave de servicio.
 --
 -- Fotos: se guardarán en SharePoint; la base conserva solo sus URL (reporte_fotos.almacenamiento =
 -- 'sharepoint', url_original y url_optimizada). Los archivos no se suben a Supabase Storage.

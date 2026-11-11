@@ -1,21 +1,21 @@
 // Cuentas, sesiones y carga del personal sobre PGlite (0022). Solo nombres y correos ficticios.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { Cliente, Personal, RolPersonal } from '../../dominio/esquemas';
+import type { CentroCosto, Personal, RolPersonal } from '../../dominio/esquemas';
 import { resumenDeToken } from '../autenticacion/sesiones';
 import { ErrorDatos } from '../bd/cliente';
 import { crearClientePglite } from '../bd/pglite';
 import { crearRepositorios, type Repositorios } from './index';
 
 let repos: Repositorios;
-let proyecto: Cliente;
+let centro: CentroCosto;
 let numero = 0;
 
 beforeAll(async () => {
 	repos = crearRepositorios(await crearClientePglite());
-	proyecto = await repos.catalogo.guardarCliente({
-		clave: 'proyecto-ficticio',
-		nombre: 'Proyecto ficticio',
-		razonSocial: 'CLIENTE FICTICIO'
+	centro = await repos.centrosCosto.guardar({
+		clave: 'EM-90001',
+		nombre: 'Centro ficticio',
+		plantillaId: null
 	});
 }, 60_000);
 
@@ -32,7 +32,7 @@ function alta(rol: RolPersonal, datos: Partial<Parameters<typeof guardar>[0]> = 
 		correo: `persona${numero}@ficticio.test`,
 		rol,
 		activo: true,
-		clienteIds: [],
+		centroCostoIds: [],
 		...datos
 	});
 }
@@ -51,7 +51,7 @@ const edicion = (persona: Personal, cambios: Record<string, unknown> = {}) => ({
 	sede: persona.sede,
 	rol: persona.rol,
 	activo: persona.activo,
-	clienteIds: persona.proyectos.map((p) => p.id),
+	centroCostoIds: persona.centrosCosto.map((c) => c.id),
 	...cambios
 });
 
@@ -84,29 +84,29 @@ const usuarioDe = async (token: string, inactividad = 720) =>
 	(await repos.autenticacion.contexto(resumenDeToken(token), inactividad)).usuario;
 
 describe('personal con la 0022', () => {
-	it('guarda la sede, admite no tener fecha de nacimiento ni proyectos y valida la fecha', async () => {
+	it('guarda la sede, admite no tener fecha de nacimiento ni centros de costo y valida la fecha', async () => {
 		const persona = await alta('reporteador', { sede: 'Sede ficticia' });
 		expect(persona).toMatchObject({
 			sede: 'Sede ficticia',
 			fechaNacimiento: null,
-			proyectos: [],
+			centrosCosto: [],
 			acceso: null
 		});
 		expect(await mensajeDe(guardar(edicion(persona, { fechaNacimiento: '2999-01-01' })))).toBe(
 			'Fecha de nacimiento fuera de rango'
 		);
 		// Quien no envía la sede la conserva.
-		const sinSede = edicion(persona, { clienteIds: [proyecto.id] }) as Record<string, unknown>;
+		const sinSede = edicion(persona, { centroCostoIds: [centro.id] }) as Record<string, unknown>;
 		delete sinSede.sede;
 		expect(await guardar(sinSede as never)).toMatchObject({
 			sede: 'Sede ficticia',
-			proyectos: [{ id: proyecto.id }]
+			centrosCosto: [{ id: centro.id }]
 		});
 	});
 
-	it('mesa directiva y contabilidad no guardan proyectos', async () => {
+	it('mesa directiva y contabilidad no guardan centros de costo', async () => {
 		for (const rol of ['mesa_directiva', 'contabilidad'] as const) {
-			expect((await alta(rol, { clienteIds: [proyecto.id] })).proyectos).toEqual([]);
+			expect((await alta(rol, { centroCostoIds: [centro.id] })).centrosCosto).toEqual([]);
 		}
 		expect(await mensajeDe(alta('direccion' as RolPersonal))).toBe('Rol no válido');
 	});
@@ -330,7 +330,7 @@ describe('carga del personal', () => {
 			sede: 'SEDE UNO',
 			rol: 'reporteador',
 			activo: true,
-			proyectos: [],
+			centrosCosto: [],
 			acceso: null
 		});
 

@@ -44,8 +44,15 @@ describe('script único de la base', () => {
 		);
 		expect(desdeScript.tablas.every((t) => t.rls)).toBe(true);
 		expect(desdeScript.tablas.map((t) => t.nombre)).toEqual(
-			expect.arrayContaining(['alcances_predeterminados', 'personal', 'personal_proyectos'])
+			expect.arrayContaining([
+				'alcances_predeterminados',
+				'personal',
+				'personal_centros_costo',
+				'plantillas_seguimiento',
+				'plantilla_conceptos'
+			])
 		);
 		await Promise.all([vacia.close(), referencia.cerrar()]);
-	});
+		// Crea dos bases completas: sola tarda segundos, con toda la suite en paralelo bastante más.
+	}, 60_000);
 });

@@ -16,6 +16,8 @@
 	export let ver: Filtro | null = null;
 	export let borradores = 0;
 	export let enRevision = 0;
+	/** Alcance limitado sin centros de costo: no hay trabajo que mostrar. */
+	export let sinCentros = false;
 
 	/** Elementos de la lista sin filtro; el resto queda a un clic en «Ver todos». */
 	const MOSTRADOS = 10;
@@ -102,7 +104,13 @@
 <!-- Los enlaces llevan filtros en la consulta o un ancla: resolve() se aplica a la ruta. -->
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
 <section class="card avance-mes" aria-labelledby="titulo-avance">
-	{#if programasVigentes === 0}
+	{#if sinCentros}
+		<h2 id="titulo-avance" class="view-heading">Aún no tiene centros de costo asignados</h2>
+		<p class="view-note sin-programa">
+			Aquí verá el trabajo de sus centros de costo. Pida al administrador que se los asigne en
+			Personal.
+		</p>
+	{:else if programasVigentes === 0}
 		<h2 id="titulo-avance" class="view-heading">No hay programas anuales vigentes</h2>
 		<p class="view-note sin-programa">
 			Sin programa no se sabe qué toca capturar este mes. Importe el programa anual desde el

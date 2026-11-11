@@ -1,4 +1,4 @@
-// Repositorio del personal: alta, edición y baja lógica con rol y proyectos (clientes).
+// Repositorio del personal: alta, edición y baja lógica con rol y centros de costo.
 import { z } from 'zod';
 import {
 	esquemaPersonaImportada,
@@ -34,7 +34,7 @@ export class RepositorioPersonal {
 
 	/**
 	 * Carga en bloque: da de alta a quienes no están registrados por su correo, como reporteadores
-	 * sin proyectos ni cuenta. Con `ensayo` (por omisión) solo informa lo que haría.
+	 * sin centros de costo ni cuenta. Con `ensayo` (por omisión) solo informa lo que haría.
 	 */
 	async importar(
 		personas: PersonaImportada[],

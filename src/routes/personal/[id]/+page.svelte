@@ -9,7 +9,7 @@
 {#key data.persona?.id ?? 'nuevo'}
 	<PersonalEditor
 		persona={data.persona}
-		clientes={data.clientes}
+		centros={data.centros}
 		sesionActivada={data.sesionActivada}
 		form={form ?? (data.creado ? { mensaje: 'Persona registrada.' } : null)}
 	/>

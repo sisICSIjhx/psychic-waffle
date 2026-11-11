@@ -6,24 +6,12 @@ import HeaderBar from './HeaderBar.svelte';
 describe('HeaderBar', () => {
 	afterEach(() => vi.restoreAllMocks());
 
-	it('nombra el botón del menú móvil y anuncia si está abierto', async () => {
-		const { rerender } = render(HeaderBar, { menuAbierto: false });
-		const boton = page.getByRole('button', { name: 'Abrir el menú' });
-		await expect.element(boton).toHaveAttribute('aria-expanded', 'false');
-		await expect.element(boton).toHaveAttribute('aria-controls', 'menu-principal');
-
-		await rerender({ menuAbierto: true });
-		await expect
-			.element(page.getByRole('button', { name: 'Cerrar el menú' }))
-			.toHaveAttribute('aria-expanded', 'true');
-	});
-
 	it('ofrece «Nuevo reporte» solo a quien puede capturar', async () => {
-		// En ventanas estrechas el acceso se oculta con CSS: se comprueba que exista en el documento.
-		const { container, rerender } = render(HeaderBar);
-		expect(container.querySelector('a.acceso-captura')?.getAttribute('href')).toBe('/captura');
+		const { rerender } = render(HeaderBar);
+		const acceso = page.getByRole('link', { name: 'Nuevo reporte' });
+		await expect.element(acceso).toHaveAttribute('href', '/captura');
 		await rerender({ puedeCapturar: false });
-		expect(container.querySelector('a.acceso-captura')).toBeNull();
+		await expect.element(acceso).not.toBeInTheDocument();
 	});
 
 	it('avisa solo cuando el navegador pierde la conexión', async () => {

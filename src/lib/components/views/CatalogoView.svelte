@@ -11,6 +11,8 @@
 	export let contratos: Contrato[] = [];
 	export let conteos: { contratoId: string; partidas: number; porConfirmar: number }[] = [];
 	export let form: { accion?: string; mensaje?: string; error?: string } | null = null;
+	/** Sin permiso de edición no se ofrecen las altas (el servidor las rechazaría). */
+	export let puedeEditar = true;
 
 	$: conteosPorContrato = new Map(conteos.map((c) => [c.contratoId, c]));
 	$: opcionesCliente = clientes.map((c) => ({
@@ -22,6 +24,10 @@
 <Aviso {form} />
 
 <div class="toolbar">
+	<a class="boton" href={resolve('/catalogo/centros-costo')}>Centros de costo</a>
+	{#if puedeEditar}
+		<a class="boton" href={resolve('/catalogo/plantillas')}>Plantillas de seguimiento</a>
+	{/if}
 	<a class="boton" href={resolve('/catalogo/alcances')}>Alcances predeterminados</a>
 </div>
 
@@ -73,31 +79,31 @@
 	{/if}
 </section>
 
-<div class="form-grid">
-	<details class="card" open={clientes.length === 0}>
-		<summary class="view-heading">Nuevo proyecto</summary>
-		<form method="POST" action="?/crearCliente" use:enhance>
-			<TextField label="Clave (para el menú de Captura)" name="clave" placeholder="cerritos" />
-			<TextField label="Nombre" name="nombre" placeholder="Cerritos" />
-			<TextField label="Razón social" name="razonSocial" placeholder="TEMEX GAS" />
-			<button class="boton primario" type="submit">Registrar proyecto</button>
-		</form>
-	</details>
+{#if puedeEditar}<div class="form-grid">
+		<details class="card" open={clientes.length === 0}>
+			<summary class="view-heading">Nuevo proyecto</summary>
+			<form method="POST" action="?/crearCliente" use:enhance>
+				<TextField label="Clave (para el menú de Captura)" name="clave" placeholder="cerritos" />
+				<TextField label="Nombre" name="nombre" placeholder="Cerritos" />
+				<TextField label="Razón social" name="razonSocial" placeholder="TEMEX GAS" />
+				<button class="boton primario" type="submit">Registrar proyecto</button>
+			</form>
+		</details>
 
-	<details class="card" open={clientes.length > 0 && contratos.length === 0}>
-		<summary class="view-heading">Nuevo contrato</summary>
-		<form method="POST" action="?/crearContrato" use:enhance>
-			<SelectField label="Proyecto" name="clienteId" options={opcionesCliente} required />
-			<TextField label="Número de contrato u OC" name="numero" />
-			<TextField label="Descripción (opcional)" name="descripcion" />
-			<DateField label="Vigente desde" name="vigenciaInicio" required />
-			<DateField label="Vigente hasta" name="vigenciaFin" required />
-			<button class="boton primario" type="submit" disabled={clientes.length === 0}
-				>Registrar contrato</button
-			>
-		</form>
-	</details>
-</div>
+		<details class="card" open={clientes.length > 0 && contratos.length === 0}>
+			<summary class="view-heading">Nuevo contrato</summary>
+			<form method="POST" action="?/crearContrato" use:enhance>
+				<SelectField label="Proyecto" name="clienteId" options={opcionesCliente} required />
+				<TextField label="Número de contrato u OC" name="numero" />
+				<TextField label="Descripción (opcional)" name="descripcion" />
+				<DateField label="Vigente desde" name="vigenciaInicio" required />
+				<DateField label="Vigente hasta" name="vigenciaFin" required />
+				<button class="boton primario" type="submit" disabled={clientes.length === 0}
+					>Registrar contrato</button
+				>
+			</form>
+		</details>
+	</div>{/if}
 
 <style>
 	/* Las fechas «AAAA-MM-DD» no se parten por los guiones en pantallas angostas. */

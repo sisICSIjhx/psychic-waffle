@@ -30,6 +30,9 @@ const MODIFICACIONES: readonly (readonly [prefijo: string, capacidad: Capacidad 
 	['/reportes', 'capturar'],
 	['/captura', 'capturar'],
 	['/planeacion', 'ajustarPrograma'],
+	['/seguimiento', 'editarSeguimiento'],
+	// Cada acción comprueba su capacidad: contrato, enlace del programa o cobranza.
+	['/cobranza', 'sesion'],
 	['/catalogo', 'editarCatalogo'],
 	['/equipos', 'editarCatalogo'],
 	['/personal', 'administrarPersonal'],

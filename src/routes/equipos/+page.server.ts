@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { fechaEnZona } from '$lib/dominio/fechas';
+import { alcanceDe, filtrarPor } from '$lib/server/alcance';
 import { datos } from '$lib/server/datos';
 import { mensajeDeError } from '$lib/server/errores';
 import { leerExcelEquipos } from '$lib/server/importacion/equipos';
@@ -11,7 +12,14 @@ const texto = (formulario: FormData, campo: string) => String(formulario.get(cam
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const repos = await datos();
-	const clientes = await repos.catalogo.listarClientes();
+	// Solo los equipos de los centros de costo de quien consulta (cambio centros-costo-plantillas).
+	const alcance = await alcanceDe(repos, locals);
+	const clientes = filtrarPor(
+		alcance,
+		'clientes',
+		await repos.catalogo.listarClientes(),
+		(c) => c.id
+	);
 	const proyecto =
 		clientes.find((c) => c.clave === url.searchParams.get('proyecto')) ?? clientes[0] ?? null;
 	const [equipos, sitios] = proyecto
@@ -23,8 +31,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	return {
 		clientes,
 		proyecto,
-		equipos,
-		sitios,
+		equipos: filtrarPor(alcance, 'sitios', equipos, (e) => e.sitioId),
+		sitios: filtrarPor(alcance, 'sitios', sitios, (s) => s.id),
 		hoy: fechaEnZona(),
 		eliminado: url.searchParams.has('eliminado'),
 		puedeEditar: puedeEditarCatalogo(locals)
