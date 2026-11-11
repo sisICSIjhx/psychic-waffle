@@ -1,6 +1,7 @@
 <!-- src/routes/+layout.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
 
 	import Sidebar from '$lib/layout/Sidebar.svelte';
@@ -11,6 +12,7 @@
 	import { nombreCompleto } from '$lib/dominio/personal';
 	import { SESION_ABIERTA, type SesionArmazon } from '$lib/dominio/permisos';
 	import {
+		CLAVE_PANEL_LATERAL,
 		CLAVE_TEMA,
 		guardarPreferencia,
 		leerPreferencia,
@@ -29,6 +31,8 @@
 	import '../app.css';
 
 	let mobileMenuOpen = false;
+	let ventanaEstrecha = false;
+	let panelColapsado = false;
 	// El script de app.html ya aplicó el tema al documento; aquí solo se sincroniza el botón.
 	let theme: Tema = 'dark';
 
@@ -46,16 +50,25 @@
 		partida?: { numero?: string };
 		persona?: Parameters<typeof nombreCompleto>[0] | null;
 		equipo?: { tag?: string } | null;
+		plantilla?: { nombre?: string } | null;
 	};
 	$: encabezado = encabezadoDePagina(pathname, cliente, {
 		contrato: datosPagina.contrato?.numero,
 		partida: datosPagina.partida?.numero,
 		persona: datosPagina.persona ? nombreCompleto(datosPagina.persona) : null,
-		equipo: datosPagina.equipo?.tag ?? null
+		equipo: datosPagina.equipo?.tag ?? null,
+		plantilla: datosPagina.plantilla?.nombre ?? null
 	});
 
 	onMount(() => {
 		const sistema = window.matchMedia('(prefers-color-scheme: dark)');
+		const ventana = window.matchMedia('(max-width: 768px)');
+		const ajustarMenu = () => {
+			ventanaEstrecha = ventana.matches;
+			cerrarMenuMovil();
+		};
+		ajustarMenu();
+		panelColapsado = leerPreferencia(CLAVE_PANEL_LATERAL) === 'colapsado';
 		theme = temaInicial(leerPreferencia(CLAVE_TEMA), sistema.matches);
 		aplicarTema(theme);
 
@@ -66,8 +79,14 @@
 			aplicarTema(theme);
 		};
 		sistema.addEventListener('change', alCambiarSistema);
-		return () => sistema.removeEventListener('change', alCambiarSistema);
+		ventana.addEventListener('change', ajustarMenu);
+		return () => {
+			sistema.removeEventListener('change', alCambiarSistema);
+			ventana.removeEventListener('change', ajustarMenu);
+		};
 	});
+
+	afterNavigate(cerrarMenuMovil);
 
 	// Sin transiciones durante el cambio: se restauran después del siguiente cuadro.
 	function aplicarTema(tema: Tema) {
@@ -80,10 +99,8 @@
 		);
 	}
 
-	function handleNavigate() {
-		if (typeof window !== 'undefined' && window.innerWidth <= 768) {
-			mobileMenuOpen = false;
-		}
+	function cerrarMenuMovil() {
+		mobileMenuOpen = false;
 	}
 
 	function toggleTheme() {
@@ -92,8 +109,19 @@
 		guardarPreferencia(CLAVE_TEMA, theme);
 	}
 
-	function toggleMobileMenu() {
-		mobileMenuOpen = !mobileMenuOpen;
+	function toggleMenu() {
+		if (ventanaEstrecha) {
+			mobileMenuOpen = !mobileMenuOpen;
+		} else {
+			panelColapsado = !panelColapsado;
+			guardarPreferencia(CLAVE_PANEL_LATERAL, panelColapsado ? 'colapsado' : null);
+		}
+	}
+
+	function cerrarMenuConEscape(evento: KeyboardEvent) {
+		if (evento.key !== 'Escape' || !mobileMenuOpen || evento.defaultPrevented) return;
+		cerrarMenuMovil();
+		document.getElementById('control-panel-lateral')?.focus();
 	}
 
 	// El enrutador atiende el ancla; el foco se mueve aquí para que Tab siga dentro del contenido.
@@ -101,6 +129,8 @@
 		document.getElementById('contenido')?.focus();
 	}
 </script>
+
+<svelte:window on:keydown={cerrarMenuConEscape} />
 
 <svelte:head>
 	<title>{enAcceso ? 'Acceso' : pageTitle} · ICSI Reportes</title>
@@ -119,24 +149,24 @@
 		class="sidebar-overlay"
 		class:active={mobileMenuOpen}
 		role="presentation"
-		on:click={toggleMobileMenu}
+		on:click={cerrarMenuMovil}
 	></div>
 
-	<div class="layout">
-		<Sidebar
-			activeView={currentView}
-			activeCliente={cliente}
-			isMobileOpen={mobileMenuOpen}
-			{theme}
-			{sesion}
-			on:navigate={handleNavigate}
-			on:toggleTheme={toggleTheme}
+	<div class="layout" class:panel-colapsado={panelColapsado}>
+		<HeaderBar
+			menuAbierto={ventanaEstrecha ? mobileMenuOpen : !panelColapsado}
+			puedeCapturar={sesion.permisos.capturar}
+			on:click={toggleMenu}
 		/>
 
-		<HeaderBar
-			menuAbierto={mobileMenuOpen}
-			puedeCapturar={sesion.permisos.capturar}
-			on:toggleMobileMenu={toggleMobileMenu}
+		<Sidebar
+			activeView={currentView}
+			isMobileOpen={mobileMenuOpen}
+			colapsado={panelColapsado}
+			{theme}
+			{sesion}
+			on:navigate={cerrarMenuMovil}
+			on:toggleTheme={toggleTheme}
 		/>
 
 		<main class="main" id="contenido" tabindex="-1">

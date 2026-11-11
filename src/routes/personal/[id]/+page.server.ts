@@ -15,13 +15,13 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	if (!puedeAdministrarPersonal(locals))
 		errorHttp(403, 'No tiene permiso para administrar el personal');
 	const repos = await datos();
-	const clientes = await repos.catalogo.listarClientes();
+	const centros = await repos.centrosCosto.listar();
 	// Las cuentas solo se administran con el inicio de sesión activado (ver generarContrasena).
 	const sesionActivada = Boolean(locals?.autenticacion);
-	if (params.id === 'nuevo') return { persona: null, clientes, creado: false, sesionActivada };
+	if (params.id === 'nuevo') return { persona: null, centros, creado: false, sesionActivada };
 	const persona = await repos.personal.obtener(params.id).catch(() => null);
 	if (!persona) errorHttp(404, 'Persona no encontrada');
-	return { persona, clientes, creado: url.searchParams.has('creado'), sesionActivada };
+	return { persona, centros, creado: url.searchParams.has('creado'), sesionActivada };
 };
 
 export const actions: Actions = {
@@ -44,7 +44,7 @@ export const actions: Actions = {
 				rol: texto(formulario, 'rol'),
 				// En el alta no hay casilla: toda persona nueva queda activa.
 				activo: nueva || formulario.get('activo') === 'on',
-				clienteIds: formulario.getAll('clienteIds').map(String)
+				centroCostoIds: formulario.getAll('centroCostoIds').map(String)
 			});
 			id = persona.id;
 		} catch (error) {

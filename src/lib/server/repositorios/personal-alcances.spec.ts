@@ -1,7 +1,7 @@
 // Alcances predeterminados por proyecto, personal y fotos en SharePoint (0020). Solo nombres
 // ficticios.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { Cliente, Reporte } from '../../dominio/esquemas';
+import type { CentroCosto, Cliente, Reporte } from '../../dominio/esquemas';
 import { aGuardado } from '../../dominio/captura';
 import { ErrorDatos } from '../bd/cliente';
 import { crearClientePglite } from '../bd/pglite';
@@ -10,6 +10,8 @@ import { crearRepositorios, type Repositorios } from './index';
 let repos: Repositorios;
 let cerritos: Cliente;
 let proagro: Cliente;
+let centroA: CentroCosto;
+let centroB: CentroCosto;
 
 beforeAll(async () => {
 	repos = crearRepositorios(await crearClientePglite());
@@ -23,6 +25,8 @@ beforeAll(async () => {
 		nombre: 'Proagro ficticio',
 		razonSocial: 'CLIENTE FICTICIO B'
 	});
+	centroA = await repos.centrosCosto.guardar({ clave: 'EM-91001', nombre: 'A', plantillaId: null });
+	centroB = await repos.centrosCosto.guardar({ clave: 'EM-91002', nombre: 'B', plantillaId: null });
 });
 
 afterAll(async () => {
@@ -139,36 +143,36 @@ describe('personal', () => {
 		activo: true
 	};
 
-	it('da de alta a un reporteador con proyecto y lo lista', async () => {
+	it('da de alta a un reporteador con centro de costo y lo lista', async () => {
 		const persona = await repos.personal.guardar({
 			...base,
 			rol: 'reporteador',
-			clienteIds: [proagro.id]
+			centroCostoIds: [centroB.id]
 		});
 		expect(persona).toMatchObject({ rol: 'reporteador', activo: true });
-		expect(persona.proyectos.map((p) => p.nombre)).toEqual(['Proagro ficticio']);
+		expect(persona.centrosCosto.map((c) => c.clave)).toEqual(['EM-91002']);
 		expect((await repos.personal.listar()).some((p) => p.id === persona.id)).toBe(true);
 	});
 
-	it('los roles con proyectos pueden quedar sin ninguno y al administrador no se le guardan', async () => {
-		// Desde la 0022 ya no se exige un proyecto: la lista del personal llega sin ellos.
+	it('los roles con centros de costo pueden quedar sin ninguno y al administrador no se le guardan', async () => {
+		// Desde la 0022 ya no se exige asignación: la lista del personal llega sin ella.
 		const sinProyectos = await repos.personal.guardar({
 			...base,
 			rol: 'lider_operativo',
-			clienteIds: []
+			centroCostoIds: []
 		});
-		expect(sinProyectos.proyectos).toEqual([]);
+		expect(sinProyectos.centrosCosto).toEqual([]);
 		const admin = await repos.personal.guardar({
 			...base,
 			nombre: 'Admin',
 			rol: 'administrador',
-			clienteIds: [cerritos.id]
+			centroCostoIds: [centroA.id]
 		});
-		expect(admin.proyectos).toEqual([]);
+		expect(admin.centrosCosto).toEqual([]);
 	});
 
 	it('valida fecha, rol y correo', async () => {
-		const persona = { ...base, rol: 'lider_administrativo', clienteIds: [cerritos.id] };
+		const persona = { ...base, rol: 'lider_administrativo', centroCostoIds: [centroA.id] };
 		const guardar = (cambios: Partial<typeof persona>) =>
 			mensajeError(repos.personal.guardar({ ...persona, ...cambios }));
 		expect(await guardar({ fechaNacimiento: '2999-01-01' })).toBe(
@@ -182,12 +186,12 @@ describe('personal', () => {
 		);
 	});
 
-	it('edita proyectos y da de baja sin eliminar', async () => {
+	it('edita centros de costo y da de baja sin eliminar', async () => {
 		const persona = await repos.personal.guardar({
 			...base,
 			apellidoMaterno: null,
 			rol: 'lider_operativo',
-			clienteIds: [cerritos.id, proagro.id]
+			centroCostoIds: [centroA.id, centroB.id]
 		});
 		const baja = await repos.personal.guardar({
 			...base,
@@ -195,10 +199,10 @@ describe('personal', () => {
 			apellidoMaterno: null,
 			rol: 'lider_operativo',
 			activo: false,
-			clienteIds: [cerritos.id]
+			centroCostoIds: [centroA.id]
 		});
 		expect(baja).toMatchObject({ activo: false, apellidoMaterno: null });
-		expect(baja.proyectos.map((p) => p.id)).toEqual([cerritos.id]);
+		expect(baja.centrosCosto.map((c) => c.id)).toEqual([centroA.id]);
 		expect((await repos.personal.obtener(persona.id)).activo).toBe(false);
 	});
 });

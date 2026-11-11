@@ -43,6 +43,35 @@ export const ESTADOS_EQUIPO = [
 ] as const;
 export type EstadoEquipo = (typeof ESTADOS_EQUIPO)[number];
 
+// Plantillas de seguimiento por centro de costo (cambio centros-costo-plantillas). Solo los bloques
+// variables del plan (A, B, D, E y F); carta de finalización, cobranza y atenciones nocturnas
+// aplican a todos y no van en la plantilla (D3).
+export const BLOQUES_SEGUIMIENTO = [
+	'contrato',
+	'ordenes_compra',
+	'programa',
+	'documentos',
+	'carpetas'
+] as const;
+export type BloqueSeguimiento = (typeof BLOQUES_SEGUIMIENTO)[number];
+export const TIPOS_CONCEPTO = [
+	'casilla',
+	'estado',
+	'cantidad',
+	'monto',
+	'enlace',
+	'fecha',
+	'texto',
+	'carpeta'
+] as const;
+export type TipoConcepto = (typeof TIPOS_CONCEPTO)[number];
+export const NIVELES_CONCEPTO = ['contrato', 'orden_compra', 'periodo', 'actividad'] as const;
+export type NivelConcepto = (typeof NIVELES_CONCEPTO)[number];
+export const MODOS_CONTRATO = ['obligatorio', 'opcional', 'sin_contrato'] as const;
+export type ModoContrato = (typeof MODOS_CONTRATO)[number];
+export const ORIGENES_ACTIVIDADES = ['programa_anual', 'mensual', 'ninguno'] as const;
+export type OrigenActividades = (typeof ORIGENES_ACTIVIDADES)[number];
+
 // Bitácora del catálogo (cambio edicion-contratos-bitacora).
 export const ENTIDADES_CATALOGO = ['contrato', 'sitio', 'firmante', 'contrato_sitio'] as const;
 export const ACCIONES_CATALOGO = ['crear', 'editar', 'reemplazar', 'asociar', 'quitar'] as const;

@@ -1,8 +1,10 @@
-// Fuente única de las vistas del shell: ruta, título y accesos de captura por cliente.
+// Fuente única de las rutas y títulos de las vistas.
 
 export type VistaId =
 	| 'dashboard'
 	| 'planeacion'
+	| 'seguimiento'
+	| 'cobranza'
 	| 'cumplimiento'
 	| 'captura'
 	| 'historial'
@@ -14,6 +16,8 @@ export type VistaId =
 export const routesByView = {
 	dashboard: '/',
 	planeacion: '/planeacion',
+	seguimiento: '/seguimiento',
+	cobranza: '/cobranza',
 	cumplimiento: '/cumplimiento',
 	captura: '/captura',
 	historial: '/historial',
@@ -26,6 +30,8 @@ export const routesByView = {
 export const titulosPorVista: Record<VistaId, string> = {
 	dashboard: 'Mi trabajo',
 	planeacion: 'Programa anual',
+	seguimiento: 'Seguimiento operativo',
+	cobranza: 'Contrato y cobranza',
 	cumplimiento: 'Cumplimiento del programa',
 	captura: 'Capturar reporte',
 	historial: 'Historial de reportes',
@@ -39,6 +45,8 @@ export const titulosPorVista: Record<VistaId, string> = {
 const cejasPorVista: Record<VistaId, string> = {
 	dashboard: 'Inicio',
 	planeacion: 'Programa / Anual',
+	seguimiento: 'Programa / Seguimiento',
+	cobranza: 'Administración / Contrato y cobranza',
 	cumplimiento: 'Programa / Cumplimiento',
 	captura: 'Capturar / Nuevo reporte',
 	historial: 'Consulta / Historial',
@@ -48,7 +56,7 @@ const cejasPorVista: Record<VistaId, string> = {
 	perfil: 'Cuenta'
 };
 
-/** Accesos del submenú Captura; todos llevan al mismo flujo filtrado por `?cliente=`. */
+/** Nombres de los clientes para los encabezados del flujo de captura. */
 export const clientesCaptura = [
 	{ clave: 'cerritos', etiqueta: 'Cerritos' },
 	{ clave: 'proagro', etiqueta: 'Proagro' },
@@ -99,6 +107,7 @@ export function encabezadoDePagina(
 		partida?: string | null;
 		persona?: string | null;
 		equipo?: string | null;
+		plantilla?: string | null;
 	} = {}
 ): EncabezadoPagina | null {
 	const vista = vistaDesdeRuta(pathname);
@@ -115,6 +124,14 @@ export function encabezadoDePagina(
 	}
 	if (vista === 'catalogo' && segundo === 'alcances') {
 		return { ceja: null, titulo: 'Alcances predeterminados' };
+	}
+	if (vista === 'catalogo' && segundo === 'centros-costo') {
+		return { ceja: null, titulo: 'Centros de costo' };
+	}
+	if (vista === 'catalogo' && segundo === 'plantillas') {
+		const tercero = pathname.split('/')[3];
+		if (!tercero) return { ceja: null, titulo: 'Plantillas de seguimiento' };
+		return { ceja: null, titulo: datos.plantilla ? `Plantilla ${datos.plantilla}` : 'Plantilla' };
 	}
 	if (vista === 'catalogo' && segundo === 'partidas') {
 		return { ceja: null, titulo: datos.partida ? `Partida ${datos.partida}` : 'Nueva partida' };

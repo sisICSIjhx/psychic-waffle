@@ -68,4 +68,60 @@ describe('carga del tablero de cumplimiento', () => {
 	it('sin programas en el corte devuelve la lista vacía', async () => {
 		expect((await cargar('corte=2025-01')).programas).toEqual([]);
 	});
+
+	it('el concentrado trae todos los centros visibles y las actividades de los de captura mensual', async () => {
+		const plantilla = await repos.centrosCosto.guardarPlantilla({
+			nombre: 'concentrado-mensual',
+			modoContrato: 'opcional',
+			origenActividades: 'mensual',
+			conceptos: [{ etiqueta: 'ODM', bloque: 'documentos', tipo: 'casilla' }]
+		});
+		const mensual = await repos.centrosCosto.guardar({
+			clave: 'OMA-FICTICIO',
+			nombre: 'Mensual',
+			plantillaId: plantilla.id
+		});
+		const ids = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'];
+		for (const id of ids) {
+			await repos.seguimiento.guardar(mensual.id, '2026-10', plantilla.id, {
+				accion: 'nuevaActividad',
+				id,
+				nombre: `Actividad ${id.slice(0, 1)}`,
+				fecha: null
+			});
+		}
+		await repos.seguimiento.guardar(mensual.id, '2026-10', plantilla.id, {
+			accion: 'ejecucion',
+			actividad: `m:${ids[0]}`,
+			valor: true
+		});
+
+		type Concentrado = {
+			centros: { id: string; clave: string }[];
+			actividades: Record<string, unknown>;
+		};
+		const todo = (await cargar('')).concentrado as Concentrado;
+		expect(todo.centros.map((c) => c.clave).sort()).toEqual([
+			'EM-cerritos',
+			'EM-proagro',
+			'OMA-FICTICIO'
+		]);
+		expect(todo.actividades).toEqual({ [mensual.id]: { programadas: 2, ejecutadas: 1 } });
+		expect(((await cargar('corte=2026-09')).concentrado as Concentrado).actividades).toEqual({
+			[mensual.id]: { programadas: 0, ejecutadas: 0 }
+		});
+		// Con un contrato o cliente elegido la página es el detalle: no carga el concentrado.
+		expect((await cargar('cliente=proagro')).concentrado).toBeNull();
+
+		// Quien tiene centros asignados solo ve los suyos.
+		const limitado = (await load({
+			url: new URL('http://localhost/cumplimiento'),
+			locals: {
+				autenticacion: true,
+				usuario: { id: 'x', nombre: 'Ficticio', rol: 'reporteador', centrosCosto: [mensual.id] }
+			}
+		} as never)) as unknown as { concentrado: Concentrado; verCobranza: boolean };
+		expect(limitado.concentrado.centros.map((c) => c.id)).toEqual([mensual.id]);
+		expect(limitado.verCobranza).toBe(false);
+	});
 });

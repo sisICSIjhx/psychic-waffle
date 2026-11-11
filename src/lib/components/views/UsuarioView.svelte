@@ -9,7 +9,7 @@
 		correo: string;
 		rol: string;
 		sede: string | null;
-		proyectos: string;
+		centrosCosto: string;
 		debeCambiar: boolean;
 	} | null = null;
 	export let largoMinimo = 10;
@@ -51,8 +51,8 @@
 				<dd>{cuenta.sede ?? '—'}</dd>
 			</div>
 			<div>
-				<dt>Proyectos</dt>
-				<dd>{cuenta.proyectos}</dd>
+				<dt>Centros de costo</dt>
+				<dd>{cuenta.centrosCosto}</dd>
 			</div>
 		</dl>
 		<p class="view-note">Si algún dato no es correcto, pida al administrador que lo corrija.</p>

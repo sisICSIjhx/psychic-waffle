@@ -3,6 +3,229 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-11-11 — Etapa 5: concentrado de centros de costo
+
+- Motivo: etapa 5 del plan de seguimiento (`docs/PLAN_SEGUIMIENTO_CENTROS_COSTO.md`). Cambio directo
+  (nivel 2, sin expediente OpenSpec), rama `feat/concentrado-centros` sobre el trabajo local sin
+  confirmar de las etapas 2 a 4. Sin migración ni cambios de datos.
+- Alcance: `/cumplimiento` abre con el «Concentrado de centros de costo» al mes de corte: una fila
+  por centro visible (con o sin programa) con planeado, ejecutado, avance con semáforo, origen del
+  avance y accesos a su seguimiento, a su tablero de cumplimiento y a «Contrato y cobranza» (solo
+  para quien puede abrirla). Con un cliente o contrato elegido la página es el detalle y ofrece
+  volver al concentrado.
+- Cálculo: los centros con programa anual usan los indicadores del tablero
+  (`indicadoresDePrograma` y `porcentajes` de `dominio/cumplimiento.ts`, acumulado al corte); los
+  de captura mensual, las actividades programadas y ejecutadas del mes en el seguimiento; los demás
+  dicen por qué no tienen avance. El semáforo usa los umbrales de cumplimiento.
+- Archivos: `src/lib/dominio/concentrado.ts`, `src/lib/components/cumplimiento/ConcentradoCentros.svelte`,
+  `src/lib/components/views/CumplimientoView.svelte` y `src/routes/cumplimiento/+page.server.ts`,
+  con sus pruebas.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), `npm run lint` y
+  `npm run test` (569 pruebas en 78 archivos; nuevas del dominio y de la carga con alcance por
+  centro).
+- Validación en el navegador (`dev-prueba`, cuentas ficticias): el administrador ve los 17 centros
+  de la base de prueba con su avance, los enlaces de cada fila y el regreso desde el detalle; un
+  líder operativo solo ve su centro. Sin desborde horizontal.
+- Pendientes: los centros de captura mensual miden solo el mes de corte y los de programa anual el
+  acumulado: confirmar con el usuario si conviene una sola base; etapa 6 (automatizaciones).
+
+## 2026-11-11 — Etapa 4: contrato y cobranza por centro de costo
+
+- Motivo: etapa 4 del plan de seguimiento (`docs/PLAN_SEGUIMIENTO_CENTROS_COSTO.md`). Cambio
+  OpenSpec `contrato-cobranza`, rama `feat/contrato-cobranza` sobre el trabajo local sin confirmar
+  de las etapas 2 y 3. Antes se revisó la etapa 3: historial, expediente con todas sus tareas,
+  migración 0024 y `/seguimiento` coinciden con lo registrado.
+- Alcance: pantalla «Contrato y cobranza» (`/cobranza?centro=&anio=`, en el menú) con los datos del
+  contrato y las órdenes de compra (también adicionales) según los conceptos de los bloques
+  `contrato` y `ordenes_compra` de la plantilla, carta de finalización con aviso cuando el contrato
+  del catálogo ya terminó y falta, enlace de SharePoint del programa anual y cobranza por mes
+  (estimación, prefactura, factura, cobrado y monto) con el total del año.
+- Accesos: capacidades `verContrato`, `editarContrato`, `verEnlacePrograma` y `editarCobranza`, que
+  exigen sesión aunque el inicio de sesión no esté activado. Contrato, montos y cobranza los ven
+  administrador, líder administrativo, mesa directiva y contabilidad; el enlace del programa,
+  administrador, líderes y mesa directiva. Llenan el contrato, las órdenes, la carta y el enlace el
+  administrador y el líder administrativo; la cobranza, contabilidad y el administrador. La función
+  de consulta no devuelve lo que el rol no puede ver, y un centro ajeno responde 404.
+- Decisiones propias, por confirmar con el usuario: quién edita el contrato y el enlace del
+  programa (el plan solo dice quién los ve); estimación, prefactura y factura como casillas; la
+  carta falta cuando no tiene fecha; los datos del contrato van por centro de costo.
+- Archivos: `supabase/migrations/0025_contrato_cobranza.sql` y esquema generado,
+  `src/lib/server/repositorios/contrato-cobranza.ts`, `src/lib/dominio/cobranza.ts` y `permisos.ts`,
+  `src/routes/cobranza/`, `src/lib/components/cobranza/CampoConcepto.svelte`, guardia de acceso,
+  navegación, menú y OpenSpec.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), `npm run lint`,
+  `npm run spec:check` y `npm run test` (564 pruebas en 77 archivos; nuevas sobre PGlite para el
+  repositorio, la ruta con cada rol y el dominio).
+- Validación en el navegador (`dev-prueba`, base aislada, cuentas y datos ficticios): el
+  administrador guardó contrato, orden adicional, enlace del programa, cobranza y carta, con rechazo
+  de un enlace que no es de SharePoint y desaparición del aviso de carta; contabilidad vio el
+  contrato en consulta, guardó la cobranza y recibió 403 al intentar guardar el enlace; el líder
+  operativo vio solo el enlace del programa de su centro y 404 en un centro ajeno. Sin capturas de
+  pantalla: la ventana estaba oculta y se comprobó por texto y estructura.
+- Base de trabajo (PGlite): migración 0025 aplicada con la base sin procesos abiertos y respaldo
+  previo fuera del repositorio. Coincidieron las huellas de los datos de las 33 tablas existentes;
+  quedaron las 5 tablas nuevas vacías y la consulta de contrato respondió para los 16 centros.
+- Supabase local (Docker, base sin registros): `npm run bd:iniciar` aplicó las migraciones 0023,
+  0024 y 0025, que estaban pendientes ahí, tras un volcado previo del esquema fuera del repositorio.
+  Quedaron 38 tablas y las funciones de contrato y cobranza responden por la API.
+- Pendientes: aplicar las migraciones en el proyecto alojado de Supabase al desplegar; capturar los
+  contratos y montos reales; etapa 5 (concentrado).
+
+## 2026-11-11 — Etapa 3: seguimiento operativo por centro de costo
+
+- Motivo: implementar la captura manual de la etapa 3 del plan de seguimiento. Cambio OpenSpec
+  `seguimiento-operativo`, rama `codex/seguimiento-operativo` sobre el trabajo local de la etapa 2.
+- Alcance: `/seguimiento` por centro y mes, con filas del programa anual o actividades
+  registradas por mes según la plantilla, ejecución y documentos con marcado individual, por fila
+  y por mes, y atenciones nocturnas. OMA EDOMEX conserva captura mensual. EM-30017 y EM-30043
+  registran el estado mensual del reporte.
+- Carpetas: estado, responsable elegido del personal, receptor, fecha y enlace de SharePoint o
+  adjunto de hasta 8 MiB. La lectura, escritura y descarga respetan el centro de costo. Dirección
+  y contabilidad tienen acceso de consulta.
+- Archivos: migración `0024_seguimiento_operativo.sql` y esquema generado,
+  `src/routes/seguimiento/`, `src/lib/components/seguimiento/`,
+  `src/lib/server/repositorios/seguimiento.ts`, guardia de acceso, navegación y OpenSpec.
+- Validación de datos: PGlite con migraciones y esquema completo. Se comprobaron los permisos SQL
+  con los roles de Supabase, la captura anual y mensual, los valores por concepto, el marcado
+  múltiple y la versión de las carpetas.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), `npm run lint`,
+  `npm run spec:check` y `npm run test` con Playwright en Edge (552 pruebas en 74 archivos).
+- Validación en Edge con datos ficticios: navegación, estado mensual, marcas, atenciones,
+  carga y descarga del archivo, consulta móvil y bloqueo por rol y centro de costo.
+- Base de trabajo: migración 0024 aplicada después de verificar el respaldo fuera del
+  repositorio. Coincidieron las huellas de los datos de las 28 tablas existentes. Se consultaron
+  los 16 centros y se verificaron las plantillas de los tres casos confirmados.
+- Pendientes: aplicación en Supabase al desplegar; etapa 4 de contrato y cobranza.
+
+## 2026-11-10 — Etapa 2: centros de costo, plantillas de seguimiento y alcance por centro
+
+- Motivo: etapa 2 del plan de seguimiento por centro de costo (`docs/PLAN_SEGUIMIENTO_CENTROS_COSTO.md`);
+  cambio OpenSpec `centros-costo-plantillas`, rama `feat/centros-costo-alta`.
+- Alcance: migración 0023 con plantillas de seguimiento (modo de contrato, origen de las actividades
+  y conceptos por bloque con tipo y nivel; ids estables al editar), `sitios.plantilla_id` y
+  `personal_centros_costo` en lugar de `personal_proyectos` (convertida y borrada). La sesión lleva
+  los centros de costo del usuario; con el inicio de sesión activado, quien no es administrador,
+  mesa directiva o contabilidad solo ve y modifica lo de sus centros de costo en todas las
+  pantallas, y un reporte, partida, contrato o equipo ajeno da 404 desde la guardia. Pantallas
+  `/catalogo/centros-costo`, `/catalogo/plantillas` y su editor; ficha y lista de personal y
+  `/perfil` con centros de costo. Carga con `npm run importar:centros` (ensayo por omisión).
+- Archivos: `supabase/migrations/0023_centros_costo_plantillas.sql`, `esquema_completo.sql`,
+  `src/lib/dominio/` (constantes, esquemas, personal, `seguimiento.ts`),
+  `src/lib/server/alcance.ts`, `repositorios/centros-costo.ts`, `src/hooks.server.ts`, las cargas
+  de `/`, `/planeacion`, `/cumplimiento`, `/captura`, `/historial`, `/catalogo` (y contratos,
+  alcances), `/equipos`, `/personal/[id]` y `/perfil`, componentes de catálogo y personal,
+  `scripts/importar-centros.ts`.
+- Validación real: `npm run check` (0 errores), `npm run lint`, `npm run test` (73 archivos, 547
+  pruebas; nuevas sobre PGlite para plantillas, centros, carga, alcance y la conversión de la 0023,
+  y de la guardia) y `npm run spec:check`. En el navegador, con una copia de la base local y cuentas
+  ficticias: lista de 16 centros, plantillas, editor (agregar y guardar un concepto), ficha de
+  personal, y un reporteador con solo EM-30184 que no ve ni abre lo de EM-30167 (404 en reporte y
+  documento; 403 en plantillas).
+- Carga en la base de trabajo (con el servidor detenido): 10 plantillas, 12 centros nuevos y 4
+  existentes con plantilla; antes se respaldó la base y se comprobó que sus 20 tablas tenían los
+  mismos registros que el respaldo previo al ensayo.
+- Pendientes: registrar los contratos de los centros nuevos; asignar centros de costo al
+  personal. Las plantillas de EM-30017/EM-30043 y de los centros sin programa llevan sus casillas
+  por mes en el bloque «programa»: confirmar al planear la etapa 3.
+
+## 2026-11-10 — Acceso a captura desde la cabecera
+
+- Motivo: retirar «Capturar» y los accesos por proyecto del panel izquierdo.
+- Alcance: «Nuevo reporte» abre el flujo de captura desde la cabecera para los roles autorizados.
+  En teléfonos de hasta 420 px se muestra como botón «+» con nombre accesible.
+- Archivos: `Sidebar.svelte` y su prueba, `HeaderBar.svelte` y su prueba, `navegacion.ts` y
+  `src/routes/+layout.svelte`.
+- Validación real: `npm run check`, 17 pruebas dirigidas y revisión en Edge del menú lateral en
+  escritorio y móvil, incluida la apertura de `/captura` desde la cabecera a 320 px.
+
+## 2026-11-10 — Resaltado según el estado del panel lateral
+
+- Motivo: reservar el fondo cuadrado para el panel que muestra solo iconos.
+- Alcance: en el panel compacto, el destino activo se resalta en un cuadro de 40 × 40 px. Al
+  mostrar las etiquetas, el fondo abarca la fila completa.
+- Archivo: `src/lib/layout/Sidebar.svelte`.
+- Validación real: en Edge se comprobó el fondo de la fila y del icono con el panel compacto,
+  expandido, superpuesto y abierto en móvil.
+
+## 2026-11-10 — Alineación de iconos y fondo activo cuadrado
+
+- Motivo: alinear el botón del panel con los iconos de navegación y corregir la forma del fondo
+  azul del destino activo.
+- Alcance: botón, iconos, marca y accesos del panel comparten el mismo eje vertical. El fondo azul
+  del destino activo queda en un cuadro de 40 × 40 px alrededor de su icono.
+- Archivos: `src/app.css`, `BotonPanel.svelte` y `Sidebar.svelte`.
+- Validación real: `npm run check`, 11 pruebas de navegación en Edge y medición del eje común y
+  del fondo cuadrado con el panel fijo, compacto, superpuesto y abierto en móvil.
+
+## 2026-11-10 — Cabecera de ancho completo y panel superpuesto
+
+- Motivo: reproducir la apertura temporal del panel compacto al pasar el cursor, con la cabecera
+  por encima de la navegación.
+- Alcance: la cabecera abarca las dos columnas. En escritorio, el panel de 72 px revela sus
+  etiquetas y se superpone al contenido al recibir el cursor o el foco de teclado. El ancho de
+  la columna de contenido y la preferencia de expansión se conservan durante esa apertura.
+- Archivos: `src/app.css`, `src/lib/layout/Sidebar.svelte` y `src/routes/+layout.svelte`.
+- Validación real: `npm run check` y revisión en Edge de la cabecera, las medidas del contenido
+  antes y durante la apertura, el foco de teclado, el estado tras recargar y el menú móvil.
+
+## 2026-11-10 — Panel compacto con los iconos de navegación
+
+- Motivo: el usuario aclaró que el estado colapsado debe mostrar los iconos del menú izquierdo.
+- Alcance: panel compacto de 72 px con los accesos de navegación, proyecto y cuenta. Las etiquetas
+  se ocultan visualmente y los enlaces conservan sus nombres accesibles y títulos al pasar el
+  cursor. El botón para colapsar y expandir vuelve a la cabecera.
+- Archivos: `Sidebar.svelte` y su prueba, `HeaderBar.svelte`, `BotonPanel.svelte` y su prueba,
+  `src/routes/+layout.svelte` y `src/app.css`.
+- Validación real: `npm run check` y 11 pruebas dirigidas en Edge. Revisión visual del panel
+  compacto, enlaces, selección activa y persistencia tras recargar. Probados ambos temas y el menú
+  completo en móvil con cierre mediante Escape.
+
+## 2026-11-10 — Panel lateral colapsado con un solo icono
+
+- Motivo: conservar el control de reapertura en el borde izquierdo al colapsar el panel.
+- Alcance: en escritorio, el panel se reduce a una franja de 56 px cuyo único control es el icono
+  sin puntos. El mismo botón abre y cierra el menú en móvil.
+- Archivos: `BotonPanel.svelte` y su prueba, `HeaderBar.svelte` y su prueba,
+  `src/routes/+layout.svelte` y `src/app.css`.
+- Validación real: `npm run check` y 10 pruebas dirigidas en Edge. Revisión en el navegador del
+  ancho colapsado, el icono único, la reapertura, la preferencia tras recargar y el foco con Escape
+  en móvil.
+
+## 2026-11-10 — Búsqueda de personal y panel lateral plegable
+
+- Motivo: facilitar la búsqueda en Personal y recuperar espacio de trabajo desde la cabecera.
+- Alcance: búsqueda por nombre o correo, sin distinguir mayúsculas ni acentos, y filtros
+  combinables por rol, sede, proyecto asignado, estado y acceso. El botón muestra cuántos filtros
+  están activos. La cabecera muestra el icono de tres puntos con el panel abierto y el icono sin
+  puntos con el panel oculto. En escritorio se recuerda la elección en el navegador.
+- Archivos: `PersonalView.svelte` y su prueba, `HeaderBar.svelte` y su prueba,
+  `preferencias.ts`, `src/routes/+layout.svelte` y `src/app.css`.
+- Validación real: `npm run check`, `npm run lint` y 515 pruebas en 68 archivos con Vitest y Edge
+  como navegador de componentes. Revisión en Edge con datos ficticios en escritorio y móvil,
+  incluidos los filtros, el espacio recuperado al ocultar el panel, su estado tras recargar y el
+  regreso del foco al botón al cerrar con Escape en móvil.
+
+## 2026-11-10 — Supabase local para Reportes ICSI
+
+- Motivo: habilitar una base local de Reportes ICSI con Docker mientras sigue en operación el
+  proyecto de Recursos Humanos.
+- Alcance: PostgreSQL 17, API PostgREST y Studio en el proyecto Docker `reportes-icsi-local`, con
+  volumen propio y puertos 55322, 55321 y 55323 publicados en `127.0.0.1`. Docker Compose permite
+  fijar la dirección de escucha en este equipo. `npm run bd:iniciar` usa la CLI de Supabase del
+  proyecto para registrar y aplicar las migraciones 0001–0022. El modo `supabase` de Vite usa claves
+  locales ignoradas por Git y guarda archivos en `storage/supabase-local`.
+- Archivos: `supabase/config.toml`, `supabase/compose.local.yml`, `supabase/gateway.local.yml`,
+  `supabase/roles.local.sql`, `supabase/.gitignore`, `scripts/iniciar-supabase-local.ps1`,
+  `package.json`, `package-lock.json` y [guía local](docs/SUPABASE_LOCAL.md).
+- Validación real: 22 migraciones registradas en PostgreSQL, RLS en todas las tablas de la aplicación,
+  RPC de personal y acceso con la clave del servidor y rechazo HTTP 401 con clave anónima.
+  La aplicación respondió HTTP 200 en inicio, personal y configuración del acceso. Studio respondió
+  HTTP 200. Pasaron `npm run check`, `npm run lint` y cinco pruebas dirigidas. Un segundo arranque
+  reconoció las migraciones ya aplicadas. Los contenedores de Recursos Humanos conservaron sus
+  identificadores.
+- Pendientes: la base inicia vacía. La carga de datos de trabajo y la activación del primer
+  administrador quedan separadas del arranque local.
+
 ## 2026-11-10 — Inicio de sesión propio, roles y carga del personal (cambio `inicio-sesion-roles`)
 
 - Motivo: etapa 1 del plan de seguimiento por centro de costo. El usuario decidió que el inicio de sesión entra en la fase 1 con cuentas propias de correo y contraseña (sin esperar a Supabase ni a Microsoft), respondió las dudas del plan y entregó la lista del personal. Nivel 3, con OpenSpec.

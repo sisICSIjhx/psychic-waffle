@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { ROLES_PERSONAL } from '../../dominio/constantes';
 import type { ContextoAcceso, RolPersonal } from '../../dominio/esquemas';
-import { CAPACIDADES, permisosDe, PERMISOS_ABIERTOS, rolPuede } from '../../dominio/permisos';
+import {
+	CAPACIDADES,
+	CAPACIDADES_CON_SESION,
+	permisosDe,
+	PERMISOS_ABIERTOS,
+	rolPuede
+} from '../../dominio/permisos';
 import { permisos, puedeAdministrarPersonal, puedeVerPersonal } from '../permisos';
 import { decidirAcceso, destinoSeguro, type PeticionAcceso } from './acceso';
 
@@ -10,7 +16,8 @@ const usuario = (rol: RolPersonal, debeCambiar = false) => ({
 	nombre: 'Persona Ficticia',
 	correo: 'persona@ficticio.test',
 	rol,
-	debeCambiar
+	debeCambiar,
+	centrosCosto: null
 });
 
 const con = (rol: RolPersonal | null, debeCambiar = false): ContextoAcceso => ({
@@ -35,21 +42,33 @@ describe('matriz de capacidades', () => {
 			administrador: [
 				'capturar',
 				'ajustarPrograma',
+				'editarSeguimiento',
 				'editarCatalogo',
 				'verPersonal',
-				'administrarPersonal'
+				'administrarPersonal',
+				'verContrato',
+				'editarContrato',
+				'verEnlacePrograma',
+				'editarCobranza'
 			],
-			lider_administrativo: ['capturar', 'ajustarPrograma'],
-			lider_operativo: ['capturar', 'ajustarPrograma'],
-			reporteador: ['capturar'],
-			mesa_directiva: ['verPersonal'],
-			contabilidad: []
+			lider_administrativo: [
+				'capturar',
+				'ajustarPrograma',
+				'editarSeguimiento',
+				'verContrato',
+				'editarContrato',
+				'verEnlacePrograma'
+			],
+			lider_operativo: ['capturar', 'ajustarPrograma', 'editarSeguimiento', 'verEnlacePrograma'],
+			reporteador: ['capturar', 'editarSeguimiento'],
+			mesa_directiva: ['verPersonal', 'verContrato', 'verEnlacePrograma'],
+			contabilidad: ['verContrato', 'editarCobranza']
 		});
 	});
 
-	it('sin activar todo está permitido; activado y sin sesión, nada', () => {
+	it('sin activar se permite todo menos contrato y cobranza; activado y sin sesión, nada', () => {
 		expect(permisosDe({ activada: false, rol: null })).toEqual(PERMISOS_ABIERTOS);
-		expect(Object.values(PERMISOS_ABIERTOS).every(Boolean)).toBe(true);
+		expect(CAPACIDADES.filter((c) => !PERMISOS_ABIERTOS[c])).toEqual(CAPACIDADES_CON_SESION);
 		expect(Object.values(permisosDe({ activada: true, rol: null })).some(Boolean)).toBe(false);
 	});
 
@@ -124,6 +143,7 @@ describe('política de acceso', () => {
 			for (const ruta of [
 				'/',
 				'/planeacion',
+				'/seguimiento',
 				'/historial',
 				'/reportes/x',
 				'/catalogo',
@@ -142,6 +162,7 @@ describe('política de acceso', () => {
 		const capturan = ['administrador', 'lider_administrativo', 'lider_operativo', 'reporteador'];
 		expect(quienes('/reportes/x')).toEqual(capturan);
 		expect(quienes('/captura')).toEqual(capturan);
+		expect(quienes('/seguimiento')).toEqual(capturan);
 		expect(quienes('/planeacion')).toEqual([
 			'administrador',
 			'lider_administrativo',

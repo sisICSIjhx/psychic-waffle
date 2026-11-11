@@ -6,4 +6,10 @@
 	export let form: ActionData;
 </script>
 
-<CatalogoView clientes={data.clientes} contratos={data.contratos} conteos={data.conteos} {form} />
+<CatalogoView
+	clientes={data.clientes}
+	contratos={data.contratos}
+	conteos={data.conteos}
+	puedeEditar={data.puedeEditar}
+	{form}
+/>

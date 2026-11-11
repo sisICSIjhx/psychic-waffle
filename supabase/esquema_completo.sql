@@ -2,9 +2,11 @@
 -- No editar a mano: cambie o agregue una migración y vuelva a generarlo.
 --
 -- Crea en una base VACÍA de Supabase todo el esquema de ICSI Reportes: catálogo (clientes =
--- proyectos, contratos, sitios, partidas, alcances predeterminados, equipos y firmantes), programa
--- anual con ajustes, reportes con fotos y documentos, bitácora del catálogo y personal con rol y
--- proyectos. La aplicación solo usa las funciones public.api_* con la clave de servicio.
+-- proyectos, contratos, centros de costo (sitios) con su plantilla de seguimiento, partidas,
+-- alcances predeterminados, equipos y firmantes), programa anual con ajustes, reportes con fotos y
+-- documentos, bitácora del catálogo, personal con rol y centros de costo, cuentas y sesiones,
+-- y seguimiento operativo con entregas de carpetas. La aplicación solo usa las funciones
+-- public.api_* con la clave de servicio.
 --
 -- Fotos: se guardarán en SharePoint; la base conserva solo sus URL (reporte_fotos.almacenamiento =
 -- 'sharepoint', url_original y url_optimizada). Los archivos no se suben a Supabase Storage.
@@ -6431,6 +6433,1516 @@ end
 $$;
 
 insert into interno.migraciones (nombre) values ('0022_autenticacion.sql') on conflict do nothing;
+
+-- =============================================================================================
+-- 0023_centros_costo_plantillas.sql
+-- =============================================================================================
+-- 0023_centros_costo_plantillas.sql
+-- Cambio centros-costo-plantillas (etapa 2 del plan de seguimiento por centro de costo): plantillas
+-- de seguimiento con sus conceptos (D2 a D5), centros de costo con plantilla y sin contrato (D1),
+-- personal asignado por centro de costo en lugar de por proyecto (D6), el alcance en la sesión (D7)
+-- y las consultas que filtran por centro de costo (D8). El centro de costo sigue siendo `sitios`.
+
+-- ---------------------------------------------------------------------------------------------
+-- Reglas de los conceptos (D4)
+-- ---------------------------------------------------------------------------------------------
+
+-- Nivel que fija cada bloque; en «programa» es el valor por omisión (también admite actividad).
+create or replace function public.nivel_de_bloque(bloque text)
+returns text
+language sql
+immutable
+parallel safe
+as $$
+	select case bloque
+		when 'contrato' then 'contrato'
+		when 'ordenes_compra' then 'orden_compra'
+		when 'programa' then 'periodo'
+		when 'documentos' then 'actividad'
+		when 'carpetas' then 'periodo'
+	end
+$$;
+
+create or replace function public.nivel_valido(bloque text, nivel text)
+returns boolean
+language sql
+immutable
+parallel safe
+as $$
+	select case when bloque = 'programa' then nivel in ('periodo', 'actividad')
+		else nivel = public.nivel_de_bloque(bloque) end
+$$;
+
+-- Las carpetas son entregas (tipo carpeta) y ningún otro bloque las usa.
+create or replace function public.tipo_valido(bloque text, tipo text)
+returns boolean
+language sql
+immutable
+parallel safe
+as $$
+	select (bloque = 'carpetas') = (tipo = 'carpeta')
+$$;
+
+-- Orden de presentación de los bloques (A, B, D, E y F del plan).
+create or replace function public.orden_bloque(bloque text)
+returns integer
+language sql
+immutable
+parallel safe
+as $$
+	select array_position(array['contrato', 'ordenes_compra', 'programa', 'documentos', 'carpetas'],
+		bloque)
+$$;
+
+-- ---------------------------------------------------------------------------------------------
+-- Tablas
+-- ---------------------------------------------------------------------------------------------
+
+create table if not exists public.plantillas_seguimiento (
+	id uuid primary key default gen_random_uuid(),
+	nombre text not null check (btrim(nombre) <> ''),
+	nombre_normalizado text generated always as (public.normalizar_clave(nombre)) stored,
+	descripcion text,
+	modo_contrato text not null default 'obligatorio'
+		check (modo_contrato in ('obligatorio', 'opcional', 'sin_contrato')),
+	origen_actividades text not null default 'ninguno'
+		check (origen_actividades in ('programa_anual', 'mensual', 'ninguno')),
+	creado_en timestamptz not null default now(),
+	actualizado_en timestamptz not null default now(),
+	constraint plantillas_seguimiento_nombre_unico unique (nombre_normalizado)
+);
+
+create table if not exists public.plantilla_conceptos (
+	id uuid primary key default gen_random_uuid(),
+	plantilla_id uuid not null references public.plantillas_seguimiento (id) on delete cascade,
+	bloque text not null
+		check (bloque in ('contrato', 'ordenes_compra', 'programa', 'documentos', 'carpetas')),
+	etiqueta text not null check (btrim(etiqueta) <> ''),
+	etiqueta_normalizada text generated always as (public.normalizar_clave(etiqueta)) stored,
+	tipo text not null
+		check (tipo in ('casilla', 'estado', 'cantidad', 'monto', 'enlace', 'fecha', 'texto', 'carpeta')),
+	nivel text not null check (nivel in ('contrato', 'orden_compra', 'periodo', 'actividad')),
+	orden integer not null check (orden > 0),
+	constraint plantilla_conceptos_nivel check (public.nivel_valido(bloque, nivel)),
+	constraint plantilla_conceptos_tipo check (public.tipo_valido(bloque, tipo)),
+	-- Diferida: al guardar se pueden intercambiar dos etiquetas en la misma operación.
+	constraint plantilla_conceptos_etiqueta_unica unique (plantilla_id, bloque, etiqueta_normalizada)
+		deferrable initially deferred
+);
+create index if not exists plantilla_conceptos_plantilla_idx
+	on public.plantilla_conceptos (plantilla_id, bloque, orden);
+
+drop trigger if exists plantillas_seguimiento_actualizado on public.plantillas_seguimiento;
+create trigger plantillas_seguimiento_actualizado before update on public.plantillas_seguimiento
+	for each row execute function public.tocar_actualizado_en();
+
+alter table public.sitios add column if not exists plantilla_id uuid
+	references public.plantillas_seguimiento (id) on delete restrict;
+create index if not exists sitios_plantilla_idx on public.sitios (plantilla_id);
+
+create table if not exists public.personal_centros_costo (
+	personal_id uuid not null references public.personal (id) on delete cascade,
+	sitio_id uuid not null references public.sitios (id) on delete cascade,
+	primary key (personal_id, sitio_id)
+);
+create index if not exists personal_centros_costo_sitio_idx on public.personal_centros_costo (sitio_id);
+
+-- D6: cada proyecto asignado pasa a ser los centros de costo de los contratos de ese cliente.
+do $$
+begin
+	if to_regclass('public.personal_proyectos') is not null then
+		insert into public.personal_centros_costo (personal_id, sitio_id)
+		select distinct pp.personal_id, cs.sitio_id
+		from public.personal_proyectos pp
+			join public.personal s on s.id = pp.personal_id
+			join public.contratos k on k.cliente_id = pp.cliente_id
+			join public.contrato_sitios cs on cs.contrato_id = k.id
+		where not public.rol_sin_proyectos(s.rol)
+		on conflict do nothing;
+		drop table public.personal_proyectos;
+	end if;
+end
+$$;
+
+-- ---------------------------------------------------------------------------------------------
+-- Personal con centros de costo
+-- ---------------------------------------------------------------------------------------------
+
+create or replace function public.json_personal(id_personal uuid)
+returns jsonb
+language sql
+stable
+as $$
+	select jsonb_build_object(
+		'id', s.id, 'nombre', s.nombre, 'apellidoPaterno', s.apellido_paterno,
+		'apellidoMaterno', s.apellido_materno, 'fechaNacimiento', s.fecha_nacimiento,
+		'correo', s.correo, 'sede', s.sede, 'rol', s.rol, 'activo', s.activo,
+		'actualizadoEn', s.actualizado_en,
+		'centrosCosto', coalesce((
+			select jsonb_agg(jsonb_build_object('id', t.id, 'clave', t.clave, 'nombre', t.nombre)
+				order by t.clave_normalizada)
+			from public.personal_centros_costo pc join public.sitios t on t.id = pc.sitio_id
+			where pc.personal_id = s.id
+		), '[]'::jsonb),
+		-- Estado de la cuenta, o null si la persona no tiene; nunca incluye el resumen.
+		'acceso', (
+			select jsonb_build_object(
+				'debeCambiar', k.debe_cambiar,
+				'bloqueadaHasta', case when k.bloqueada_hasta > now() then k.bloqueada_hasta end,
+				'ultimoAccesoEn', k.ultimo_acceso_en
+			)
+			from public.credenciales k where k.personal_id = s.id
+		)
+	)
+	from public.personal s
+	where s.id = id_personal
+$$;
+
+-- Usuario de una sesión: lo que el servidor pone en `locals.usuario`. `centrosCosto` es null cuando
+-- el rol abarca todos los centros de costo (D7).
+create or replace function public.json_usuario(id_personal uuid)
+returns jsonb
+language sql
+stable
+as $$
+	select jsonb_build_object(
+		'id', s.id,
+		'nombre', concat_ws(' ', btrim(s.nombre), btrim(s.apellido_paterno),
+			public.texto_o_nulo(s.apellido_materno)),
+		'correo', s.correo,
+		'rol', s.rol,
+		'debeCambiar', k.debe_cambiar,
+		'centrosCosto', case when public.rol_sin_proyectos(s.rol) then null else coalesce((
+			select jsonb_agg(pc.sitio_id order by pc.sitio_id)
+			from public.personal_centros_costo pc where pc.personal_id = s.id
+		), '[]'::jsonb) end
+	)
+	from public.personal s join public.credenciales k on k.personal_id = s.id
+	where s.id = id_personal
+$$;
+
+-- Alta o edición con sus centros de costo (se reemplazan). Administrador, mesa directiva y
+-- contabilidad abarcan todos y no guardan asignaciones; los demás roles pueden quedar sin ninguno.
+-- La baja es lógica (activo) y cierra las sesiones. Con cuentas activadas, el último administrador
+-- con acceso no puede darse de baja ni cambiar de rol, y una persona con cuenta conserva su correo.
+create or replace function public.api_guardar_personal(p jsonb)
+returns jsonb
+language plpgsql
+as $$
+declare
+	id_personal uuid := (p ->> 'id')::uuid;
+	rol_personal text := public.texto_o_nulo(p ->> 'rol');
+	correo_personal text := public.texto_o_nulo(p ->> 'correo');
+	nacimiento date;
+	hoy date := (now() at time zone 'America/Mexico_City')::date;
+	anterior public.personal%rowtype;
+	queda_activo boolean;
+	centros uuid[] := coalesce((
+		select array_agg(distinct valor::uuid)
+		from jsonb_array_elements_text(coalesce(p -> 'centroCostoIds', '[]'::jsonb)) valor
+	), '{}');
+begin
+	if id_personal is not null then
+		select * into anterior from public.personal where id = id_personal;
+		if not found then
+			perform public.error_api('IC404', 'Persona no encontrada', jsonb_build_object('id', id_personal));
+		end if;
+	end if;
+	if public.texto_o_nulo(p ->> 'nombre') is null then
+		perform public.error_api('IC422', 'Escriba el nombre', jsonb_build_object('motivo', 'nombre'));
+	end if;
+	if public.texto_o_nulo(p ->> 'apellidoPaterno') is null then
+		perform public.error_api('IC422', 'Escriba el apellido paterno',
+			jsonb_build_object('motivo', 'apellido_paterno'));
+	end if;
+	if public.texto_o_nulo(p ->> 'fechaNacimiento') is not null then
+		nacimiento := (p ->> 'fechaNacimiento')::date;
+		if nacimiento < date '1900-01-01' or nacimiento > hoy then
+			perform public.error_api('IC422', 'Fecha de nacimiento fuera de rango',
+				jsonb_build_object('motivo', 'fecha_nacimiento'));
+		end if;
+	end if;
+	if rol_personal is null
+		or rol_personal not in ('administrador', 'lider_administrativo', 'lider_operativo',
+			'reporteador', 'mesa_directiva', 'contabilidad') then
+		perform public.error_api('IC422', 'Rol no válido', jsonb_build_object('motivo', 'rol'));
+	end if;
+	if correo_personal is not null then
+		if correo_personal !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
+			perform public.error_api('IC422', 'Correo no válido', jsonb_build_object('motivo', 'correo'));
+		end if;
+		if exists (select 1 from public.personal
+			where correo_normalizado = lower(correo_personal) and id is distinct from id_personal) then
+			perform public.error_api('IC422', 'Ya existe otra persona con ese correo',
+				jsonb_build_object('motivo', 'correo_duplicado'));
+		end if;
+	end if;
+	if public.rol_sin_proyectos(rol_personal) then
+		centros := '{}';
+	elsif exists (select 1 from unnest(centros) x(id)
+		where not exists (select 1 from public.sitios t where t.id = x.id)) then
+		perform public.error_api('IC422', 'Centro de costo no encontrado',
+			jsonb_build_object('motivo', 'centro_costo'));
+	end if;
+
+	if id_personal is null then
+		insert into public.personal (nombre, apellido_paterno, apellido_materno, fecha_nacimiento,
+			correo, sede, rol, activo)
+		values (btrim(p ->> 'nombre'), btrim(p ->> 'apellidoPaterno'),
+			public.texto_o_nulo(p ->> 'apellidoMaterno'), nacimiento, correo_personal,
+			public.texto_o_nulo(p ->> 'sede'), rol_personal,
+			coalesce((p ->> 'activo')::boolean, true))
+		returning id into id_personal;
+	else
+		queda_activo := coalesce((p ->> 'activo')::boolean, anterior.activo);
+		if exists (select 1 from public.credenciales where personal_id = id_personal) then
+			if correo_personal is null then
+				perform public.error_api('IC422', 'Quite primero el acceso de la persona para dejarla sin correo',
+					jsonb_build_object('motivo', 'correo_con_cuenta'));
+			end if;
+			if anterior.activo and anterior.rol = 'administrador'
+				and (rol_personal <> 'administrador' or not queda_activo)
+				and not public.quedan_administradores_con_acceso(id_personal) then
+				perform public.error_api('IC422', 'Debe quedar al menos un administrador con acceso',
+					jsonb_build_object('motivo', 'ultimo_administrador'));
+			end if;
+		end if;
+		update public.personal set
+			nombre = btrim(p ->> 'nombre'),
+			apellido_paterno = btrim(p ->> 'apellidoPaterno'),
+			apellido_materno = public.texto_o_nulo(p ->> 'apellidoMaterno'),
+			fecha_nacimiento = nacimiento,
+			correo = correo_personal,
+			-- Quien no envía la sede (formularios anteriores) la conserva.
+			sede = case when p ? 'sede' then public.texto_o_nulo(p ->> 'sede') else sede end,
+			rol = rol_personal,
+			activo = queda_activo
+		where id = id_personal;
+		if not queda_activo then
+			update public.sesiones set revocada_en = now()
+			where personal_id = id_personal and revocada_en is null;
+		end if;
+	end if;
+	delete from public.personal_centros_costo
+	where personal_id = id_personal and not (sitio_id = any (centros));
+	insert into public.personal_centros_costo (personal_id, sitio_id)
+	select id_personal, x.id from unnest(centros) x(id)
+	on conflict do nothing;
+	return public.json_personal(id_personal);
+end
+$$;
+
+-- ---------------------------------------------------------------------------------------------
+-- Plantillas de seguimiento
+-- ---------------------------------------------------------------------------------------------
+
+create or replace function public.json_plantilla_seguimiento(id_plantilla uuid)
+returns jsonb
+language sql
+stable
+as $$
+	select jsonb_build_object(
+		'id', g.id, 'nombre', g.nombre, 'descripcion', g.descripcion,
+		'modoContrato', g.modo_contrato, 'origenActividades', g.origen_actividades,
+		'actualizadoEn', g.actualizado_en,
+		'conceptos', coalesce((
+			select jsonb_agg(jsonb_build_object('id', c.id, 'bloque', c.bloque, 'etiqueta', c.etiqueta,
+				'tipo', c.tipo, 'nivel', c.nivel, 'orden', c.orden)
+				order by public.orden_bloque(c.bloque), c.orden)
+			from public.plantilla_conceptos c where c.plantilla_id = g.id
+		), '[]'::jsonb),
+		'centros', coalesce((
+			select jsonb_agg(jsonb_build_object('id', t.id, 'clave', t.clave, 'nombre', t.nombre)
+				order by t.clave_normalizada)
+			from public.sitios t where t.plantilla_id = g.id
+		), '[]'::jsonb)
+	)
+	from public.plantillas_seguimiento g
+	where g.id = id_plantilla
+$$;
+
+create or replace function public.api_listar_plantillas_seguimiento(p jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+stable
+as $$
+	select coalesce(jsonb_agg(public.json_plantilla_seguimiento(g.id) order by g.nombre_normalizado),
+		'[]'::jsonb)
+	from public.plantillas_seguimiento g
+$$;
+
+create or replace function public.api_obtener_plantilla_seguimiento(p jsonb)
+returns jsonb
+language plpgsql
+stable
+as $$
+declare
+	resultado jsonb := public.json_plantilla_seguimiento((p ->> 'id')::uuid);
+begin
+	if resultado is null then
+		perform public.error_api('IC404', 'Plantilla no encontrada', jsonb_build_object('id', p ->> 'id'));
+	end if;
+	return resultado;
+end
+$$;
+
+-- Alta o edición con la lista completa de conceptos (D5): los que traen id se actualizan, los
+-- nuevos se insertan y los que faltan se borran. El orden es el de la lista dentro de cada bloque.
+create or replace function public.api_guardar_plantilla_seguimiento(p jsonb)
+returns jsonb
+language plpgsql
+as $$
+declare
+	id_plantilla uuid := (p ->> 'id')::uuid;
+	nombre_plantilla text := public.texto_o_nulo(p ->> 'nombre');
+	modo text := coalesce(public.texto_o_nulo(p ->> 'modoContrato'), 'obligatorio');
+	origen text := coalesce(public.texto_o_nulo(p ->> 'origenActividades'), 'ninguno');
+	conceptos jsonb := coalesce(p -> 'conceptos', '[]'::jsonb);
+	concepto jsonb;
+	bloque_c text;
+	etiqueta_c text;
+	tipo_c text;
+	nivel_c text;
+	contador integer;
+	ordenes jsonb := '{}'::jsonb;
+	repetida text;
+begin
+	if nombre_plantilla is null then
+		perform public.error_api('IC422', 'Escriba el nombre de la plantilla',
+			jsonb_build_object('motivo', 'nombre'));
+	end if;
+	if modo not in ('obligatorio', 'opcional', 'sin_contrato') then
+		perform public.error_api('IC422', 'Modo de contrato no válido', jsonb_build_object('motivo', 'modo'));
+	end if;
+	if origen not in ('programa_anual', 'mensual', 'ninguno') then
+		perform public.error_api('IC422', 'Origen de las actividades no válido',
+			jsonb_build_object('motivo', 'origen'));
+	end if;
+	if jsonb_typeof(conceptos) <> 'array' then
+		perform public.error_api('IC422', 'Conceptos no válidos', jsonb_build_object('motivo', 'conceptos'));
+	end if;
+	if exists (select 1 from public.plantillas_seguimiento
+		where nombre_normalizado = public.normalizar_clave(nombre_plantilla)
+			and id is distinct from id_plantilla) then
+		perform public.error_api('IC422', 'Ya existe una plantilla con ese nombre',
+			jsonb_build_object('motivo', 'plantilla_duplicada'));
+	end if;
+	select min(btrim(c ->> 'etiqueta')) into repetida
+	from jsonb_array_elements(conceptos) c
+	where public.texto_o_nulo(c ->> 'etiqueta') is not null
+	group by c ->> 'bloque', public.normalizar_clave(c ->> 'etiqueta')
+	having count(*) > 1
+	limit 1;
+	if repetida is not null then
+		perform public.error_api('IC422', 'Concepto repetido en el bloque',
+			jsonb_build_object('motivo', 'concepto_duplicado', 'etiqueta', repetida));
+	end if;
+
+	if id_plantilla is null then
+		insert into public.plantillas_seguimiento (nombre, descripcion, modo_contrato, origen_actividades)
+		values (nombre_plantilla, public.texto_o_nulo(p ->> 'descripcion'), modo, origen)
+		returning id into id_plantilla;
+	else
+		update public.plantillas_seguimiento set
+			nombre = nombre_plantilla,
+			descripcion = public.texto_o_nulo(p ->> 'descripcion'),
+			modo_contrato = modo,
+			origen_actividades = origen
+		where id = id_plantilla;
+		if not found then
+			perform public.error_api('IC404', 'Plantilla no encontrada', jsonb_build_object('id', id_plantilla));
+		end if;
+		delete from public.plantilla_conceptos
+		where plantilla_id = id_plantilla
+			and id not in (
+				select (c ->> 'id')::uuid from jsonb_array_elements(conceptos) c
+				where public.texto_o_nulo(c ->> 'id') is not null
+			);
+	end if;
+
+	for concepto in
+		select t.valor from jsonb_array_elements(conceptos) with ordinality t(valor, n) order by t.n
+	loop
+		bloque_c := concepto ->> 'bloque';
+		etiqueta_c := public.texto_o_nulo(concepto ->> 'etiqueta');
+		tipo_c := concepto ->> 'tipo';
+		nivel_c := coalesce(public.texto_o_nulo(concepto ->> 'nivel'), public.nivel_de_bloque(bloque_c));
+		if public.orden_bloque(bloque_c) is null then
+			perform public.error_api('IC422', 'Bloque no válido', jsonb_build_object('motivo', 'bloque'));
+		end if;
+		if etiqueta_c is null then
+			perform public.error_api('IC422', 'Escriba la etiqueta del concepto',
+				jsonb_build_object('motivo', 'etiqueta'));
+		end if;
+		if tipo_c is null or tipo_c not in ('casilla', 'estado', 'cantidad', 'monto', 'enlace', 'fecha',
+			'texto', 'carpeta') then
+			perform public.error_api('IC422', 'Tipo de concepto no válido', jsonb_build_object('motivo', 'tipo'));
+		end if;
+		if not public.tipo_valido(bloque_c, tipo_c) then
+			perform public.error_api('IC422', 'El tipo no corresponde al bloque',
+				jsonb_build_object('motivo', 'tipo_bloque', 'etiqueta', etiqueta_c));
+		end if;
+		if not public.nivel_valido(bloque_c, nivel_c) then
+			perform public.error_api('IC422', 'El nivel no corresponde al bloque',
+				jsonb_build_object('motivo', 'nivel_bloque', 'etiqueta', etiqueta_c));
+		end if;
+		contador := coalesce((ordenes ->> bloque_c)::integer, 0) + 1;
+		ordenes := ordenes || jsonb_build_object(bloque_c, contador);
+		if public.texto_o_nulo(concepto ->> 'id') is not null then
+			update public.plantilla_conceptos set
+				bloque = bloque_c, etiqueta = etiqueta_c, tipo = tipo_c, nivel = nivel_c, orden = contador
+			where id = (concepto ->> 'id')::uuid and plantilla_id = id_plantilla;
+			if not found then
+				perform public.error_api('IC422', 'El concepto no pertenece a la plantilla',
+					jsonb_build_object('motivo', 'concepto_ajeno'));
+			end if;
+		else
+			insert into public.plantilla_conceptos (plantilla_id, bloque, etiqueta, tipo, nivel, orden)
+			values (id_plantilla, bloque_c, etiqueta_c, tipo_c, nivel_c, contador);
+		end if;
+	end loop;
+	return public.json_plantilla_seguimiento(id_plantilla);
+end
+$$;
+
+-- Copia con otro nombre y conceptos nuevos; ningún centro de costo cambia de plantilla.
+create or replace function public.api_duplicar_plantilla_seguimiento(p jsonb)
+returns jsonb
+language plpgsql
+as $$
+declare
+	origen public.plantillas_seguimiento;
+	nombre_copia text := public.texto_o_nulo(p ->> 'nombre');
+	id_copia uuid;
+begin
+	select * into origen from public.plantillas_seguimiento where id = (p ->> 'id')::uuid;
+	if not found then
+		perform public.error_api('IC404', 'Plantilla no encontrada', jsonb_build_object('id', p ->> 'id'));
+	end if;
+	if nombre_copia is null then
+		perform public.error_api('IC422', 'Escriba el nombre de la copia', jsonb_build_object('motivo', 'nombre'));
+	end if;
+	if exists (select 1 from public.plantillas_seguimiento
+		where nombre_normalizado = public.normalizar_clave(nombre_copia)) then
+		perform public.error_api('IC422', 'Ya existe una plantilla con ese nombre',
+			jsonb_build_object('motivo', 'plantilla_duplicada'));
+	end if;
+	insert into public.plantillas_seguimiento (nombre, descripcion, modo_contrato, origen_actividades)
+	values (nombre_copia, origen.descripcion, origen.modo_contrato, origen.origen_actividades)
+	returning id into id_copia;
+	insert into public.plantilla_conceptos (plantilla_id, bloque, etiqueta, tipo, nivel, orden)
+	select id_copia, c.bloque, c.etiqueta, c.tipo, c.nivel, c.orden
+	from public.plantilla_conceptos c where c.plantilla_id = origen.id;
+	return public.json_plantilla_seguimiento(id_copia);
+end
+$$;
+
+create or replace function public.api_eliminar_plantilla_seguimiento(p jsonb)
+returns jsonb
+language plpgsql
+as $$
+declare
+	id_plantilla uuid := (p ->> 'id')::uuid;
+	en_uso integer;
+begin
+	select count(*) into en_uso from public.sitios where plantilla_id = id_plantilla;
+	if en_uso > 0 then
+		perform public.error_api('IC409',
+			case when en_uso = 1 then 'La usa 1 centro de costo' else format('La usan %s centros de costo', en_uso) end,
+			jsonb_build_object('motivo', 'plantilla_en_uso', 'centros', en_uso));
+	end if;
+	delete from public.plantillas_seguimiento where id = id_plantilla;
+	if not found then
+		perform public.error_api('IC404', 'Plantilla no encontrada', jsonb_build_object('id', id_plantilla));
+	end if;
+	return jsonb_build_object('id', id_plantilla);
+end
+$$;
+
+-- ---------------------------------------------------------------------------------------------
+-- Centros de costo
+-- ---------------------------------------------------------------------------------------------
+
+create or replace function public.json_centro_costo(id_sitio uuid)
+returns jsonb
+language sql
+stable
+as $$
+	select jsonb_build_object(
+		'id', t.id, 'clave', t.clave, 'nombre', t.nombre,
+		'plantilla', (
+			select jsonb_build_object('id', g.id, 'nombre', g.nombre, 'modoContrato', g.modo_contrato,
+				'origenActividades', g.origen_actividades)
+			from public.plantillas_seguimiento g where g.id = t.plantilla_id
+		),
+		'contratos', coalesce((
+			select jsonb_agg(jsonb_build_object('id', k.id, 'numero', k.numero,
+				'cliente', c.nombre, 'vigenciaFin', k.vigencia_fin,
+				'vigente', current_date between k.vigencia_inicio and k.vigencia_fin)
+				order by k.vigencia_fin desc, k.numero)
+			from public.contrato_sitios cs
+				join public.contratos k on k.id = cs.contrato_id
+				join public.clientes c on c.id = k.cliente_id
+			where cs.sitio_id = t.id
+		), '[]'::jsonb),
+		'partidas', (select count(*) from public.partidas x where x.sitio_id = t.id),
+		'personas', (
+			select count(*) from public.personal_centros_costo pc
+				join public.personal s on s.id = pc.personal_id and s.activo
+			where pc.sitio_id = t.id
+		)
+	)
+	from public.sitios t
+	where t.id = id_sitio
+$$;
+
+-- Todos los centros de costo, con o sin contrato; `sitioIds` limita al alcance de quien consulta.
+create or replace function public.api_listar_centros_costo(p jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+stable
+as $$
+	select coalesce(jsonb_agg(public.json_centro_costo(t.id) order by t.clave_normalizada), '[]'::jsonb)
+	from public.sitios t
+	where p -> 'sitioIds' is null or jsonb_typeof(p -> 'sitioIds') = 'null'
+		or t.id in (select x::uuid from jsonb_array_elements_text(p -> 'sitioIds') x)
+$$;
+
+-- Alta (clave, nombre y plantilla) o edición del nombre y la plantilla. La clave de un centro de
+-- costo existente se corrige desde su contrato, con motivo y bitácora.
+create or replace function public.api_guardar_centro_costo(p jsonb)
+returns jsonb
+language plpgsql
+as $$
+declare
+	id_sitio uuid := (p ->> 'id')::uuid;
+	clave_centro text := public.texto_o_nulo(p ->> 'clave');
+	id_plantilla uuid := (public.texto_o_nulo(p ->> 'plantillaId'))::uuid;
+begin
+	if id_plantilla is not null
+		and not exists (select 1 from public.plantillas_seguimiento where id = id_plantilla) then
+		perform public.error_api('IC422', 'Plantilla no encontrada', jsonb_build_object('motivo', 'plantilla'));
+	end if;
+	if id_sitio is null then
+		if clave_centro is null then
+			perform public.error_api('IC422', 'Escriba la clave del centro de costo',
+				jsonb_build_object('motivo', 'clave'));
+		end if;
+		if exists (select 1 from public.sitios where clave_normalizada = public.normalizar_clave(clave_centro)) then
+			perform public.error_api('IC422', 'Ya existe un centro de costo con esa clave',
+				jsonb_build_object('motivo', 'centro_duplicado'));
+		end if;
+		insert into public.sitios (clave, nombre, plantilla_id)
+		values (clave_centro, coalesce(btrim(p ->> 'nombre'), ''), id_plantilla)
+		returning id into id_sitio;
+	else
+		update public.sitios set
+			nombre = coalesce(btrim(p ->> 'nombre'), ''),
+			plantilla_id = id_plantilla
+		where id = id_sitio;
+		if not found then
+			perform public.error_api('IC404', 'Centro de costo no encontrado', jsonb_build_object('id', id_sitio));
+		end if;
+	end if;
+	return public.json_centro_costo(id_sitio);
+end
+$$;
+
+-- Carga en bloque (D9). Da de alta las plantillas que no existen por nombre y los centros que no
+-- existen por clave, y asigna la plantilla a los centros existentes que no tienen una. Todo se hace
+-- dentro de un bloque que se deshace en el ensayo o si alguna fila no es válida.
+create or replace function public.api_importar_centros_costo(p jsonb)
+returns jsonb
+language plpgsql
+as $$
+declare
+	ensayo boolean := coalesce((p ->> 'ensayo')::boolean, true);
+	aplicado boolean := false;
+	fila jsonb;
+	estado text;
+	motivo text;
+	nombres_vistos text[] := '{}';
+	claves_vistas text[] := '{}';
+	nombre_norm text;
+	clave_norm text;
+	id_plantilla uuid;
+	existente public.sitios;
+	filas_plantillas jsonb := '[]'::jsonb;
+	filas_centros jsonb := '[]'::jsonb;
+	plantillas_nuevas integer := 0;
+	plantillas_existentes integer := 0;
+	centros_nuevos integer := 0;
+	centros_asignados integer := 0;
+	centros_existentes integer := 0;
+	invalidas integer := 0;
+begin
+	begin
+		for fila in
+			select t.valor from jsonb_array_elements(coalesce(p -> 'plantillas', '[]'::jsonb))
+				with ordinality t(valor, n) order by t.n
+		loop
+			nombre_norm := public.normalizar_clave(fila ->> 'nombre');
+			motivo := null;
+			if nombre_norm = '' then
+				estado := 'invalida';
+				motivo := 'Falta el nombre';
+			elsif nombre_norm = any (nombres_vistos) then
+				estado := 'invalida';
+				motivo := 'Plantilla repetida en el archivo';
+			elsif exists (select 1 from public.plantillas_seguimiento where nombre_normalizado = nombre_norm) then
+				estado := 'existente';
+			else
+				begin
+					perform public.api_guardar_plantilla_seguimiento(fila - 'id');
+					estado := 'nueva';
+				exception when others then
+					estado := 'invalida';
+					motivo := sqlerrm;
+				end;
+			end if;
+			nombres_vistos := nombres_vistos || nombre_norm;
+			plantillas_nuevas := plantillas_nuevas + (estado = 'nueva')::integer;
+			plantillas_existentes := plantillas_existentes + (estado = 'existente')::integer;
+			invalidas := invalidas + (estado = 'invalida')::integer;
+			filas_plantillas := filas_plantillas || jsonb_build_object('nombre', fila ->> 'nombre',
+				'estado', estado, 'motivo', motivo);
+		end loop;
+
+		for fila in
+			select t.valor from jsonb_array_elements(coalesce(p -> 'centros', '[]'::jsonb))
+				with ordinality t(valor, n) order by t.n
+		loop
+			clave_norm := public.normalizar_clave(fila ->> 'clave');
+			motivo := null;
+			id_plantilla := null;
+			if public.texto_o_nulo(fila ->> 'plantilla') is not null then
+				select id into id_plantilla from public.plantillas_seguimiento
+				where nombre_normalizado = public.normalizar_clave(fila ->> 'plantilla');
+			end if;
+			select * into existente from public.sitios where clave_normalizada = clave_norm;
+			if clave_norm = '' then
+				estado := 'invalida';
+				motivo := 'Falta la clave';
+			elsif clave_norm = any (claves_vistas) then
+				estado := 'invalida';
+				motivo := 'Centro de costo repetido en el archivo';
+			elsif public.texto_o_nulo(fila ->> 'plantilla') is not null and id_plantilla is null then
+				estado := 'invalida';
+				motivo := 'Plantilla desconocida';
+			elsif existente.id is null then
+				insert into public.sitios (clave, nombre, plantilla_id)
+				values (btrim(fila ->> 'clave'), coalesce(btrim(fila ->> 'nombre'), ''), id_plantilla);
+				estado := 'nuevo';
+			elsif existente.plantilla_id is null and id_plantilla is not null then
+				update public.sitios set plantilla_id = id_plantilla where id = existente.id;
+				estado := 'asignado';
+			else
+				estado := 'existente';
+				if existente.plantilla_id is distinct from id_plantilla and id_plantilla is not null then
+					motivo := 'Ya tiene otra plantilla; no se cambia';
+				end if;
+			end if;
+			claves_vistas := claves_vistas || clave_norm;
+			centros_nuevos := centros_nuevos + (estado = 'nuevo')::integer;
+			centros_asignados := centros_asignados + (estado = 'asignado')::integer;
+			centros_existentes := centros_existentes + (estado = 'existente')::integer;
+			invalidas := invalidas + (estado = 'invalida')::integer;
+			filas_centros := filas_centros || jsonb_build_object('clave', fila ->> 'clave',
+				'estado', estado, 'motivo', motivo);
+		end loop;
+
+		aplicado := not ensayo and invalidas = 0;
+		if not aplicado then
+			raise exception using errcode = 'IC000', message = 'deshacer';
+		end if;
+	exception when sqlstate 'IC000' then
+		-- Deshace lo escrito en el bloque; las variables conservan el informe.
+		null;
+	end;
+	return jsonb_build_object(
+		'ensayo', ensayo,
+		'aplicado', aplicado,
+		'resumen', jsonb_build_object(
+			'plantillasNuevas', plantillas_nuevas, 'plantillasExistentes', plantillas_existentes,
+			'centrosNuevos', centros_nuevos, 'centrosAsignados', centros_asignados,
+			'centrosExistentes', centros_existentes, 'invalidas', invalidas),
+		'plantillas', filas_plantillas,
+		'centros', filas_centros
+	);
+end
+$$;
+
+-- ---------------------------------------------------------------------------------------------
+-- Alcance por centro de costo (D8)
+-- ---------------------------------------------------------------------------------------------
+
+-- Contratos con su cliente y sus centros de costo, para filtrar las listas en el servidor.
+create or replace function public.api_contratos_centros(p jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+stable
+as $$
+	select coalesce(jsonb_agg(jsonb_build_object(
+		'contratoId', k.id, 'clienteId', k.cliente_id,
+		'sitioIds', coalesce((select jsonb_agg(cs.sitio_id) from public.contrato_sitios cs
+			where cs.contrato_id = k.id), '[]'::jsonb)
+	)), '[]'::jsonb)
+	from public.contratos k
+$$;
+
+-- Centros de costo de un recurso pedido por id; lista vacía si no existe.
+create or replace function public.api_centros_de_recurso(p jsonb)
+returns jsonb
+language sql
+stable
+as $$
+	select coalesce(jsonb_agg(distinct x.sitio_id), '[]'::jsonb)
+	from (
+		select r.sitio_id from public.reportes r
+		where p ->> 'tipo' = 'reporte' and r.id = (p ->> 'id')::uuid
+		union all
+		select t.sitio_id from public.partidas t
+		where p ->> 'tipo' = 'partida' and t.id = (p ->> 'id')::uuid
+		union all
+		select cs.sitio_id from public.contrato_sitios cs
+		where p ->> 'tipo' = 'contrato' and cs.contrato_id = (p ->> 'id')::uuid
+		union all
+		select e.sitio_id from public.equipos e
+		where p ->> 'tipo' = 'equipo' and e.id = (p ->> 'id')::uuid
+		union all
+		select g.sitio_id from public.programas g
+		where p ->> 'tipo' = 'programa' and g.id = (p ->> 'id')::uuid
+		union all
+		select g.sitio_id from public.programa_ajustes a join public.programas g on g.id = a.programa_id
+		where p ->> 'tipo' = 'ajuste' and a.id = (p ->> 'id')::uuid
+	) x
+$$;
+
+-- Historial con el filtro `sitioIds` (alcance de quien consulta). Igual que 0014 en lo demás.
+create or replace function public.api_listar_reportes(p jsonb default '{}'::jsonb)
+returns jsonb
+language sql
+stable
+as $$
+	with filtrados as (
+		select r.*, c.clave as cliente_clave,
+			(select string_agg(re.tag, ', ' order by re.orden) from public.reporte_equipos re
+				where re.reporte_id = r.id) as tags
+		from public.reportes r
+		join public.contratos k on k.id = r.contrato_id
+		join public.clientes c on c.id = k.cliente_id
+		where (p ->> 'clienteClave' is null or c.clave = p ->> 'clienteClave')
+			and (p ->> 'contratoId' is null or r.contrato_id = (p ->> 'contratoId')::uuid)
+			and (p ->> 'sitioId' is null or r.sitio_id = (p ->> 'sitioId')::uuid)
+			and (p -> 'sitioIds' is null or jsonb_typeof(p -> 'sitioIds') = 'null'
+				or r.sitio_id in (select x::uuid from jsonb_array_elements_text(p -> 'sitioIds') x))
+			and (p ->> 'partidaId' is null or r.partida_id = (p ->> 'partidaId')::uuid)
+			and (p ->> 'estado' is null or r.estado = p ->> 'estado')
+			and (p ->> 'desde' is null or r.periodo_mes >= public.primer_dia_mes((p ->> 'desde')::date))
+			and (p ->> 'hasta' is null or r.periodo_mes <= (p ->> 'hasta')::date)
+			and (p ->> 'tag' is null or exists (
+				select 1 from public.reporte_equipos re
+				where re.reporte_id = r.id and public.normalizar_clave(re.tag) = public.normalizar_clave(p ->> 'tag')))
+	),
+	pagina as (
+		select greatest(coalesce((p ->> 'pagina')::integer, 1), 1) as numero,
+			least(greatest(coalesce((p ->> 'tamano')::integer, 20), 1), 100) as tamano
+	)
+	select jsonb_build_object(
+		'total', (select count(*) from filtrados),
+		'pagina', (select numero from pagina),
+		'tamano', (select tamano from pagina),
+		'filas', coalesce((
+			select jsonb_agg(fila order by orden_periodo desc, orden_actualizado desc, orden_id)
+			from (
+				select f.periodo_mes as orden_periodo, f.actualizado_en as orden_actualizado, f.id as orden_id,
+					jsonb_build_object(
+						'id', f.id, 'partidaId', f.partida_id, 'sitioId', f.sitio_id,
+						'titulo', f.titulo, 'clienteClave', f.cliente_clave, 'usuario', f.usuario,
+						'contratoTexto', f.contrato_texto, 'sitioTexto', f.sitio_texto,
+						'numeroPartida', f.numero_partida, 'actividad', f.actividad, 'tags', f.tags,
+						'periodoMes', f.periodo_mes,
+						'ocurrencia', case when f.ocurrencia_tipo is null then null
+							else jsonb_build_object('tipo', f.ocurrencia_tipo, 'numero', f.ocurrencia_numero) end,
+						'estado', f.estado, 'revision', f.revision, 'actualizadoEn', f.actualizado_en,
+						'documento', (select jsonb_build_object('id', d.id, 'nombreArchivo', d.nombre_archivo,
+							'generadoEn', d.generado_en) from public.documentos_generados d
+							where d.reporte_id = f.id order by d.generado_en desc limit 1)
+					) as fila
+				from filtrados f
+				order by f.periodo_mes desc, f.actualizado_en desc, f.id
+				offset ((select numero from pagina) - 1) * (select tamano from pagina)
+				limit (select tamano from pagina)
+			) paginadas
+		), '[]'::jsonb)
+	)
+$$;
+
+-- ---------------------------------------------------------------------------------------------
+-- Seguridad (política de 0004): solo el rol de servicio
+-- ---------------------------------------------------------------------------------------------
+
+do $$
+declare
+	tabla text;
+begin
+	foreach tabla in array array['plantillas_seguimiento', 'plantilla_conceptos', 'personal_centros_costo'] loop
+		execute format('alter table public.%I enable row level security', tabla);
+		if exists (select 1 from pg_roles where rolname = 'service_role')
+			and not exists (select 1 from pg_policies where schemaname = 'public' and tablename = tabla
+				and policyname = 'servicio_acceso_total') then
+			execute format(
+				'create policy servicio_acceso_total on public.%I for all to service_role using (true) with check (true)',
+				tabla
+			);
+		end if;
+	end loop;
+	if exists (select 1 from pg_roles where rolname = 'service_role') then
+		revoke all on public.plantillas_seguimiento, public.plantilla_conceptos,
+			public.personal_centros_costo from anon, authenticated;
+		revoke execute on all functions in schema public from public, anon, authenticated;
+		grant execute on all functions in schema public to service_role;
+	end if;
+end
+$$;
+
+insert into interno.migraciones (nombre) values ('0023_centros_costo_plantillas.sql') on conflict do nothing;
+
+-- =============================================================================================
+-- 0024_seguimiento_operativo.sql
+-- =============================================================================================
+-- Captura manual del seguimiento por centro de costo y mes.
+create table public.seguimiento_meses (
+	id uuid primary key default gen_random_uuid(),
+	sitio_id uuid not null references public.sitios (id) on delete restrict,
+	mes date not null check (extract(day from mes) = 1),
+	plantilla_id uuid references public.plantillas_seguimiento (id) on delete restrict,
+	origen text not null check (origen in ('programa_anual', 'mensual', 'ninguno')),
+	unique (sitio_id, mes)
+);
+
+create table public.seguimiento_actividades (
+	mes_id uuid not null references public.seguimiento_meses (id) on delete restrict,
+	clave text not null,
+	nombre text not null check (btrim(nombre) <> ''),
+	ordinal integer check (ordinal > 0),
+	fecha date,
+	ejecutada boolean not null default false,
+	primary key (mes_id, clave)
+);
+
+create table public.seguimiento_valores (
+	mes_id uuid not null references public.seguimiento_meses (id) on delete restrict,
+	actividad text,
+	concepto_id uuid not null references public.plantilla_conceptos (id) on delete restrict,
+	valor jsonb not null,
+	foreign key (mes_id, actividad) references public.seguimiento_actividades (mes_id, clave) on delete restrict,
+	unique nulls not distinct (mes_id, actividad, concepto_id)
+);
+create index seguimiento_valores_concepto_idx on public.seguimiento_valores (concepto_id);
+
+create table public.seguimiento_nocturnas (
+	mes_id uuid not null references public.seguimiento_meses (id) on delete restrict,
+	id uuid not null,
+	fecha date not null,
+	descripcion text not null check (length(btrim(descripcion)) between 1 and 1000),
+	primary key (mes_id, id)
+);
+
+create table public.seguimiento_carpetas (
+	mes_id uuid not null references public.seguimiento_meses (id) on delete restrict,
+	concepto_id uuid not null references public.plantilla_conceptos (id) on delete restrict,
+	estado text not null check (estado in ('pendiente', 'en_proceso', 'entregada')),
+	entrega_id uuid references public.personal (id) on delete restrict,
+	recibe text,
+	fecha date,
+	enlace text,
+	archivo_nombre text,
+	archivo bytea,
+	version integer not null default 1,
+	primary key (mes_id, concepto_id),
+	check ((archivo is null) = (archivo_nombre is null)),
+	check (archivo is null or (enlace is null and octet_length(archivo) between 1 and 8388608)),
+	check (estado <> 'entregada' or (entrega_id is not null and recibe is not null
+		and fecha is not null and (enlace is not null or archivo is not null)))
+);
+create index seguimiento_carpetas_concepto_idx on public.seguimiento_carpetas (concepto_id);
+
+create function public.validar_concepto_con_seguimiento()
+returns trigger language plpgsql as $$
+begin
+	if (new.plantilla_id, new.bloque, new.tipo, new.nivel)
+		is distinct from (old.plantilla_id, old.bloque, old.tipo, old.nivel)
+		and (exists (select 1 from public.seguimiento_valores where concepto_id = old.id)
+			or exists (select 1 from public.seguimiento_carpetas where concepto_id = old.id)) then
+		perform public.error_api('IC409', 'El concepto tiene datos de seguimiento. Conserve su tipo, bloque y nivel.');
+	end if;
+	return new;
+end
+$$;
+create trigger concepto_con_seguimiento before update on public.plantilla_conceptos
+	for each row execute function public.validar_concepto_con_seguimiento();
+
+create function public.conceptos_seguimiento_operativo(plantilla uuid)
+returns setof public.plantilla_conceptos language sql stable as $$
+	select c.* from public.plantilla_conceptos c
+	where c.plantilla_id = plantilla
+		and c.bloque in ('programa', 'documentos', 'carpetas')
+		and c.tipo <> 'monto'
+$$;
+
+create function public.actividades_seguimiento(sitio uuid, periodo date, fuente text, id_mes uuid)
+returns table (clave text, nombre text, ordinal integer, fecha date, ejecutada boolean, programada boolean)
+language sql stable as $$
+	with anuales as (
+		select concat('a:', g.id, ':', m.partida_id, ':', n.ordinal) as clave,
+			concat(t.numero, ' · ', coalesce(t.nombre_corto, t.actividad)) as nombre, n.ordinal
+		from public.programa_meses m
+		join public.programas g on g.id = m.programa_id
+		join public.partidas t on t.id = m.partida_id
+		cross join lateral generate_series(1, ceil(m.cantidad)::integer) n(ordinal)
+		where fuente = 'programa_anual' and g.sitio_id = sitio and m.mes = periodo
+	), guardadas as (
+		select a.* from public.seguimiento_actividades a where a.mes_id = id_mes
+	)
+	select p.clave, p.nombre, p.ordinal, null::date, coalesce(a.ejecutada, false), true
+	from anuales p left join guardadas a on a.clave = p.clave
+	union all
+	select a.clave, a.nombre, a.ordinal, a.fecha, a.ejecutada, a.ordinal is null
+	from guardadas a where not exists (select 1 from anuales p where p.clave = a.clave)
+$$;
+
+create function public.api_obtener_seguimiento_operativo(p jsonb)
+returns jsonb language plpgsql stable as $$
+declare
+	centro public.sitios;
+	seguimiento public.seguimiento_meses;
+	plantilla uuid;
+	origen text;
+	periodo date := (p ->> 'mes')::date;
+begin
+	select * into centro from public.sitios where id = (p ->> 'sitioId')::uuid;
+	if not found then perform public.error_api('IC404', 'No encontrado'); end if;
+	select * into seguimiento from public.seguimiento_meses where sitio_id = centro.id and mes = periodo;
+	if seguimiento.plantilla_id is not null then
+		plantilla := seguimiento.plantilla_id;
+		origen := seguimiento.origen;
+	else
+		plantilla := centro.plantilla_id;
+		select origen_actividades into origen from public.plantillas_seguimiento where id = plantilla;
+		origen := coalesce(origen, 'ninguno');
+	end if;
+
+	return jsonb_build_object(
+		'origen', origen, 'plantillaId', plantilla,
+		'conceptos', coalesce((select jsonb_agg(jsonb_build_object(
+			'id', c.id, 'bloque', c.bloque, 'nivel', c.nivel, 'tipo', c.tipo, 'etiqueta', c.etiqueta
+		) order by public.orden_bloque(c.bloque), c.orden)
+			from public.conceptos_seguimiento_operativo(plantilla) c), '[]'::jsonb),
+		'actividades', coalesce((select jsonb_agg(to_jsonb(a) order by a.fecha nulls last,
+			a.nombre, a.ordinal, a.clave)
+			from public.actividades_seguimiento(centro.id, periodo, origen, seguimiento.id) a), '[]'::jsonb),
+		'valores', coalesce((select jsonb_agg(jsonb_build_object(
+			'actividad', v.actividad, 'conceptoId', v.concepto_id, 'valor', v.valor))
+			from public.seguimiento_valores v where v.mes_id = seguimiento.id), '[]'::jsonb),
+		'nocturnas', coalesce((select jsonb_agg(jsonb_build_object(
+			'id', n.id, 'fecha', n.fecha, 'descripcion', n.descripcion) order by n.fecha, n.id)
+			from public.seguimiento_nocturnas n where n.mes_id = seguimiento.id), '[]'::jsonb),
+		'carpetas', coalesce((select jsonb_agg(jsonb_build_object(
+			'conceptoId', c.concepto_id, 'estado', c.estado, 'entregaId', c.entrega_id,
+			'entregaNombre', case when s.id is not null then concat_ws(' ', s.nombre, s.apellido_paterno, s.apellido_materno) end,
+			'recibe', c.recibe, 'fecha', c.fecha, 'enlace', c.enlace,
+			'archivoNombre', c.archivo_nombre, 'version', c.version))
+			from public.seguimiento_carpetas c left join public.personal s on s.id = c.entrega_id
+			where c.mes_id = seguimiento.id), '[]'::jsonb),
+		'personal', coalesce((select jsonb_agg(jsonb_build_object(
+			'id', s.id, 'nombre', concat_ws(' ', s.nombre, s.apellido_paterno, s.apellido_materno))
+			order by s.nombre, s.apellido_paterno, s.id)
+			from public.personal s where s.activo and p ->> 'incluirPersonal' = 'true'
+				and exists (select 1 from public.conceptos_seguimiento_operativo(plantilla) c
+					where c.bloque = 'carpetas')), '[]'::jsonb)
+	);
+end
+$$;
+
+create function public.guardar_carpeta_seguimiento(id_mes uuid, plantilla uuid, p jsonb)
+returns void language plpgsql as $$
+declare
+	concepto uuid := (p ->> 'conceptoId')::uuid;
+	actual public.seguimiento_carpetas;
+	enlace text := public.texto_o_nulo(p ->> 'enlace');
+	recibe text := public.texto_o_nulo(p ->> 'recibe');
+	entrega uuid := (p ->> 'entregaId')::uuid;
+	fecha date := (p ->> 'fecha')::date;
+	estado text := p ->> 'estado';
+	nombre text;
+	archivo bytea;
+begin
+	perform 1 from public.conceptos_seguimiento_operativo(plantilla) c
+	where c.id = concepto and c.bloque = 'carpetas';
+	if not found then perform public.error_api('IC404', 'Carpeta no encontrada'); end if;
+	select c.* into actual from public.seguimiento_carpetas c
+	where c.mes_id = id_mes and c.concepto_id = concepto;
+	if coalesce(actual.version, 0) is distinct from (p ->> 'version')::integer then
+		perform public.error_api('IC409', 'La carpeta cambió. Revise sus datos actualizados antes de guardar.');
+	end if;
+	if entrega is not null and entrega is distinct from actual.entrega_id
+		and not exists (select 1 from public.personal where id = entrega and activo) then
+		perform public.error_api('IC422', 'Seleccione a una persona activa para la entrega.');
+	end if;
+	if enlace is not null and (length(enlace) > 2048 or enlace !~
+		'^https://[A-Za-z0-9-]+\.sharepoint\.(com|us|de|cn)([/?#]|$)') then
+		perform public.error_api('IC422', 'Ingrese un enlace HTTPS de SharePoint.');
+	end if;
+	if p ->> 'archivo' is not null then
+		if enlace is not null then perform public.error_api('IC422', 'Use un enlace o un archivo para la carpeta.'); end if;
+		nombre := public.texto_o_nulo(p ->> 'archivoNombre');
+		archivo := decode(p ->> 'archivo', 'base64');
+		if nombre is null or length(nombre) > 255 or octet_length(archivo) not between 1 and 8388608 then
+			perform public.error_api('IC422', 'Seleccione un archivo válido de hasta 8 MiB.');
+		end if;
+	elsif enlace is null and p ->> 'quitarArchivo' is distinct from 'true' then
+		nombre := actual.archivo_nombre;
+		archivo := actual.archivo;
+	end if;
+	if estado = 'entregada' and (entrega is null or recibe is null or fecha is null
+		or (enlace is null and archivo is null)) then
+		perform public.error_api('IC422', 'Para completar la entrega, indique quién entrega, quién recibe, la fecha y un enlace o archivo.');
+	end if;
+	insert into public.seguimiento_carpetas as c
+		(mes_id, concepto_id, estado, entrega_id, recibe, fecha, enlace, archivo_nombre, archivo)
+	values (id_mes, concepto, estado, entrega, recibe, fecha, enlace, nombre, archivo)
+	on conflict (mes_id, concepto_id) do update set estado = excluded.estado,
+		entrega_id = excluded.entrega_id, recibe = excluded.recibe, fecha = excluded.fecha,
+		enlace = excluded.enlace, archivo_nombre = excluded.archivo_nombre, archivo = excluded.archivo,
+		version = c.version + 1;
+end
+$$;
+
+create function public.api_guardar_seguimiento_operativo(p jsonb)
+returns jsonb language plpgsql as $$
+declare
+	centro public.sitios;
+	seguimiento public.seguimiento_meses;
+	periodo date := (p ->> 'mes')::date;
+	accion text := p ->> 'accion';
+	fila text := p ->> 'actividad';
+	concepto public.plantilla_conceptos;
+	valor jsonb := nullif(p -> 'valor', 'null'::jsonb);
+	fecha_captura date := (p ->> 'fecha')::date;
+begin
+	-- La plantilla asignada y todas las capturas de un centro se escriben en orden.
+	select * into centro from public.sitios where id = (p ->> 'sitioId')::uuid for update;
+	if not found then perform public.error_api('IC404', 'No encontrado'); end if;
+	insert into public.seguimiento_meses as s (sitio_id, mes, plantilla_id, origen)
+	select centro.id, periodo, centro.plantilla_id, coalesce((
+		select origen_actividades from public.plantillas_seguimiento where id = centro.plantilla_id
+	), 'ninguno') on conflict (sitio_id, mes) do update
+	set plantilla_id = excluded.plantilla_id, origen = excluded.origen
+	where s.plantilla_id is null and excluded.plantilla_id is not null;
+	select * into seguimiento from public.seguimiento_meses where sitio_id = centro.id and mes = periodo;
+	-- La edición de una plantilla no puede reinterpretar un concepto durante el guardado.
+	perform 1 from public.plantillas_seguimiento where id = seguimiento.plantilla_id for share;
+	perform 1 from public.conceptos_seguimiento_operativo(seguimiento.plantilla_id) c
+		join public.plantilla_conceptos t on t.id = c.id order by t.id for share of t;
+	if p ? 'plantillaId' and seguimiento.plantilla_id is distinct from (p ->> 'plantillaId')::uuid then
+		perform public.error_api('IC409', 'Cambió la plantilla de seguimiento. Revise el mes actualizado.');
+	end if;
+
+	if accion in ('nuevaActividad', 'editarActividad', 'nuevaNocturna') and fecha_captura is not null
+		and public.primer_dia_mes(fecha_captura) <> periodo then
+		perform public.error_api('IC422', 'La fecha debe pertenecer al mes seleccionado.');
+	end if;
+	if accion in ('nuevaActividad', 'editarActividad', 'quitarActividad') then
+		if seguimiento.origen <> 'mensual' then
+			perform public.error_api('IC422', 'La plantilla no permite capturar actividades del mes.');
+		end if;
+		if accion = 'nuevaActividad' then
+			insert into public.seguimiento_actividades (mes_id, clave, nombre, fecha)
+			values (seguimiento.id, 'm:' || (p ->> 'id')::uuid, btrim(p ->> 'nombre'), fecha_captura)
+			on conflict (mes_id, clave) do nothing;
+		elsif accion = 'editarActividad' then
+			update public.seguimiento_actividades set nombre = btrim(p ->> 'nombre'), fecha = fecha_captura
+			where mes_id = seguimiento.id and clave = fila and ordinal is null;
+			if not found then perform public.error_api('IC404', 'Actividad no encontrada'); end if;
+		else
+			delete from public.seguimiento_actividades a
+			where a.mes_id = seguimiento.id and a.clave = fila and a.ordinal is null and not a.ejecutada
+				and not exists (select 1 from public.seguimiento_valores v
+					where v.mes_id = a.mes_id and v.actividad = a.clave);
+			if not found then perform public.error_api('IC409', 'La actividad no existe o ya tiene seguimiento.'); end if;
+		end if;
+	elsif accion = 'nuevaNocturna' then
+		insert into public.seguimiento_nocturnas (mes_id, id, fecha, descripcion)
+		values (seguimiento.id, (p ->> 'id')::uuid, fecha_captura, btrim(p ->> 'descripcion'))
+		on conflict (mes_id, id) do nothing;
+	elsif accion = 'quitarNocturna' then
+		delete from public.seguimiento_nocturnas where mes_id = seguimiento.id and id = (p ->> 'id')::uuid;
+	elsif accion = 'carpeta' then
+		perform public.guardar_carpeta_seguimiento(seguimiento.id, seguimiento.plantilla_id, p);
+	elsif accion in ('ejecucion', 'valor', 'marcarFila', 'marcarMes') then
+		if fila is not null or accion = 'marcarMes' then
+			insert into public.seguimiento_actividades (mes_id, clave, nombre, ordinal, fecha)
+			select seguimiento.id, a.clave, a.nombre, a.ordinal, a.fecha
+			from public.actividades_seguimiento(centro.id, periodo, seguimiento.origen, seguimiento.id) a
+			where accion = 'marcarMes' or a.clave = fila
+			on conflict (mes_id, clave) do nothing;
+		end if;
+		if accion in ('ejecucion', 'marcarFila') or fila is not null then
+			if not exists (select 1 from public.seguimiento_actividades where mes_id = seguimiento.id and clave = fila) then
+				perform public.error_api('IC404', 'Actividad no encontrada');
+			end if;
+		end if;
+		if accion = 'ejecucion' then
+			update public.seguimiento_actividades set ejecutada = (p ->> 'valor')::boolean
+			where mes_id = seguimiento.id and clave = fila;
+		elsif accion = 'valor' then
+			select c.* into concepto from public.conceptos_seguimiento_operativo(seguimiento.plantilla_id) c
+			where c.id = (p ->> 'conceptoId')::uuid and c.bloque <> 'carpetas'
+				and c.nivel = case when fila is null then 'periodo' else 'actividad' end;
+			if not found then perform public.error_api('IC404', 'Concepto no encontrado'); end if;
+			if valor is not null and not (case concepto.tipo
+				when 'casilla' then jsonb_typeof(valor) = 'boolean'
+				when 'estado' then valor #>> '{}' in ('pendiente', 'en_proceso', 'hecho')
+				when 'cantidad' then case when jsonb_typeof(valor) = 'number' then (valor #>> '{}')::numeric >= 0 else false end
+				when 'fecha' then jsonb_typeof(valor) = 'string' and (valor #>> '{}')::date is not null
+				when 'enlace' then jsonb_typeof(valor) = 'string' and (valor #>> '{}') ~ '^https://'
+				when 'texto' then jsonb_typeof(valor) = 'string'
+				else false end) then
+				perform public.error_api('IC422', 'El valor no corresponde al tipo de concepto.');
+			end if;
+			if valor is null or valor = 'false'::jsonb or valor = '"pendiente"'::jsonb then
+				delete from public.seguimiento_valores v where v.mes_id = seguimiento.id
+					and v.actividad is not distinct from fila and v.concepto_id = concepto.id;
+			else
+				insert into public.seguimiento_valores (mes_id, actividad, concepto_id, valor)
+				values (seguimiento.id, fila, concepto.id, valor)
+				on conflict (mes_id, actividad, concepto_id) do update set valor = excluded.valor;
+			end if;
+		else
+			update public.seguimiento_actividades set ejecutada = true
+			where mes_id = seguimiento.id and (accion = 'marcarMes' or clave = fila);
+			insert into public.seguimiento_valores (mes_id, actividad, concepto_id, valor)
+			select seguimiento.id, destinos.clave, c.id,
+				case when c.tipo = 'casilla' then 'true'::jsonb else '"hecho"'::jsonb end
+			from public.conceptos_seguimiento_operativo(seguimiento.plantilla_id) c
+			join lateral (
+				select a.clave from public.seguimiento_actividades a where a.mes_id = seguimiento.id
+					and c.nivel = 'actividad' and (accion = 'marcarMes' or a.clave = fila)
+				union all
+				select null::text where c.nivel = 'periodo' and accion = 'marcarMes'
+			) destinos on true
+			where c.tipo in ('casilla', 'estado')
+			on conflict (mes_id, actividad, concepto_id) do update set valor = excluded.valor;
+		end if;
+	else
+		perform public.error_api('IC422', 'Operación de seguimiento no válida.');
+	end if;
+	return '{}'::jsonb;
+end
+$$;
+
+create function public.api_archivo_carpeta_seguimiento(p jsonb)
+returns jsonb language sql stable as $$
+	select jsonb_build_object('nombre', c.archivo_nombre, 'datos', encode(c.archivo, 'base64'))
+	from public.seguimiento_carpetas c join public.seguimiento_meses m on m.id = c.mes_id
+	where m.sitio_id = (p ->> 'sitioId')::uuid and m.mes = (p ->> 'mes')::date
+		and c.concepto_id = (p ->> 'conceptoId')::uuid and c.archivo is not null
+$$;
+
+do $$
+declare
+	tabla text;
+begin
+	foreach tabla in array array['seguimiento_meses', 'seguimiento_actividades', 'seguimiento_valores',
+		'seguimiento_nocturnas', 'seguimiento_carpetas'] loop
+		execute format('alter table public.%I enable row level security', tabla);
+		if exists (select 1 from pg_roles where rolname = 'service_role') then
+			execute format('revoke all on public.%I from public, anon, authenticated', tabla);
+			execute format('grant select, insert, update, delete on public.%I to service_role', tabla);
+			execute format('create policy servicio_acceso_total on public.%I for all to service_role using (true) with check (true)', tabla);
+		end if;
+	end loop;
+	revoke execute on function public.validar_concepto_con_seguimiento(),
+		public.conceptos_seguimiento_operativo(uuid), public.actividades_seguimiento(uuid, date, text, uuid),
+		public.guardar_carpeta_seguimiento(uuid, uuid, jsonb), public.api_obtener_seguimiento_operativo(jsonb),
+		public.api_guardar_seguimiento_operativo(jsonb), public.api_archivo_carpeta_seguimiento(jsonb) from public;
+	if exists (select 1 from pg_roles where rolname = 'service_role') then
+		revoke execute on all functions in schema public from anon, authenticated;
+		grant execute on all functions in schema public to service_role;
+	end if;
+end
+$$;
+
+insert into interno.migraciones (nombre) values ('0024_seguimiento_operativo.sql') on conflict do nothing;
+
+-- =============================================================================================
+-- 0025_contrato_cobranza.sql
+-- =============================================================================================
+-- Contrato, órdenes de compra, carta de finalización, enlace del programa anual y cobranza mensual
+-- por centro de costo (etapa 4 del seguimiento). Los valores del contrato y de cada orden siguen los
+-- conceptos de la plantilla; la carta, el programa y la cobranza son iguales para todos los centros.
+create table public.seguimiento_centros (
+	sitio_id uuid primary key references public.sitios (id) on delete restrict,
+	programa_enlace text,
+	carta_fecha date,
+	carta_enlace text,
+	check (carta_enlace is null or carta_fecha is not null)
+);
+
+create table public.contrato_valores (
+	sitio_id uuid not null references public.sitios (id) on delete restrict,
+	concepto_id uuid not null references public.plantilla_conceptos (id) on delete restrict,
+	valor jsonb not null,
+	primary key (sitio_id, concepto_id)
+);
+create index contrato_valores_concepto_idx on public.contrato_valores (concepto_id);
+
+create table public.ordenes_compra (
+	id uuid primary key,
+	sitio_id uuid not null references public.sitios (id) on delete restrict,
+	creado_en timestamptz not null default now()
+);
+create index ordenes_compra_sitio_idx on public.ordenes_compra (sitio_id);
+
+create table public.orden_compra_valores (
+	orden_id uuid not null references public.ordenes_compra (id) on delete cascade,
+	concepto_id uuid not null references public.plantilla_conceptos (id) on delete restrict,
+	valor jsonb not null,
+	primary key (orden_id, concepto_id)
+);
+create index orden_compra_valores_concepto_idx on public.orden_compra_valores (concepto_id);
+
+create table public.cobranza_meses (
+	sitio_id uuid not null references public.sitios (id) on delete restrict,
+	mes date not null check (extract(day from mes) = 1),
+	estimacion boolean not null default false,
+	prefactura boolean not null default false,
+	factura boolean not null default false,
+	cobrado boolean not null default false,
+	monto_cobrado numeric(14, 2) check (monto_cobrado >= 0),
+	primary key (sitio_id, mes)
+);
+
+-- Un concepto con valores del contrato o de una orden tampoco se reinterpreta.
+create or replace function public.validar_concepto_con_seguimiento()
+returns trigger language plpgsql as $$
+begin
+	if (new.plantilla_id, new.bloque, new.tipo, new.nivel)
+		is distinct from (old.plantilla_id, old.bloque, old.tipo, old.nivel)
+		and (exists (select 1 from public.seguimiento_valores where concepto_id = old.id)
+			or exists (select 1 from public.seguimiento_carpetas where concepto_id = old.id)
+			or exists (select 1 from public.contrato_valores where concepto_id = old.id)
+			or exists (select 1 from public.orden_compra_valores where concepto_id = old.id)) then
+		perform public.error_api('IC409', 'El concepto tiene datos de seguimiento. Conserve su tipo, bloque y nivel.');
+	end if;
+	return new;
+end
+$$;
+
+create function public.enlace_sharepoint_valido(enlace text)
+returns boolean language sql immutable as $$
+	select length(enlace) <= 2048
+		and enlace ~ '^https://[A-Za-z0-9-]+\.sharepoint\.(com|us|de|cn)([/?#]|$)'
+$$;
+
+-- Valida una lista [{conceptoId, valor}] contra los conceptos de un bloque de la plantilla y
+-- devuelve los que traen dato; un valor vacío equivale a no tenerlo.
+create function public.valores_concepto_validados(plantilla uuid, bloque_destino text, valores jsonb)
+returns table (concepto_id uuid, valor jsonb) language plpgsql stable as $$
+declare
+	fila jsonb;
+	concepto public.plantilla_conceptos;
+	dato jsonb;
+	texto text;
+begin
+	for fila in select * from jsonb_array_elements(coalesce(valores, '[]'::jsonb)) loop
+		select c.* into concepto from public.plantilla_conceptos c
+		where c.id = (fila ->> 'conceptoId')::uuid and c.plantilla_id = plantilla
+			and c.bloque = bloque_destino;
+		if not found then perform public.error_api('IC404', 'Concepto no encontrado'); end if;
+		dato := nullif(fila -> 'valor', 'null'::jsonb);
+		texto := dato #>> '{}';
+		if dato is null or dato = 'false'::jsonb or texto = ''
+			or (concepto.tipo = 'estado' and texto = 'pendiente') then
+			continue;
+		end if;
+		if not (case concepto.tipo
+			when 'casilla' then jsonb_typeof(dato) = 'boolean'
+			when 'estado' then texto in ('en_proceso', 'hecho')
+			when 'cantidad' then case when jsonb_typeof(dato) = 'number' then texto::numeric >= 0 else false end
+			when 'monto' then case when jsonb_typeof(dato) = 'number'
+				then texto::numeric between 0 and 999999999999.99 and texto::numeric = round(texto::numeric, 2)
+				else false end
+			when 'fecha' then case when jsonb_typeof(dato) = 'string' and texto ~ '^\d{4}-\d{2}-\d{2}$'
+				then texto::date is not null else false end
+			when 'enlace' then jsonb_typeof(dato) = 'string' and public.enlace_sharepoint_valido(texto)
+			when 'texto' then jsonb_typeof(dato) = 'string' and length(texto) <= 500
+			else false end) then
+			perform public.error_api('IC422', format('El valor de «%s» no es válido.', concepto.etiqueta));
+		end if;
+		concepto_id := concepto.id;
+		valor := dato;
+		return next;
+	end loop;
+end
+$$;
+
+-- Lo que devuelve depende de lo que el servidor declara visible para quien consulta: sin
+-- `verContrato` no salen contrato, órdenes, carta ni cobranza; sin `verPrograma`, tampoco el enlace.
+create function public.api_obtener_contrato_cobranza(p jsonb)
+returns jsonb language plpgsql stable as $$
+declare
+	centro public.sitios;
+	datos public.seguimiento_centros;
+	anio integer := (p ->> 'anio')::integer;
+	fin date;
+	resultado jsonb;
+begin
+	select * into centro from public.sitios where id = (p ->> 'sitioId')::uuid;
+	if not found then perform public.error_api('IC404', 'No encontrado'); end if;
+	select * into datos from public.seguimiento_centros where sitio_id = centro.id;
+	resultado := jsonb_build_object('plantillaId', centro.plantilla_id);
+	if coalesce((p ->> 'verPrograma')::boolean, false) then
+		resultado := resultado || jsonb_build_object('programaEnlace', datos.programa_enlace);
+	end if;
+	if not coalesce((p ->> 'verContrato')::boolean, false) then return resultado; end if;
+
+	select max(c.vigencia_fin) into fin from public.contratos c
+	join public.contrato_sitios cs on cs.contrato_id = c.id where cs.sitio_id = centro.id;
+	return resultado || jsonb_build_object('contrato', jsonb_build_object(
+		'modoContrato', (select t.modo_contrato from public.plantillas_seguimiento t
+			where t.id = centro.plantilla_id),
+		'conceptos', coalesce((select jsonb_agg(jsonb_build_object(
+			'id', c.id, 'bloque', c.bloque, 'tipo', c.tipo, 'etiqueta', c.etiqueta)
+			order by public.orden_bloque(c.bloque), c.orden)
+			from public.plantilla_conceptos c where c.plantilla_id = centro.plantilla_id
+				and c.bloque in ('contrato', 'ordenes_compra')), '[]'::jsonb),
+		'valores', coalesce((select jsonb_agg(jsonb_build_object(
+			'conceptoId', v.concepto_id, 'valor', v.valor))
+			from public.contrato_valores v where v.sitio_id = centro.id), '[]'::jsonb),
+		'ordenes', coalesce((select jsonb_agg(jsonb_build_object('id', o.id,
+			'valores', coalesce((select jsonb_agg(jsonb_build_object(
+				'conceptoId', v.concepto_id, 'valor', v.valor))
+				from public.orden_compra_valores v where v.orden_id = o.id), '[]'::jsonb))
+			order by o.creado_en, o.id)
+			from public.ordenes_compra o where o.sitio_id = centro.id), '[]'::jsonb),
+		'contratos', coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'numero', c.numero,
+			'vigenciaInicio', c.vigencia_inicio, 'vigenciaFin', c.vigencia_fin)
+			order by c.vigencia_inicio, c.numero)
+			from public.contratos c join public.contrato_sitios cs on cs.contrato_id = c.id
+			where cs.sitio_id = centro.id), '[]'::jsonb),
+		'carta', jsonb_build_object('fecha', datos.carta_fecha, 'enlace', datos.carta_enlace),
+		'cartaFaltante', coalesce(fin < (p ->> 'hoy')::date, false) and datos.carta_fecha is null,
+		'cobranza', coalesce((select jsonb_agg(jsonb_build_object('mes', m.mes,
+			'estimacion', m.estimacion, 'prefactura', m.prefactura, 'factura', m.factura,
+			'cobrado', m.cobrado, 'montoCobrado', m.monto_cobrado) order by m.mes)
+			from public.cobranza_meses m where m.sitio_id = centro.id
+				and extract(year from m.mes) = anio), '[]'::jsonb)
+	));
+end
+$$;
+
+create function public.api_guardar_contrato_cobranza(p jsonb)
+returns jsonb language plpgsql as $$
+declare
+	centro public.sitios;
+	accion text := p ->> 'accion';
+	orden uuid := (p ->> 'id')::uuid;
+	enlace text := public.texto_o_nulo(p ->> 'enlace');
+	fecha date := (p ->> 'fecha')::date;
+begin
+	-- Las capturas de un centro se escriben en orden, igual que el seguimiento operativo.
+	select * into centro from public.sitios where id = (p ->> 'sitioId')::uuid for update;
+	if not found then perform public.error_api('IC404', 'No encontrado'); end if;
+	perform 1 from public.plantilla_conceptos c where c.plantilla_id = centro.plantilla_id
+		and c.bloque in ('contrato', 'ordenes_compra') order by c.id for share;
+	if enlace is not null and not public.enlace_sharepoint_valido(enlace) then
+		perform public.error_api('IC422', 'Ingrese un enlace HTTPS de SharePoint.');
+	end if;
+
+	if accion = 'contrato' then
+		delete from public.contrato_valores v where v.sitio_id = centro.id and v.concepto_id in (
+			select c.id from public.plantilla_conceptos c
+			where c.plantilla_id = centro.plantilla_id and c.bloque = 'contrato');
+		insert into public.contrato_valores (sitio_id, concepto_id, valor)
+		select centro.id, n.concepto_id, n.valor
+		from public.valores_concepto_validados(centro.plantilla_id, 'contrato', p -> 'valores') n;
+	elsif accion in ('nuevaOrden', 'editarOrden') then
+		if accion = 'nuevaOrden' then
+			insert into public.ordenes_compra (id, sitio_id) values (orden, centro.id)
+			on conflict (id) do nothing;
+		end if;
+		perform 1 from public.ordenes_compra o where o.id = orden and o.sitio_id = centro.id;
+		if not found then perform public.error_api('IC404', 'Orden de compra no encontrada'); end if;
+		delete from public.orden_compra_valores v where v.orden_id = orden and v.concepto_id in (
+			select c.id from public.plantilla_conceptos c
+			where c.plantilla_id = centro.plantilla_id and c.bloque = 'ordenes_compra');
+		insert into public.orden_compra_valores (orden_id, concepto_id, valor)
+		select orden, n.concepto_id, n.valor
+		from public.valores_concepto_validados(centro.plantilla_id, 'ordenes_compra', p -> 'valores') n;
+		if not exists (select 1 from public.orden_compra_valores v where v.orden_id = orden) then
+			perform public.error_api('IC422', 'Capture al menos un dato de la orden de compra.');
+		end if;
+	elsif accion = 'quitarOrden' then
+		delete from public.ordenes_compra o where o.id = orden and o.sitio_id = centro.id;
+		if not found then perform public.error_api('IC404', 'Orden de compra no encontrada'); end if;
+	elsif accion = 'carta' then
+		if enlace is not null and fecha is null then
+			perform public.error_api('IC422', 'Indique la fecha de la carta de finalización.');
+		end if;
+		insert into public.seguimiento_centros as s (sitio_id, carta_fecha, carta_enlace)
+		values (centro.id, fecha, enlace)
+		on conflict (sitio_id) do update
+		set carta_fecha = excluded.carta_fecha, carta_enlace = excluded.carta_enlace;
+	elsif accion = 'programa' then
+		insert into public.seguimiento_centros as s (sitio_id, programa_enlace)
+		values (centro.id, enlace)
+		on conflict (sitio_id) do update set programa_enlace = excluded.programa_enlace;
+	elsif accion = 'cobranza' then
+		delete from public.cobranza_meses m where m.sitio_id = centro.id and m.mes in (
+			select (f ->> 'mes')::date from jsonb_array_elements(p -> 'meses') f);
+		insert into public.cobranza_meses
+			(sitio_id, mes, estimacion, prefactura, factura, cobrado, monto_cobrado)
+		select centro.id, (f ->> 'mes')::date, (f ->> 'estimacion')::boolean,
+			(f ->> 'prefactura')::boolean, (f ->> 'factura')::boolean, (f ->> 'cobrado')::boolean,
+			(f ->> 'montoCobrado')::numeric
+		from jsonb_array_elements(p -> 'meses') f
+		where (f ->> 'estimacion')::boolean or (f ->> 'prefactura')::boolean
+			or (f ->> 'factura')::boolean or (f ->> 'cobrado')::boolean
+			or f ->> 'montoCobrado' is not null;
+	else
+		perform public.error_api('IC422', 'Operación de contrato y cobranza no válida.');
+	end if;
+	return '{}'::jsonb;
+end
+$$;
+
+do $$
+declare
+	tabla text;
+begin
+	foreach tabla in array array['seguimiento_centros', 'contrato_valores', 'ordenes_compra',
+		'orden_compra_valores', 'cobranza_meses'] loop
+		execute format('alter table public.%I enable row level security', tabla);
+		if exists (select 1 from pg_roles where rolname = 'service_role') then
+			execute format('revoke all on public.%I from public, anon, authenticated', tabla);
+			execute format('grant select, insert, update, delete on public.%I to service_role', tabla);
+			execute format('create policy servicio_acceso_total on public.%I for all to service_role using (true) with check (true)', tabla);
+		end if;
+	end loop;
+	revoke execute on function public.enlace_sharepoint_valido(text),
+		public.valores_concepto_validados(uuid, text, jsonb),
+		public.api_obtener_contrato_cobranza(jsonb), public.api_guardar_contrato_cobranza(jsonb)
+		from public;
+	if exists (select 1 from pg_roles where rolname = 'service_role') then
+		revoke execute on all functions in schema public from anon, authenticated;
+		grant execute on all functions in schema public to service_role;
+	end if;
+end
+$$;
+
+insert into interno.migraciones (nombre) values ('0025_contrato_cobranza.sql') on conflict do nothing;
 
 -- ---------------------------------------------------------------------------------------------
 -- Seguridad final: RLS en todas las tablas públicas, solo el rol de servicio accede y las claves

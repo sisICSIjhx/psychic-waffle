@@ -1,10 +1,11 @@
-// Preferencias de la interfaz guardadas en el navegador: el tema y el diseño del programa anual.
+// Preferencias de la interfaz guardadas en el navegador.
 // El script en línea de src/app.html aplica el tema antes de pintar con la misma clave y la misma
 // regla que temaInicial; si cambian aquí, deben cambiar allá.
 
 export type Tema = 'light' | 'dark';
 
 export const CLAVE_TEMA = 'icsi-tema';
+export const CLAVE_PANEL_LATERAL = 'icsi-panel-lateral';
 
 /** El tema guardado o, si no hay uno válido, el del sistema. */
 export function temaInicial(guardado: string | null, sistemaOscuro: boolean): Tema {

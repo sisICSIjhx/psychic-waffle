@@ -10,6 +10,7 @@ import {
 	programaVigente,
 	type FiltroPlaneacion
 } from '$lib/dominio/planeacion';
+import { alcanceDe, exigirCentro, filtrarPor } from '$lib/server/alcance';
 import { datos } from '$lib/server/datos';
 import { mensajeDeError } from '$lib/server/errores';
 import { puede } from '$lib/server/permisos';
@@ -20,13 +21,22 @@ const hoy = () => fechaEnZona();
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const repos = await datos();
 	const fecha = hoy();
-	const contratos = await repos.catalogo.listarContratos();
+	// Solo los contratos y centros de costo de quien consulta (cambio centros-costo-plantillas).
+	const alcance = await alcanceDe(repos, locals);
+	const contratos = filtrarPor(
+		alcance,
+		'contratos',
+		await repos.catalogo.listarContratos(),
+		(c) => c.id
+	);
 	const contrato =
 		contratos.find((c) => c.id === url.searchParams.get('contrato')) ??
 		contratos.find((c) => c.vigente) ??
 		contratos[0] ??
 		null;
-	const sitios = contrato ? await repos.catalogo.listarSitios(contrato.id) : [];
+	const sitios = contrato
+		? filtrarPor(alcance, 'sitios', await repos.catalogo.listarSitios(contrato.id), (s) => s.id)
+		: [];
 	const sitio = sitios.find((s) => s.id === url.searchParams.get('sitio')) ?? sitios[0] ?? null;
 	const programas =
 		contrato && sitio
@@ -92,13 +102,13 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 };
 
 export const actions: Actions = {
-	registrarRealizado: async ({ request }) => {
+	registrarRealizado: async ({ request, locals }) => {
 		const formulario = await request.formData();
 		const texto = (campo: string) => String(formulario.get(campo) ?? '').trim();
+		const repos = await datos();
+		await exigirCentro(repos, locals, 'programa', texto('programaId'));
 		try {
-			await (
-				await datos()
-			).programa.registrarRealizadoManual({
+			await repos.programa.registrarRealizadoManual({
 				programaId: texto('programaId'),
 				partidaId: texto('partidaId'),
 				mes: texto('mes'),
@@ -112,7 +122,7 @@ export const actions: Actions = {
 	},
 
 	// Reprograma lo que falta de una partida y mes, o lo marca como no ejecutado.
-	registrarAjuste: async ({ request }) => {
+	registrarAjuste: async ({ request, locals }) => {
 		const formulario = await request.formData();
 		const texto = (campo: string) => String(formulario.get(campo) ?? '').trim();
 		const tipo = texto('tipo') === 'no_ejecutado' ? 'no_ejecutado' : 'reprogramado';
@@ -120,10 +130,10 @@ export const actions: Actions = {
 		if (!MOTIVOS_AJUSTE.includes(motivo)) {
 			return fail(400, { accion: 'registrarAjuste', error: 'Elija el motivo.' });
 		}
+		const repos = await datos();
+		await exigirCentro(repos, locals, 'programa', texto('programaId'));
 		try {
-			const ajuste = await (
-				await datos()
-			).programa.registrarAjuste({
+			const ajuste = await repos.programa.registrarAjuste({
 				programaId: texto('programaId'),
 				partidaId: texto('partidaId'),
 				tipo,
@@ -139,12 +149,13 @@ export const actions: Actions = {
 		}
 	},
 
-	anularAjuste: async ({ request }) => {
+	anularAjuste: async ({ request, locals }) => {
 		const formulario = await request.formData();
+		const id = String(formulario.get('id') ?? '');
+		const repos = await datos();
+		await exigirCentro(repos, locals, 'ajuste', id);
 		try {
-			const ajuste = await (
-				await datos()
-			).programa.anularAjuste(String(formulario.get('id') ?? ''));
+			const ajuste = await repos.programa.anularAjuste(id);
 			return { accion: 'anularAjuste', ajuste, mensaje: 'Ajuste anulado.' };
 		} catch (error) {
 			return fail(400, { accion: 'anularAjuste', error: mensajeDeError(error) });

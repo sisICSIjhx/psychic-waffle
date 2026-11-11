@@ -6,8 +6,8 @@
 // tabulador, punto y coma o coma (lo que se obtiene al copiar tres columnas de Excel).
 // Por omisión hace un ensayo: muestra cómo divide cada nombre y qué haría, sin guardar nada. Con
 // --aplicar da de alta, en una transacción, a quienes no están registrados por su correo: como
-// reporteadores activos, sin proyectos y sin cuenta. A quien ya existe no lo modifica. El rol, los
-// proyectos y la contraseña de cada persona se asignan después en /personal.
+// reporteadores activos, sin centros de costo y sin cuenta. A quien ya existe no lo modifica. El rol,
+// los centros de costo y la contraseña de cada persona se asignan después en /personal.
 // Con PGlite, detenga antes el servidor de la aplicación: la base no admite dos procesos.
 // El archivo contiene datos personales: guárdelo en insumos/, que no se versiona.
 import { existsSync, readFileSync } from 'node:fs';
@@ -80,7 +80,7 @@ try {
 	if (resultado.ensayo) {
 		console.log('No se guardó nada. Revise la división de los nombres y repita con --aplicar.');
 	} else if (nuevas > 0) {
-		console.log('Asigne el rol y los proyectos de cada persona en /personal.');
+		console.log('Asigne el rol y los centros de costo de cada persona en /personal.');
 	}
 } finally {
 	await repos.cerrar();

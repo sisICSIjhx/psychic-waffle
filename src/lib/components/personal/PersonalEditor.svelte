@@ -1,25 +1,25 @@
 <!-- Alta y edición de una persona: nombre dividido, sede, correo (su usuario para iniciar sesión),
-     rol y proyectos (clientes). Administrador, mesa directiva y contabilidad abarcan todos los
-     proyectos; la baja es lógica. En una persona ya registrada, «Acceso al sistema» genera su
+     rol y centros de costo. Administrador, mesa directiva y contabilidad abarcan todos los centros
+     de costo; la baja es lógica. En una persona ya registrada, «Acceso al sistema» genera su
      contraseña temporal o le quita la cuenta. -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { ROLES_PERSONAL } from '$lib/dominio/constantes';
-	import type { Cliente, Personal } from '$lib/dominio/esquemas';
+	import type { CentroCosto, Personal } from '$lib/dominio/esquemas';
 	import { fechaEnZona } from '$lib/dominio/fechas';
 	import {
 		DESCRIPCIONES_ROL,
 		ETIQUETAS_ROL,
 		nombreCompleto,
-		requiereProyectos,
+		requiereCentros,
 		textoAcceso
 	} from '$lib/dominio/personal';
 	import Aviso from '$lib/components/catalogo/Aviso.svelte';
 
 	export let persona: Personal | null = null;
-	export let clientes: Cliente[] = [];
+	export let centros: CentroCosto[] = [];
 	export let form: {
 		mensaje?: string;
 		error?: string;
@@ -32,7 +32,7 @@
 	export let sesionActivada = false;
 
 	// Estado local enlazado con bind:value. Con `value={…}` sin enlace, al recargar la página el
-	// primer cambio de rol que habilita o deshabilita los proyectos borraba lo escrito: Svelte
+	// primer cambio de rol que habilita o deshabilita los centros de costo borraba lo escrito: Svelte
 	// reaplica el valor inicial de todos los campos que comparten efecto con ese cambio.
 	let nombre = persona?.nombre ?? '';
 	let apellidoPaterno = persona?.apellidoPaterno ?? '';
@@ -41,10 +41,10 @@
 	let sede = persona?.sede ?? '';
 	let correo = persona?.correo ?? '';
 	let rol: Personal['rol'] = persona?.rol ?? 'reporteador';
-	let proyectos: string[] = (persona?.proyectos ?? []).map((p) => p.id);
+	let asignados: string[] = (persona?.centrosCosto ?? []).map((c) => c.id);
 	let activo = persona?.activo ?? true;
 
-	$: conProyectos = requiereProyectos(rol);
+	$: conCentros = requiereCentros(rol);
 
 	// Sin reinicio tras guardar: el formulario conserva lo capturado.
 	const conservarCampos: SubmitFunction =
@@ -132,30 +132,33 @@
 			{/each}
 		</fieldset>
 
-		<fieldset class="casillas" disabled={!conProyectos} aria-describedby="nota-proyectos">
-			<legend>Proyectos</legend>
-			{#each clientes as cliente (cliente.id)}
+		<fieldset class="casillas centros" disabled={!conCentros} aria-describedby="nota-centros">
+			<legend>Centros de costo</legend>
+			{#each centros as centro (centro.id)}
 				<label>
 					<input
 						type="checkbox"
-						name="clienteIds"
-						value={cliente.id}
-						bind:group={proyectos}
-						disabled={!conProyectos}
+						name="centroCostoIds"
+						value={centro.id}
+						bind:group={asignados}
+						disabled={!conCentros}
 					/>
-					{cliente.nombre}
+					<span
+						><strong>{centro.clave}</strong>{#if centro.nombre}
+							· {centro.nombre}{/if}</span
+					>
 				</label>
 			{/each}
 		</fieldset>
-		<p id="nota-proyectos" class="view-note">
-			{#if !conProyectos}
-				Este rol abarca todos los proyectos.
-			{:else if clientes.length === 0}
-				No hay proyectos: registre primero un proyecto en el
-				<a class="enlace" href={resolve('/catalogo')}>catálogo</a>.
+		<p id="nota-centros" class="view-note">
+			{#if !conCentros}
+				Este rol abarca todos los centros de costo.
+			{:else if centros.length === 0}
+				No hay centros de costo: regístrelos primero en el
+				<a class="enlace" href={resolve('/catalogo/centros-costo')}>catálogo</a>.
 			{:else}
-				Puede quedar sin proyectos. El acceso por centro de costo aún no se aplica: por ahora, quien
-				entra consulta todos.
+				Con el inicio de sesión activado, la persona solo ve y captura lo de los centros de costo
+				elegidos; sin ninguno, no verá trabajo.
 			{/if}
 		</p>
 
@@ -285,6 +288,14 @@
 	.descripcion {
 		color: var(--tinta-secundaria);
 		font-size: var(--texto-sm);
+	}
+	.centros {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: 6px 16px;
+	}
+	.centros legend {
+		grid-column: 1 / -1;
 	}
 	.estado-cuenta {
 		display: flex;

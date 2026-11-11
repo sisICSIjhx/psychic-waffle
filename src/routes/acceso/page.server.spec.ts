@@ -39,7 +39,7 @@ function alta(rol: RolPersonal) {
 		correo: `persona${numero}@ficticio.test`,
 		rol,
 		activo: true,
-		clienteIds: []
+		centroCostoIds: []
 	});
 }
 
@@ -280,7 +280,8 @@ describe('con el inicio de sesión activado', () => {
 			nombre: 'Persona Ficticia',
 			correo: 'persona@ficticio.test',
 			rol,
-			debeCambiar: false
+			debeCambiar: false,
+			centrosCosto: null
 		});
 		expect(
 			await generar({ autenticacion: true, usuario: usuario('mesa_directiva') })

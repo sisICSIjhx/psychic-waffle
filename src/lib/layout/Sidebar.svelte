@@ -1,7 +1,5 @@
-<!-- Riel de navegación persistente: marca, destinos en filas con icono y etiqueta (el activo en una
-     píldora del acento, como en DashStack), captura por cliente, la cuenta de quien entró y cambio
-     de tema. Solo muestra lo que el rol puede usar. En ventanas estrechas se abre como panel desde la
-     cabecera. -->
+<!-- Riel de navegación: marca, destinos, cuenta y cambio de tema. En ventanas estrechas se abre
+     desde la cabecera. -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { resolve } from '$app/paths';
@@ -9,18 +7,18 @@
 	import IconoAnimado from '$lib/components/ui/IconoAnimado.svelte';
 	import { SESION_ABIERTA, type SesionArmazon } from '$lib/dominio/permisos';
 	import { ETIQUETAS_ROL } from '$lib/dominio/personal';
-	import { clientesCaptura, type VistaId } from './navegacion';
+	import type { VistaId } from './navegacion';
 
 	export let activeView: VistaId | null = 'dashboard';
-	export let activeCliente: string | null = null;
 	export let isMobileOpen = false;
+	export let colapsado = false;
 	export let theme = 'dark';
 	/** Quién entró y qué puede hacer; sin inicio de sesión activado, todo está a la vista. */
 	export let sesion: SesionArmazon = SESION_ABIERTA;
 
 	// El enlace navega por sí mismo; el evento avisa al layout (por ejemplo, para cerrar el menú móvil).
 	const dispatch = createEventDispatcher<{
-		navigate: { view: VistaId; cliente?: string };
+		navigate: { view: VistaId };
 		toggleTheme: void;
 	}>();
 
@@ -49,20 +47,28 @@
 				'<path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>'
 		},
 		{
+			vista: 'seguimiento',
+			ruta: resolve('/seguimiento'),
+			etiqueta: 'Seguimiento',
+			titulo: 'Seguimiento operativo',
+			icono:
+				'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="m8 10 1.5 1.5L12 9m2 2h2m-8 5 1.5 1.5L12 15m2 2h2"/>'
+		},
+		{
+			vista: 'cobranza',
+			ruta: resolve('/cobranza'),
+			etiqueta: 'Contrato y cobranza',
+			titulo: 'Contrato y cobranza',
+			icono:
+				'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h6M12 18v-7M14.5 12.5h-3.25a1.25 1.25 0 0 0 0 2.5h1.5a1.25 1.25 0 0 1 0 2.5H9.5"/>'
+		},
+		{
 			vista: 'cumplimiento',
 			ruta: resolve('/cumplimiento'),
 			etiqueta: 'Cumplimiento',
 			titulo: 'Cumplimiento del programa',
 			icono:
 				'<path d="M12 16v5M16 14v7M20 10v11M22 3l-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15M4 18v3M8 14v7"/>'
-		},
-		{
-			vista: 'captura',
-			ruta: resolve('/captura'),
-			etiqueta: 'Capturar',
-			titulo: 'Capturar reporte',
-			icono:
-				'<path d="m18 5-2.414-2.414A2 2 0 0 0 14.172 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2"/><path d="M21.378 12.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><path d="M8 18h1"/>'
 		},
 		{
 			vista: 'historial',
@@ -97,15 +103,14 @@
 		}
 	];
 
-	// «Capturar» solo para quien captura y «Personal» solo para quien puede consultarlo.
 	$: destinos = DESTINOS.filter(
 		(d) =>
-			(d.vista !== 'captura' || sesion.permisos.capturar) &&
-			(d.vista !== 'personal' || sesion.permisos.verPersonal)
+			(d.vista !== 'personal' || sesion.permisos.verPersonal) &&
+			(d.vista !== 'cobranza' || sesion.permisos.verContrato || sesion.permisos.verEnlacePrograma)
 	);
 
-	function navigate(view: VistaId, cliente?: string) {
-		dispatch('navigate', { view, cliente });
+	function navigate(view: VistaId) {
+		dispatch('navigate', { view });
 	}
 
 	function toggleTheme() {
@@ -113,8 +118,14 @@
 	}
 </script>
 
-<aside id="menu-principal" class="sidebar" class:mobile-open={isMobileOpen}>
-	<a class="marca" href={resolve('/')} on:click={() => navigate('dashboard')}>
+<aside id="menu-principal" class="sidebar" class:mobile-open={isMobileOpen} class:colapsado>
+	<a
+		class="marca"
+		href={resolve('/')}
+		aria-label="ICSI Reportes"
+		title="ICSI Reportes"
+		on:click={() => navigate('dashboard')}
+	>
 		<span class="logo" aria-hidden="true">
 			<svg
 				viewBox="0 0 24 24"
@@ -134,21 +145,35 @@
 	<p class="titulo-seccion" aria-hidden="true">Menú</p>
 	<nav class="nav" aria-label="Navegación principal">
 		{#each destinos as destino (destino.vista)}
-			{@const activo =
-				activeView === destino.vista && (destino.vista !== 'captura' || !activeCliente)}
+			{@const activo = activeView === destino.vista}
 			<!-- La ruta de cada destino ya pasó por resolve() en DESTINOS. -->
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
 			<a
 				href={destino.ruta}
 				class="nav-item"
 				class:active={activo}
-				class:en-seccion={!activo && activeView === destino.vista}
 				aria-current={activo ? 'page' : undefined}
+				aria-label={destino.etiqueta}
 				title={destino.titulo}
 				on:click={() => navigate(destino.vista)}
 			>
-				{#if destino.vista === 'planeacion'}
-					<IconoAnimado ruta={base + '/iconos/calendar.json'}>
+				<span class="icono-destino">
+					{#if destino.vista === 'planeacion'}
+						<IconoAnimado ruta={base + '/iconos/calendar.json'}>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -- trazo constante del calendario -->
+								{@html destino.icono}
+							</svg>
+						</IconoAnimado>
+					{:else}
 						<svg
 							viewBox="0 0 24 24"
 							fill="none"
@@ -157,54 +182,16 @@
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							aria-hidden="true"
+							><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+							{@html destino.icono}</svg
 						>
-							<!-- eslint-disable-next-line svelte/no-at-html-tags -- trazo constante del calendario -->
-							{@html destino.icono}
-						</svg>
-					</IconoAnimado>
-				{:else}
-					<svg
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-						><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
-						{@html destino.icono}</svg
-					>
-				{/if}
-				<span>{destino.etiqueta}</span>
+					{/if}
+				</span>
+				<span class="etiqueta">{destino.etiqueta}</span>
 			</a>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		{/each}
 	</nav>
-
-	{#if sesion.permisos.capturar}
-		<div class="captura-clientes">
-			<p id="titulo-captura-clientes" class="titulo-clientes">Capturar en</p>
-			<ul aria-labelledby="titulo-captura-clientes">
-				{#each clientesCaptura as cliente (cliente.clave)}
-					{@const activo = activeView === 'captura' && activeCliente === cliente.clave}
-					<li>
-						<!-- resolve() se aplica a la ruta; el filtro por cliente va en la consulta. -->
-						<!-- eslint-disable svelte/no-navigation-without-resolve -->
-						<a
-							href={`${resolve('/captura')}?cliente=${cliente.clave}`}
-							class="cliente"
-							class:active={activo}
-							aria-current={activo ? 'page' : undefined}
-							title={`Capturar reporte: ${cliente.etiqueta}`}
-							on:click={() => navigate('captura', cliente.clave)}
-							><span class="punto-cliente" aria-hidden="true"></span>{cliente.etiqueta}</a
-						>
-						<!-- eslint-enable svelte/no-navigation-without-resolve -->
-					</li>
-				{/each}
-			</ul>
-		</div>
-	{/if}
 
 	<div class="sidebar-footer">
 		{#if sesion.usuario}
@@ -217,6 +204,8 @@
 				class:active={activeView === 'perfil'}
 				href={resolve('/perfil')}
 				aria-current={activeView === 'perfil' ? 'page' : undefined}
+				aria-label="Mi perfil"
+				title="Mi perfil"
 				on:click={() => navigate('perfil')}
 			>
 				<svg
@@ -228,11 +217,11 @@
 					stroke-linejoin="round"
 					aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg
 				>
-				<span>Mi perfil</span>
+				<span class="etiqueta">Mi perfil</span>
 			</a>
 			<!-- Formulario sin `enhance`: al salir, la página se carga completa y sin datos de la sesión. -->
 			<form method="POST" action={`${resolve('/acceso')}?/salir`}>
-				<button class="btn-icon" type="submit">
+				<button class="btn-icon" type="submit" aria-label="Cerrar sesión" title="Cerrar sesión">
 					<svg
 						viewBox="0 0 24 24"
 						fill="none"
@@ -243,12 +232,13 @@
 						aria-hidden="true"
 						><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg
 					>
-					<span>Cerrar sesión</span>
+					<span class="etiqueta">Cerrar sesión</span>
 				</button>
 			</form>
 		{:else if !sesion.activada}
 			<a
 				class="btn-icon aviso-abierta"
+				aria-label="Activar inicio de sesión"
 				href={resolve('/acceso/configurar')}
 				title="La aplicación está abierta: cualquiera con esta dirección puede ver y cambiar todo"
 			>
@@ -264,7 +254,7 @@
 						d="M7 11V7a5 5 0 0 1 9.9-1"
 					/></svg
 				>
-				<span>Activar inicio de sesión</span>
+				<span class="etiqueta">Activar inicio de sesión</span>
 			</a>
 		{/if}
 		<button
@@ -298,7 +288,7 @@
 					aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg
 				>
 			{/if}
-			<span class="texto-tema" aria-hidden="true"
+			<span class="texto-tema etiqueta" aria-hidden="true"
 				>{theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}</span
 			>
 		</button>
@@ -324,7 +314,7 @@
 		align-items: center;
 		gap: 12px;
 		margin: 0 0 16px;
-		padding: 4px 8px;
+		padding: 4px 0;
 		border-radius: var(--radio-control);
 		color: var(--tinta);
 	}
@@ -334,6 +324,7 @@
 		flex-shrink: 0;
 		width: 38px;
 		height: 38px;
+		margin-inline: 1px;
 		border-radius: 12px;
 		background: var(--relleno-accion);
 		color: var(--relleno-accion-texto);
@@ -362,8 +353,7 @@
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 	}
-	.titulo-seccion,
-	.titulo-clientes {
+	.titulo-seccion {
 		margin: 8px 0 4px;
 		padding: 0 12px;
 		color: var(--tinta-tenue);
@@ -377,14 +367,14 @@
 		flex-direction: column;
 		gap: 4px;
 	}
-	/* Destino: fila con icono y etiqueta; el activo en píldora del acento con su barra a la izquierda. */
+	/* El resaltado incluye la etiqueta cuando el panel la muestra. */
 	.nav-item {
 		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 14px;
+		gap: 8px;
 		min-height: 46px;
-		padding: 10px 14px;
+		padding: 3px 14px 3px 0;
 		border-radius: 10px;
 		color: var(--tinta-secundaria);
 		font-size: var(--texto-base);
@@ -394,17 +384,24 @@
 			background-color 0.12s var(--curva-salida),
 			color 0.12s var(--curva-salida);
 	}
-	.nav-item:hover {
+	.nav-item:not(.active):hover {
 		background: var(--superficie-hover);
 		color: var(--tinta);
 	}
 	.nav-item.active {
 		background: var(--relleno-accion);
-		color: var(--relleno-accion-texto);
 		box-shadow: var(--sombra-boton-primario);
+		color: var(--relleno-accion-texto);
+	}
+	.icono-destino {
+		display: grid;
+		place-items: center;
+		flex-shrink: 0;
+		width: 40px;
+		height: 40px;
+		border-radius: 10px;
 	}
 	.nav-item.active::before {
-		content: '';
 		position: absolute;
 		top: 6px;
 		bottom: 6px;
@@ -412,10 +409,6 @@
 		width: 4px;
 		border-radius: 0 4px 4px 0;
 		background: var(--relleno-accion);
-	}
-	.nav-item.en-seccion {
-		background: var(--accion-suave);
-		color: var(--accion);
 	}
 	.nav-item svg {
 		width: 20px;
@@ -429,68 +422,12 @@
 	.nav-item.active svg {
 		color: var(--relleno-accion-texto);
 	}
-	.nav-item.en-seccion svg {
-		color: var(--accion);
-	}
 	/* El icono animado del programa trae su propio color; aquí sigue al de la fila. */
 	.nav-item :global(.icono) {
 		color: var(--tinta-tenue);
 	}
 	.nav-item.active :global(.icono) {
 		color: var(--relleno-accion-texto);
-	}
-	.nav-item.en-seccion :global(.icono) {
-		color: var(--accion);
-	}
-	.captura-clientes {
-		display: grid;
-		gap: 2px;
-		margin-top: 8px;
-		padding-top: 12px;
-		border-top: 1px solid var(--linea);
-	}
-	.captura-clientes ul {
-		display: grid;
-		gap: 2px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-	.cliente {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		min-height: 36px;
-		padding: 6px 14px;
-		border-radius: 10px;
-		color: var(--tinta-secundaria);
-		font-size: var(--texto-sm);
-		font-weight: 600;
-		transition: background-color 0.12s var(--curva-salida);
-	}
-	.cliente:hover {
-		background: var(--superficie-hover);
-		color: var(--tinta);
-	}
-	.cliente.active {
-		background: var(--accion-suave);
-		color: var(--accion);
-		font-weight: 700;
-	}
-	/* Cada cliente con su punto de color, como las etiquetas de DashStack. */
-	.punto-cliente {
-		flex-shrink: 0;
-		width: 8px;
-		height: 8px;
-		margin: 0 6px;
-		border-radius: 50%;
-		background: var(--ficha-azul-icono);
-	}
-	li:nth-child(2) .punto-cliente {
-		background: var(--ficha-verde-icono);
-	}
-	li:nth-child(3) .punto-cliente {
-		background: var(--ficha-rosa-icono);
 	}
 	.sidebar-footer {
 		display: flex;
@@ -506,7 +443,7 @@
 		gap: 14px;
 		width: 100%;
 		min-height: 44px;
-		padding: 8px 14px;
+		padding: 8px 10px;
 		border: none;
 		border-radius: 10px;
 		background: transparent;
@@ -549,9 +486,41 @@
 		height: 20px;
 		flex-shrink: 0;
 	}
-	@media (pointer: coarse) {
-		.cliente {
-			min-height: 44px;
+	@media (width > 768px) {
+		.sidebar.colapsado {
+			/* La columna de la cuadrícula conserva el ancho compacto al desplegar el panel. */
+			justify-self: start;
+			inline-size: 100%;
+		}
+		.sidebar.colapsado:is(:hover, :has(:focus-visible)) {
+			inline-size: var(--sidebar-w);
+			box-shadow: var(--sombra-flotante);
+		}
+		.colapsado:not(:hover, :has(:focus-visible)) {
+			padding-inline: 13px 12px;
+		}
+		.colapsado:not(:hover, :has(:focus-visible)) :is(.marca-texto, .cuenta, .etiqueta) {
+			display: none;
+		}
+		.colapsado:not(:hover, :has(:focus-visible)) .titulo-seccion {
+			visibility: hidden;
+			white-space: nowrap;
+		}
+		.colapsado:not(:hover, :has(:focus-visible)) :is(.marca, .nav-item, .btn-icon) {
+			justify-content: center;
+			gap: 0;
+			padding-inline: 0;
+		}
+		.colapsado:not(:hover, :has(:focus-visible)) .nav-item.active {
+			background: transparent;
+			box-shadow: none;
+		}
+		.colapsado:not(:hover, :has(:focus-visible)) .nav-item.active .icono-destino {
+			background: var(--relleno-accion);
+			box-shadow: var(--sombra-boton-primario);
+		}
+		.colapsado:not(:hover, :has(:focus-visible)) .nav-item.active::before {
+			left: -13px;
 		}
 	}
 	@media (max-width: 768px) {
