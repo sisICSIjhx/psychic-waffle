@@ -1,4 +1,5 @@
-<!-- Vista mensual de la planeación: encabezado con leyenda, navegación entre los meses del periodo y
+<!-- Vista mensual de la planeación: encabezado con leyenda y una barra con la navegación entre los meses
+     del periodo (NavegacionPeriodo), el formato y las vistas del programa (ranura «herramientas»). Hay
      dos formatos. «Matriz» (por omisión) muestra las partidas por semanas (MatrizMensual); «Lista» las
      agrupa de lo más urgente a lo ejecutado con estado, documento, avance y acciones (capturar o
      continuar, ver reportes y ajustar). Estilos en planeacion/programa.css. -->
@@ -22,6 +23,7 @@
 	import type { AvancePrograma, CeldaPrograma } from '$lib/dominio/esquemas';
 	import { plural, textoMes, textoOracion } from '$lib/dominio/textos';
 	import MatrizMensual from './MatrizMensual.svelte';
+	import NavegacionPeriodo from './NavegacionPeriodo.svelte';
 
 	type Partida = AvancePrograma['partidas'][number];
 
@@ -101,6 +103,11 @@
 	$: indice = meses.indexOf(mes);
 	$: anterior = indice > 0 ? meses[indice - 1] : null;
 	$: siguiente = indice >= 0 && indice < meses.length - 1 ? meses[indice + 1] : null;
+	/** Mes vecino abreviado («oct»); con el año solo si cambia respecto del actual («ene 2027»). */
+	const mesVecino = (otro: string, actual: string) =>
+		otro.slice(0, 4) === actual.slice(0, 4)
+			? textoMes(otro, { corto: true }).slice(0, 3)
+			: textoMes(otro, { corto: true });
 
 	/** Reprogramación que llega a este mes y aún falta por reportar, para «Capturar». */
 	const reprogramacionPendiente = (c: CeldaPrograma) =>
@@ -146,42 +153,52 @@
 </section>
 
 <div class="barra-mensual">
-	<nav class="navegacion-meses" aria-label="Meses del programa">
-		<!-- enlaceMes aplica resolve() a la ruta; el mes va en la consulta. -->
-		<!-- eslint-disable svelte/no-navigation-without-resolve -->
-		{#if anterior}
-			<a class="boton-programa" href={enlaceMes(anterior)}
-				>‹ <span class="sr-only">Mes anterior:</span> {textoMes(anterior, { inicial: true })}</a
-			>
-		{/if}
-		<p class="mes-semanal">{textoMes(mes, { inicial: true })}</p>
-		{#if siguiente}
-			<a class="boton-programa" href={enlaceMes(siguiente)}
-				><span class="sr-only">Mes siguiente:</span> {textoMes(siguiente, { inicial: true })} ›</a
-			>
-		{/if}
-	</nav>
-	<nav class="selector-vista" aria-label="Formato de la vista mensual">
-		{#each FORMATOS as f (f.valor)}
-			<a
-				class="opcion-vista"
-				href={enlaceFormato(f.valor)}
-				aria-current={formato === f.valor ? 'page' : undefined}
-				><svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					aria-hidden="true"
-					><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
-					{@html f.icono}</svg
-				>{f.texto}</a
-			>
-		{/each}
-		<!-- eslint-enable svelte/no-navigation-without-resolve -->
-	</nav>
+	<NavegacionPeriodo
+		etiqueta="Meses del programa"
+		esHoy={mes.slice(0, 7) === hoy.slice(0, 7)}
+		titulo={textoMes(mes, { inicial: true })}
+		anterior={anterior
+			? {
+					href: enlaceMes(anterior),
+					texto: mesVecino(anterior, mes),
+					nombre: `Mes anterior: ${textoMes(anterior, { inicial: true })}`
+				}
+			: null}
+		siguiente={siguiente
+			? {
+					href: enlaceMes(siguiente),
+					texto: mesVecino(siguiente, mes),
+					nombre: `Mes siguiente: ${textoMes(siguiente, { inicial: true })}`
+				}
+			: null}
+	/>
+	<div class="acciones-barra">
+		<nav class="selector-vista" aria-label="Formato de la vista mensual">
+			<!-- enlaceFormato aplica resolve() a la ruta; el formato va en la consulta. -->
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
+			{#each FORMATOS as f (f.valor)}
+				<a
+					class="opcion-vista"
+					href={enlaceFormato(f.valor)}
+					aria-current={formato === f.valor ? 'page' : undefined}
+					><svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+						{@html f.icono}</svg
+					>{f.texto}</a
+				>
+			{/each}
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+		</nav>
+		<!-- Vistas anual, mensual y semanal (las pone PlaneacionView). -->
+		<slot name="herramientas" />
+	</div>
 </div>
 
 {#if formato === 'matriz'}

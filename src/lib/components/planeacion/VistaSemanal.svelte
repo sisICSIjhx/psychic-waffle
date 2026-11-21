@@ -1,7 +1,8 @@
 <!-- Vista semanal de la planeación: matriz de la semana elegida (lunes a domingo recortada al mes, como
      las ocurrencias de la captura) con un día por columna y hoy resaltado. Cada celda es una tarjeta
      con el estado del día, el documento y «Visualizar» (diasDePartida). Navega semana a semana dentro
-     del periodo. Usa los estilos de la matriz (planeacion/programa.css) dentro de .programa-anual. -->
+     del periodo (NavegacionPeriodo), con las vistas del programa en la misma barra (ranura
+     «herramientas»). Usa los estilos de la matriz (planeacion/programa.css) dentro de .programa-anual. -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { ETIQUETA_PERIODICIDAD, ocurrenciasDelMes, rangoDelPeriodo } from '$lib/dominio/captura';
@@ -15,6 +16,9 @@
 	} from '$lib/dominio/cumplimiento';
 	import type { AvancePrograma } from '$lib/dominio/esquemas';
 	import { plural, textoMes, textoOracion, textoRango } from '$lib/dominio/textos';
+	import NavegacionPeriodo from './NavegacionPeriodo.svelte';
+	import BotonDescripciones from './BotonDescripciones.svelte';
+	import NombrePartida from './NombrePartida.svelte';
 
 	export let partidas: AvancePrograma['partidas'] = [];
 	export let mes: string;
@@ -94,6 +98,16 @@
 
 	/** «19–25 de octubre de 2026». */
 	$: rangoSemana = textoRango(elegida).replace(/^del /, '').replace(' al ', '–');
+	/** Días de una semana vecina (puede caer en el mes anterior o el siguiente). */
+	const rangoVecino = (v: { mes: string; semana: number }) =>
+		rangoDelPeriodo(v.mes, { tipo: 'semana', numero: v.semana })!;
+	/** «16–22 nov» o, con el año, «16–22 nov 2026»; un solo día: «1 nov». */
+	const rangoCorto = ({ desde, hasta }: { desde: string; hasta: string }, conAnio = false) => {
+		const mesCorto = textoMes(hasta, { corto: true });
+		const dias =
+			desde === hasta ? `${numeroDia(desde)}` : `${numeroDia(desde)}–${numeroDia(hasta)}`;
+		return `${dias} ${conAnio ? mesCorto : mesCorto.slice(0, 3)}`;
+	};
 
 	/** «Visualizar»: el único reporte del día o, si son varios, los emitidos del mes. */
 	function enlaceVisualizar(partidaId: string, c: CeldaSemana): string | null {
@@ -139,22 +153,32 @@
 	</ul>
 </section>
 
-<nav class="navegacion-meses" aria-label="Semanas del programa">
-	<!-- enlaceSemana aplica resolve() a la ruta; mes y semana van en la consulta. -->
-	<!-- eslint-disable svelte/no-navigation-without-resolve -->
-	{#if anterior}
-		<a class="boton-programa" href={enlaceSemana(anterior.mes, anterior.semana)}
-			>‹ Semana anterior</a
-		>
-	{/if}
-	<p class="mes-semanal">Semana {semanaDelAnio(elegida.desde)} · {rangoSemana}</p>
-	{#if siguiente}
-		<a class="boton-programa" href={enlaceSemana(siguiente.mes, siguiente.semana)}
-			>Semana siguiente ›</a
-		>
-	{/if}
-	<!-- eslint-enable svelte/no-navigation-without-resolve -->
-</nav>
+<div class="barra-mensual">
+	<NavegacionPeriodo
+		etiqueta="Semanas del programa"
+		esHoy={elegida.desde <= hoy && hoy <= elegida.hasta}
+		titulo={`Semana ${semanaDelAnio(elegida.desde)}`}
+		detalle={rangoCorto(elegida, true)}
+		anterior={anterior
+			? {
+					href: enlaceSemana(anterior.mes, anterior.semana),
+					texto: rangoCorto(rangoVecino(anterior)),
+					nombre: `Semana anterior: ${textoRango(rangoVecino(anterior)).replace(/^(del|el) /, '')}`
+				}
+			: null}
+		siguiente={siguiente
+			? {
+					href: enlaceSemana(siguiente.mes, siguiente.semana),
+					texto: rangoCorto(rangoVecino(siguiente)),
+					nombre: `Semana siguiente: ${textoRango(rangoVecino(siguiente)).replace(/^(del|el) /, '')}`
+				}
+			: null}
+	/>
+	<div class="acciones-barra">
+		<!-- Vistas anual, mensual y semanal (las pone PlaneacionView). -->
+		<slot name="herramientas" />
+	</div>
+</div>
 
 <section class="matriz-programa" aria-label="Matriz de la semana por días">
 	{#if filas.length === 0}
@@ -165,7 +189,9 @@
 				<thead>
 					<tr class="fila-anios">
 						<th scope="col" class="columna-numero">#</th>
-						<th scope="col" class="columna-partida">Partida</th>
+						<th scope="col" class="columna-partida"
+							><span class="cabecera-partida">Partida <BotonDescripciones /></span></th
+						>
 						<th scope="col" class="columna-periodicidad">Periodicidad</th>
 						{#each dias as dia (dia)}
 							<th scope="col" class="semana" class:mes-actual={dia === hoy}
@@ -183,7 +209,12 @@
 					{#each filas as f (f.partida.id)}
 						<tr>
 							<td class="columna-numero">{f.partida.numero}</td>
-							<th scope="row" class="columna-partida">{textoOracion(f.partida.actividad)}</th>
+							<th scope="row" class="columna-partida"
+								><NombrePartida texto={textoOracion(f.partida.actividad)} /><span
+									class="insignia-periodicidad periodicidad-movil"
+									>{ETIQUETA_PERIODICIDAD[f.partida.periodicidad]}</span
+								></th
+							>
 							<td class="columna-periodicidad"
 								><span class="insignia-periodicidad"
 									>{ETIQUETA_PERIODICIDAD[f.partida.periodicidad]}</span

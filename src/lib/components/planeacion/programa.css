@@ -102,6 +102,23 @@ html[data-theme='dark'] .programa-anual {
 	--c-tarjeta-borde: #d1fae5;
 	--c-barra: #10b981;
 }
+/* Ejecutado sin reporte que lo cubra (cambio marcar-ejecutado): verde lima y borde discontinuo. */
+.programa-anual .e-ejecutado-sin-reporte {
+	--c-fondo: #f7fee7;
+	--c-borde: #bef264;
+	--c-division: #ecfccb;
+	--c-texto: #3f6212;
+	--c-punto: #84cc16;
+	--c-icono-fondo: #f7fee7;
+	--c-icono-borde: #d9f99d;
+	--c-insignia-fondo: #f7fee7;
+	--c-insignia-borde: #d9f99d;
+	--c-tarjeta-borde: #ecfccb;
+	--c-barra: #84cc16;
+}
+.programa-anual .tarjeta-celda.e-ejecutado-sin-reporte {
+	border-style: dashed;
+}
 .programa-anual .e-pendiente {
 	--c-fondo: #f0f9ff;
 	--c-borde: #bae6fd;
@@ -179,6 +196,18 @@ html[data-theme='dark'] .programa-anual .e-ejecutado {
 	--c-insignia-borde: rgba(6, 95, 70, 0.5);
 	--c-tarjeta-borde: rgba(2, 44, 34, 0.6);
 }
+html[data-theme='dark'] .programa-anual .e-ejecutado-sin-reporte {
+	--c-fondo: rgba(26, 46, 5, 0.4);
+	--c-borde: rgba(101, 163, 13, 0.6);
+	--c-division: rgba(54, 83, 20, 0.45);
+	--c-texto: #a3e635;
+	--c-punto: #a3e635;
+	--c-icono-fondo: rgba(26, 46, 5, 0.5);
+	--c-icono-borde: rgba(132, 204, 22, 0.3);
+	--c-insignia-fondo: rgba(26, 46, 5, 0.6);
+	--c-insignia-borde: rgba(77, 124, 15, 0.5);
+	--c-tarjeta-borde: rgba(26, 46, 5, 0.6);
+}
 html[data-theme='dark'] .programa-anual .e-pendiente {
 	--c-fondo: rgba(8, 47, 73, 0.4);
 	--c-borde: rgba(7, 89, 133, 0.6);
@@ -254,15 +283,20 @@ html[data-theme='dark'] .programa-anual .e-neutro {
 	background: var(--c-punto, var(--pa-gris-punto));
 }
 
-/* Encabezado: vistas en botones segmentados y, debajo, «Exportar». */
-.programa-anual .acciones-programa {
+/* «Exportar» (botón de icono, como el filtro) y vistas en botones segmentados, junto al buscador. */
+.programa-anual .herramientas-programa {
 	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: 10px;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	justify-content: flex-end;
+	margin-left: auto;
 }
+/* Las tres vistas miden lo mismo: columnas iguales al ancho de la más larga. */
 .programa-anual .selector-vista {
-	display: inline-flex;
+	display: inline-grid;
+	grid-auto-columns: 1fr;
+	grid-auto-flow: column;
 	gap: 2px;
 	padding: 4px;
 	border: 1px solid var(--pa-tarjeta-borde);
@@ -272,6 +306,7 @@ html[data-theme='dark'] .programa-anual .e-neutro {
 .programa-anual .opcion-vista {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: 6px;
 	min-height: 30px;
 	padding: 6px 14px;
@@ -677,16 +712,19 @@ html[data-theme='dark'] .programa-anual .vencidos {
 	height: 10px;
 }
 
-/* Búsqueda y filtro por estado. */
+/* Búsqueda y filtro por estado a la izquierda; vistas, exportación y diseño a la derecha. En las
+   vistas mensual y semanal la barra solo lleva las herramientas. */
 .programa-anual .barra-busqueda {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 12px;
 	align-items: center;
 	margin-bottom: 24px;
 }
+/* La búsqueda ocupa todo el espacio que dejan el filtro y las herramientas. */
 .programa-anual .campo-busqueda {
 	position: relative;
-	flex: 1;
+	flex: 1 1 260px;
 	min-width: 0;
 }
 .programa-anual .campo-busqueda .icono-campo {
@@ -939,15 +977,21 @@ html[data-theme='dark'] .programa-anual .vencidos {
 	min-width: 0;
 	overflow-wrap: break-word;
 }
-/* La cuenta de las partidas con varias ejecuciones pasa a otra línea si no cabe junto al estado. */
+/* Estado y cuenta («Programado 0/31») en un solo renglón para que todas las filas midan lo mismo;
+   si no cupiera, el estado se corta con «…» (el nombre completo de la celda lo dice entero). */
 .programa-anual .linea-celda.estado {
-	flex-wrap: wrap;
-	row-gap: 2px;
+	flex-wrap: nowrap;
 	color: var(--c-texto);
 	font-weight: 700;
 }
 .programa-anual .linea-celda.estado .texto-linea {
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+/* Mismo alto para las filas con y sin tarjetas (el de una tarjeta de tres líneas). */
+.programa-anual .matriz tbody tr {
+	height: 80px;
 }
 .programa-anual .cuenta {
 	margin-left: auto;
@@ -1225,32 +1269,210 @@ html[data-theme='dark'] .programa-anual .vencidos {
 	font-size: var(--texto-xs);
 }
 
+/* Nombre de la partida (NombrePartida): tres líneas con «…» para que todas las filas midan lo
+   mismo, sin cambiar el tamaño del texto; un clic lo despliega y el botón de la cabecera
+   (BotonDescripciones) los muestra todos completos. */
+.programa-anual .nombre-partida {
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	border-radius: 4px;
+	background: none;
+	color: inherit;
+	font: inherit;
+	line-height: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.programa-anual .nombre-partida:hover .texto-partida {
+	color: var(--pa-texto);
+}
+.programa-anual .nombre-partida:focus-visible {
+	outline: 2px solid var(--foco);
+	outline-offset: 2px;
+}
+.programa-anual .nombre-partida:not(.completa) .texto-partida {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+}
+.programa-anual .cabecera-partida {
+	display: inline-flex;
+	gap: 6px;
+	align-items: center;
+}
+.programa-anual .boton-descripciones {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	background: none;
+	color: inherit;
+	cursor: pointer;
+}
+.programa-anual .boton-descripciones svg {
+	width: 16px;
+	height: 16px;
+}
+.programa-anual .boton-descripciones:hover,
+.programa-anual .boton-descripciones[aria-pressed='true'] {
+	border-color: currentColor;
+	background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.programa-anual .boton-descripciones:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 1px;
+}
+
+/* La periodicidad dentro de la partida solo se muestra en celular (ver abajo). */
+.programa-anual .periodicidad-movil {
+	display: none;
+}
 @media (max-width: 760px) {
-	.programa-anual .acciones-programa {
-		align-items: flex-start;
+	/* Búsqueda a lo ancho con el filtro (40 px y 12 px de separación, con holgura) y las
+	   herramientas en la línea siguiente. */
+	.programa-anual .campo-busqueda {
+		flex-basis: calc(100% - 60px);
+	}
+	/* «Exportar» y las vistas en una sola fila: las vistas reparten el resto en partes iguales. */
+	.programa-anual .herramientas-programa {
+		flex: 1 1 100%;
+		flex-wrap: nowrap;
+		justify-content: flex-start;
+		margin-left: 0;
+	}
+	.programa-anual .herramientas-programa .selector-vista {
+		flex: 1;
+		grid-auto-columns: minmax(0, 1fr);
+		min-width: 0;
+	}
+	.programa-anual .herramientas-programa .opcion-vista {
+		gap: 4px;
+		padding-inline: 4px;
+	}
+	/* «Exportar» queda a la izquierda: su menú se abre hacia la derecha. */
+	.programa-anual .herramientas-programa .opciones-menu {
+		right: auto;
+		left: 0;
+	}
+	/* Matriz: solo número y partida quedan fijos y más angostos; la periodicidad pasa debajo del
+	   nombre y su columna se oculta (antes su cabecera seguía fija con un desfase y tapaba los
+	   meses). El nombre largo se corta a cuatro líneas; el completo va en el título. */
+	.programa-anual .columna-numero {
+		width: 32px;
+		min-width: 32px;
 	}
 	.programa-anual .columna-partida {
-		width: 140px;
-		min-width: 140px;
+		left: 32px;
+		width: 128px;
+		min-width: 128px;
+		box-shadow: inset -1px 0 0 var(--pa-linea);
 	}
-	.programa-anual .columna-periodicidad {
-		position: static;
+	.programa-anual .matriz .columna-periodicidad {
+		display: none;
+	}
+	.programa-anual .matriz thead .columna-partida,
+	.programa-anual tbody .columna-partida {
+		padding: 10px;
+	}
+	/* Mismo alto en todas: nombre de tres líneas más la periodicidad debajo. */
+	.programa-anual .matriz tbody tr {
+		height: 99px;
+	}
+	.programa-anual .periodicidad-movil {
+		display: inline-block;
+		margin-top: 6px;
 	}
 }
 
 /* Matriz de la vista mensual: una columna por semana (número del año y días del mes). */
-.programa-anual .navegacion-meses {
+/* Navegación entre meses o semanas (NavegacionPeriodo): un solo control con el periodo actual al
+   centro y los vecinos en letra menor y tenue, con flechas de chevrón. */
+.programa-anual .navegacion-periodo {
+	display: inline-flex;
+	align-items: stretch;
+	gap: 2px;
+	max-width: 100%;
+	padding: 4px;
+	border: 1px solid var(--pa-tarjeta-borde);
+	border-radius: 12px;
+	background: var(--pa-segmento);
+	box-shadow: var(--pa-sombra);
+}
+.programa-anual .paso-periodo {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	min-width: 64px;
+	min-height: 34px;
+	padding: 4px 8px;
+	border-radius: 8px;
+	color: var(--pa-texto-4);
+	font-size: var(--texto-xs);
+	text-decoration: none;
+	white-space: nowrap;
+	transition:
+		background-color 0.12s var(--curva-salida),
+		color 0.12s var(--curva-salida);
+}
+.programa-anual .paso-periodo:last-child {
+	justify-content: flex-end;
+}
+.programa-anual .paso-periodo svg {
+	flex-shrink: 0;
+	width: 16px;
+	height: 16px;
+}
+.programa-anual a.paso-periodo:hover {
+	background: var(--pa-hover);
+	color: var(--pa-texto);
+}
+.programa-anual .periodo-actual {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-width: 140px;
+	margin: 0;
+	padding: 3px 14px;
+	border-radius: 8px;
+	background: var(--pa-tarjeta);
+	text-align: center;
+}
+.programa-anual .titulo-periodo {
+	color: var(--pa-texto);
+	font-size: var(--texto-base);
+	font-weight: 700;
+	line-height: 1.25;
+}
+.programa-anual .detalle-periodo {
+	color: var(--pa-texto-4);
+	font-size: var(--texto-2xs);
+	line-height: 1.25;
+}
+/* El mes o la semana de hoy (no el elegido) en el azul de la vista activa. */
+.programa-anual .periodo-actual.es-hoy {
+	background: var(--pa-segmento-activo);
+	box-shadow: 0 6px 14px -6px rgba(53, 99, 233, 0.6);
+}
+.programa-anual .periodo-actual.es-hoy .titulo-periodo,
+.programa-anual .periodo-actual.es-hoy .detalle-periodo {
+	color: #ffffff;
+}
+/* Formato (Matriz / Lista) y vistas del programa, a la derecha de la navegación. */
+.programa-anual .acciones-barra {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 12px;
+	gap: 8px;
 	align-items: center;
-	margin-bottom: 16px;
-}
-.programa-anual .mes-semanal {
-	margin: 0;
-	color: var(--pa-texto);
-	font-size: var(--texto-md);
-	font-weight: 700;
+	justify-content: flex-end;
 }
 .programa-anual .matriz.semanal {
 	width: 100%;
@@ -1290,9 +1512,6 @@ html[data-theme='dark'] .programa-anual .vencidos {
 	align-items: center;
 	justify-content: space-between;
 	margin-bottom: 16px;
-}
-.programa-anual .barra-mensual .navegacion-meses {
-	margin-bottom: 0;
 }
 .programa-anual .lista-mensual {
 	display: grid;

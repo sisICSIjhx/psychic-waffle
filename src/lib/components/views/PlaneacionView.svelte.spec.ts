@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-svelte';
 import type { Ajuste, AvancePrograma, CeldaPrograma } from '$lib/dominio/esquemas';
 import { pendientesVencidos } from '$lib/dominio/planeacion';
 import DialogoAjuste from '$lib/components/planeacion/DialogoAjuste.svelte';
+import DialogoEjecutado from '$lib/components/planeacion/DialogoEjecutado.svelte';
 import PlaneacionView from './PlaneacionView.svelte';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -281,6 +282,29 @@ describe('PlaneacionView: matriz anual', () => {
 	});
 });
 
+describe('PlaneacionView: descripciones de las partidas', () => {
+	it('recorta el nombre, lo despliega con un clic y el botón de la cabecera los muestra todos', async () => {
+		localStorage.removeItem('icsi-descripciones-completas');
+		const { container } = montar({ partidas: [partidas[0], partida(8, [celda('2026-05-01')])] });
+		const nombres = () =>
+			[...container.querySelectorAll('tbody .nombre-partida')].map((b) =>
+				b.getAttribute('aria-expanded')
+			);
+		expect(nombres()).toEqual(['false', 'false']);
+		await page.getByRole('button', { name: 'Toma de potenciales tubo-suelo' }).click();
+		expect(nombres()).toEqual(['true', 'false']);
+		const todas = page.getByRole('button', { name: 'Mostrar descripciones completas' });
+		await expect.element(todas).toHaveAttribute('aria-pressed', 'false');
+		await todas.click();
+		await expect.element(todas).toHaveAttribute('aria-pressed', 'true');
+		expect(nombres()).toEqual(['true', 'true']);
+		expect(localStorage.getItem('icsi-descripciones-completas')).toBe('si');
+		await todas.click();
+		expect(nombres()).toEqual(['true', 'false']);
+		expect(localStorage.getItem('icsi-descripciones-completas')).toBeNull();
+	});
+});
+
 describe('PlaneacionView: búsqueda y filtro de la matriz', () => {
 	it('busca por número o actividad sin acentos y filtra por estado', async () => {
 		const { container } = montar({
@@ -315,6 +339,30 @@ describe('PlaneacionView: búsqueda y filtro de la matriz', () => {
 				page.getByRole('link', { name: 'Visualizar el reporte de la partida 8 de julio 2026' })
 			)
 			.toHaveAttribute('href', `/reportes/${ID(61)}`);
+	});
+});
+
+describe('DialogoEjecutado', () => {
+	it('exige la fecha de ejecución dentro del mes y no posterior a hoy', async () => {
+		const target = document.body.appendChild(document.createElement('div'));
+		const { rerender } = render(DialogoEjecutado, {
+			target,
+			props: {
+				programaId: ID(1),
+				partida: { id: ID(7), numero: '7', actividad: 'Partida 7' },
+				celda: celda('2026-07-01'),
+				hoy: HOY
+			}
+		});
+		await rerender({ abierto: true });
+		const fecha = page.getByLabelText('Fecha de ejecución');
+		const confirmar = page.getByRole('button', { name: 'Marcar ejecutado' });
+		await expect.element(fecha).toBeRequired();
+		await expect.element(fecha).toHaveAttribute('min', '2026-07-01');
+		await expect.element(fecha).toHaveAttribute('max', HOY);
+		await expect.element(confirmar).toBeDisabled();
+		await fecha.fill('2026-07-10');
+		await expect.element(confirmar).toBeEnabled();
 	});
 });
 
@@ -363,23 +411,13 @@ describe('PlaneacionView: vistas mensual y semanal', () => {
 		await expect.element(page.getByRole('table')).toBeInTheDocument();
 	});
 
-	it('«Diseño original» alterna el diseño del programa y recuerda la elección', async () => {
-		localStorage.removeItem('icsi-diseno-programa');
+	it('«Exportar» es un botón de icono con nombre accesible junto a las vistas', async () => {
 		montar();
-		const raiz = document.documentElement;
-		const boton = page.getByRole('button', { name: 'Diseño original' });
-		await expect.element(boton).toHaveAttribute('aria-pressed', 'false');
-		expect(raiz.getAttribute('data-diseno-programa')).toBe('nuevo');
-
-		await boton.click();
-		await expect.element(boton).toHaveAttribute('aria-pressed', 'true');
-		expect(raiz.getAttribute('data-diseno-programa')).toBe('original');
-		expect(localStorage.getItem('icsi-diseno-programa')).toBe('original');
-
-		await boton.click();
-		await expect.element(boton).toHaveAttribute('aria-pressed', 'false');
-		expect(raiz.getAttribute('data-diseno-programa')).toBe('nuevo');
-		expect(localStorage.getItem('icsi-diseno-programa')).toBeNull();
+		await expect.element(page.getByTitle('Exportar')).toHaveAccessibleName('Exportar');
+		await expect.element(page.getByText('Matriz en CSV (Excel)')).not.toBeVisible();
+		await expect
+			.element(page.getByRole('button', { name: 'Diseño original' }))
+			.not.toBeInTheDocument();
 	});
 
 	it('la lista mensual agrupa por urgencia, ofrece «Continuar borrador» y no pasa del periodo', async () => {
@@ -447,12 +485,22 @@ describe('PlaneacionView: vistas mensual y semanal', () => {
 				t.textContent?.replace(/\s+/g, ' ').trim()
 			)
 		).toEqual(['lun 13', 'mar 14', 'mié 15 (hoy)', 'jue 16', 'vie 17', 'sáb 18', 'dom 19']);
+		// Vecinas con sus días (el año solo en la semana actual) y el nombre completo accesible.
 		await expect
-			.element(page.getByRole('link', { name: 'Semana anterior' }))
+			.element(page.getByRole('link', { name: 'Semana anterior: 6 al 12 de julio de 2026' }))
 			.toHaveAttribute('href', expect.stringMatching(/mes=2026-07-01&semana=2$/));
 		await expect
-			.element(page.getByRole('link', { name: 'Semana siguiente' }))
+			.element(page.getByRole('link', { name: 'Semana siguiente: 20 al 26 de julio de 2026' }))
 			.toHaveAttribute('href', expect.stringMatching(/mes=2026-07-01&semana=4$/));
+		expect(
+			container.querySelector('.navegacion-periodo')?.textContent?.replace(/\s+/g, ' ').trim()
+		).toBe('6–12 jul Semana 29 13–19 jul 2026 20–26 jul');
+		// La semana mostrada contiene hoy: va en azul y se anuncia como la fecha actual.
+		expect(container.querySelector('.periodo-actual')?.classList.contains('es-hoy')).toBe(true);
+		expect(container.querySelector('.periodo-actual')?.getAttribute('aria-current')).toBe('date');
+		await expect
+			.element(page.getByRole('link', { name: 'Mensual' }))
+			.toHaveAttribute('href', expect.stringContaining('vista=mensual'));
 		const estados = (fila: number) =>
 			[...container.querySelectorAll('.por-dias tbody tr')[fila].querySelectorAll('.celda')].map(
 				(c) => c.querySelector('.linea-celda.estado')?.textContent ?? '—'
@@ -509,6 +557,15 @@ describe('PlaneacionView: vistas mensual y semanal', () => {
 		await expect
 			.element(page.getByRole('link', { name: /Mes siguiente: Junio 2026/ }))
 			.toHaveAttribute('href', expect.stringMatching(/vista=mensual&mes=2026-06-01$/));
+		// El año aparece una sola vez: el vecino va abreviado y sin año.
+		expect(
+			container.querySelector('.navegacion-periodo')?.textContent?.replace(/\s+/g, ' ').trim()
+		).toBe('Mayo 2026 jun');
+		// Mayo no es el mes de hoy (julio): sin el azul ni aria-current.
+		expect(container.querySelector('.periodo-actual')?.classList.contains('es-hoy')).toBe(false);
+		expect(container.querySelector('.periodo-actual')?.hasAttribute('aria-current')).toBe(false);
+		// Las vistas del programa van en la misma barra que «Matriz» y «Lista».
+		expect(container.querySelector('.barra-mensual .herramientas-programa')).not.toBeNull();
 		await expect
 			.element(page.getByRole('link', { name: 'Lista' }))
 			.toHaveAttribute('href', expect.stringMatching(/mes=2026-05-01&formato=lista$/));

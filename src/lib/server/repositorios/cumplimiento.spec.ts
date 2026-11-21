@@ -329,3 +329,101 @@ describe('conteo de ejecuciones y lecturas', () => {
 		expect(ejecuciones[0].diasEjecucion).toEqual([{ desde: '2026-06-01', hasta: '2026-06-01' }]);
 	});
 });
+
+describe('marcas de ejecución sin reporte (0026 y 0027)', () => {
+	const marcar = (b: Awaited<ReturnType<typeof base>>, partidaId: string, cambios = {}) =>
+		repos.programa.marcarEjecutado({
+			programaId: b.programa.id,
+			partidaId,
+			mes: '2026-06-01',
+			cantidad: 1,
+			fecha: '2026-06-10',
+			...cambios
+		});
+
+	it('marca lo que falta, valida cantidad y fecha y se desmarca', async () => {
+		const b = await base();
+		await expect(marcar(b, b.mensual.id, { cantidad: 2 })).rejects.toMatchObject({
+			message: 'Solo falta 1 por ejecutar en el mes'
+		});
+		// La fecha de ejecución es obligatoria (0027), en la función y en la tabla.
+		await expect(marcar(b, b.mensual.id, { fecha: '' })).rejects.toMatchObject({
+			message: 'Indique la fecha de ejecución'
+		});
+		await expect(
+			cliente.bd.query(
+				`insert into public.programa_realizados_manuales (programa_id, partida_id, mes, cantidad, nota, origen)
+				values ($1, $2, '2026-06-01', 1, 'Sin fecha', 'marca')`,
+				[b.programa.id, b.mensual.id]
+			)
+		).rejects.toThrow(/marca_con_fecha/);
+		await expect(marcar(b, b.mensual.id, { fecha: '2026-07-02' })).rejects.toMatchObject({
+			message: 'La fecha de ejecución debe caer en el mes marcado'
+		});
+		const marca = await marcar(b, b.mensual.id, { fecha: '2026-06-12' });
+		expect(marca).toMatchObject({ cantidad: 1, fechaEjecucion: '2026-06-12' });
+		expect(marca.nota).toBe('Marcado como ejecutado en el programa');
+		expect(await celda(b, b.mensual.id, '2026-06-01')).toMatchObject({
+			realizado: 1,
+			realizadoSinReporte: 1,
+			ejecucionesReportes: 0
+		});
+		await expect(marcar(b, b.mensual.id)).rejects.toMatchObject({
+			message: 'No falta nada por ejecutar en el mes'
+		});
+		expect(await repos.programa.listarMarcasEjecucion(b.programa.id)).toEqual([
+			{ partidaId: b.mensual.id, mes: '2026-06-01', marcas: 1 }
+		]);
+
+		await repos.programa.desmarcarEjecutado({
+			programaId: b.programa.id,
+			partidaId: b.mensual.id,
+			mes: '2026-06-01'
+		});
+		expect((await celda(b, b.mensual.id, '2026-06-01')).realizado).toBe(0);
+		await expect(
+			repos.programa.desmarcarEjecutado({
+				programaId: b.programa.id,
+				partidaId: b.mensual.id,
+				mes: '2026-06-01'
+			})
+		).rejects.toMatchObject({ tipo: 'no_encontrado' });
+	});
+
+	it('el reporte emitido absorbe la marca: la diaria no cuenta dos veces', async () => {
+		const b = await base();
+		await marcar(b, b.diaria.id, { cantidad: 30 });
+		expect((await celda(b, b.diaria.id, '2026-06-01')).realizado).toBe(30);
+		const reporte = await servicio.crearReporte({
+			partidaId: b.diaria.id,
+			periodoMes: '2026-06-01',
+			ocurrencia: null,
+			equipoIds: []
+		});
+		await emitir(reporte, [{ desde: '2026-06-01', hasta: '2026-06-30' }]);
+		const junio = await celda(b, b.diaria.id, '2026-06-01');
+		expect(junio).toMatchObject({ realizado: 30, ejecucionesReportes: 30, realizadoSinReporte: 0 });
+		const avance = await repos.programa.obtenerAvance(b.programa.id);
+		expect(avance.partidas.find((p) => p.id === b.diaria.id)!.totalRealizado).toBe(30);
+	});
+
+	it('lo marcado después de un reporte parcial se suma a lo documentado', async () => {
+		const b = await base();
+		const reporte = await servicio.crearReporte({
+			partidaId: b.diaria.id,
+			periodoMes: '2026-06-01',
+			ocurrencia: null,
+			equipoIds: []
+		});
+		await emitir(reporte, [{ desde: '2026-06-01', hasta: '2026-06-20' }]);
+		await marcar(b, b.diaria.id, { cantidad: 10 });
+		expect(await celda(b, b.diaria.id, '2026-06-01')).toMatchObject({
+			realizado: 30,
+			ejecucionesReportes: 20,
+			realizadoSinReporte: 10
+		});
+		await expect(marcar(b, b.diaria.id)).rejects.toMatchObject({
+			message: 'No falta nada por ejecutar en el mes'
+		});
+	});
+});

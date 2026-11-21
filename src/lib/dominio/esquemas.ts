@@ -394,8 +394,13 @@ export const esquemaCeldaPrograma = z.object({
 	reportes: z.array(id),
 	/** Ejecuciones con reporte emitido (varios reportes por TAG del mismo periodo cuentan una). */
 	ejecucionesReportes: z.number(),
-	/** Marcas R del Excel y realizados capturados a mano. */
+	/**
+	 * Marcas R del Excel, realizados capturados a mano y lo marcado como ejecutado que los reportes
+	 * emitidos aún no cubren.
+	 */
 	realizadoSinReporte: z.number(),
+	/** Marcas de ejecución del mes (se pueden desmarcar); la planeación las agrega al cargar. */
+	marcas: z.number().int().optional(),
 	/** Reprogramado desde este mes a otro (ajustes vigentes). */
 	salida: z.number().default(0),
 	/** Reprogramado hacia este mes. */

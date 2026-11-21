@@ -13,6 +13,8 @@
 	} from '$lib/dominio/cumplimiento';
 	import type { AvancePrograma } from '$lib/dominio/esquemas';
 	import { textoMes, textoOracion, textoRango } from '$lib/dominio/textos';
+	import BotonDescripciones from './BotonDescripciones.svelte';
+	import NombrePartida from './NombrePartida.svelte';
 
 	/** Partidas con trabajo en el mes, en el orden del programa. */
 	export let partidas: AvancePrograma['partidas'] = [];
@@ -81,7 +83,9 @@
 				<thead>
 					<tr class="fila-anios">
 						<th scope="col" rowspan="2" class="columna-numero">#</th>
-						<th scope="col" rowspan="2" class="columna-partida">Partida</th>
+						<th scope="col" rowspan="2" class="columna-partida"
+							><span class="cabecera-partida">Partida <BotonDescripciones /></span></th
+						>
 						<th scope="col" rowspan="2" class="columna-periodicidad">Periodicidad</th>
 						{#each semanas as s (s.numero)}
 							<th scope="col" class="semana" class:mes-actual={s.numero === actual}
@@ -103,7 +107,12 @@
 					{#each filas as f (f.partida.id)}
 						<tr>
 							<td class="columna-numero">{f.partida.numero}</td>
-							<th scope="row" class="columna-partida">{textoOracion(f.partida.actividad)}</th>
+							<th scope="row" class="columna-partida"
+								><NombrePartida texto={textoOracion(f.partida.actividad)} /><span
+									class="insignia-periodicidad periodicidad-movil"
+									>{ETIQUETA_PERIODICIDAD[f.partida.periodicidad]}</span
+								></th
+							>
 							<td class="columna-periodicidad"
 								><span class="insignia-periodicidad"
 									>{ETIQUETA_PERIODICIDAD[f.partida.periodicidad]}</span

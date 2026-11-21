@@ -78,6 +78,18 @@ export const esquemaResultadoPrograma = z.object({
 });
 export type ResultadoPrograma = z.infer<typeof esquemaResultadoPrograma>;
 
+export const esquemaMarcaEjecucion = z.object({
+	id: z.uuid(),
+	programaId: z.uuid(),
+	partidaId: z.uuid(),
+	mes: z.iso.date(),
+	/** Lo que se pidió marcar (no lo guardado para sumarse a lo ya documentado). */
+	cantidad: z.coerce.number().int(),
+	fechaEjecucion: z.iso.date().nullable(),
+	nota: z.string()
+});
+export type MarcaEjecucion = z.infer<typeof esquemaMarcaEjecucion>;
+
 export interface MesProgramado {
 	partidaId: string;
 	/** Cualquier fecha del mes. */
@@ -117,6 +129,40 @@ export class RepositorioPrograma {
 		return esquemaRealizadoManual.parse(
 			await this.sql.llamar('api_registrar_realizado_manual', registro)
 		);
+	}
+
+	/**
+	 * Marca como ejecutada una cantidad de lo que falta en la partida y mes, sin reporte (cambio
+	 * marcar-ejecutado). Los reportes emitidos del mismo mes absorben la marca: no cuenta dos veces.
+	 */
+	async marcarEjecutado(marca: {
+		programaId: string;
+		partidaId: string;
+		mes: string;
+		cantidad: number;
+		/** Día de ejecución dentro del mes (obligatorio). */
+		fecha: string;
+		nota?: string | null;
+	}): Promise<MarcaEjecucion> {
+		return esquemaMarcaEjecucion.parse(await this.sql.llamar('api_marcar_ejecutado', marca));
+	}
+
+	/** Quita la marca de ejecución más reciente de la partida y mes. */
+	async desmarcarEjecutado(celda: {
+		programaId: string;
+		partidaId: string;
+		mes: string;
+	}): Promise<void> {
+		await this.sql.llamar('api_desmarcar_ejecutado', celda);
+	}
+
+	/** Partidas y meses del programa con marcas de ejecución. */
+	async listarMarcasEjecucion(
+		programaId: string
+	): Promise<{ partidaId: string; mes: string; marcas: number }[]> {
+		return z
+			.array(z.object({ partidaId: z.uuid(), mes: z.iso.date(), marcas: z.coerce.number().int() }))
+			.parse(await this.sql.llamar('api_listar_marcas_ejecucion', { programaId }));
 	}
 
 	/** Importa un programa anual sin catálogo; con `ensayo` solo calcula lo que cambiaría. */

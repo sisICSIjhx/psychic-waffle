@@ -6,8 +6,6 @@
    marca. Base 14–16 px, controles de 42 px, espaciado 8/16/24/32, radio 8 px en controles y 14 px
    en paneles. Contraste medido (WCAG 2.2 AA) en los dos temas: texto ≥ 4.5:1 sobre lienzo,
    superficie y riel; bordes de campo ≥ 3:1; texto semántico ≥ 4.5:1 sobre su fondo.
-   El diseño anterior («Foco operativo») se conserva solo para el programa anual, como opción del
-   usuario: sus tokens están en src/lib/components/planeacion/diseno-original.css.
    ========================================= */
 :root {
 	color-scheme: light;
@@ -125,22 +123,23 @@
 html[data-theme='dark'] {
 	color-scheme: dark;
 
-	--lienzo: #1b2431;
-	--lienzo-riel: #273142;
-	--superficie: #273142;
-	--superficie-alta: #313d4f;
-	--superficie-hover: #323d4e;
-	--superficie-flotante: #2d384a;
-	--campo-fondo: #1f2836;
+	/* Negro suave de fondo y grises escalonados para conservar la separación entre capas. */
+	--lienzo: #101012;
+	--lienzo-riel: #151517;
+	--superficie: #1b1b1e;
+	--superficie-alta: #232326;
+	--superficie-hover: #29292d;
+	--superficie-flotante: #242427;
+	--campo-fondo: #141416;
 
 	--tinta: #f1f3f6;
 	--tinta-secundaria: #d6dbe3;
 	--tinta-tenue: #a6b0c0;
 	--tinta-deshabilitada: #6b778a;
 
-	--linea: #364153;
-	--linea-fuerte: #44516a;
-	--borde-campo: #8390a6;
+	--linea: #2f2f34;
+	--linea-fuerte: #414147;
+	--borde-campo: #74747b;
 
 	--accion: #7da2ff;
 	--accion-hover: #9bb8ff;
@@ -167,15 +166,15 @@ html[data-theme='dark'] {
 	--info: #b9a2ff;
 	--info-fondo: #332b52;
 	--info-borde: #5b4b91;
-	--neutro-fondo: #323d4e;
+	--neutro-fondo: var(--superficie-hover);
 
-	--velo: rgba(5, 9, 16, 0.6);
+	--velo: rgba(0, 0, 0, 0.6);
 	--contorno-imagen: rgba(255, 255, 255, 0.1);
 	--sombra-barra: 0 8px 16px -10px rgba(0, 0, 0, 0.7);
 	--sombra-flotante: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 12px 32px rgba(0, 0, 0, 0.45);
 	--sombra-panel: 0 4px 24px rgba(0, 0, 0, 0.18);
 	--flecha-select: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a6b0c0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-	--borde-panel: transparent;
+	--borde-panel: var(--linea);
 	--sombra-boton-primario: 0 6px 14px -6px rgba(0, 0, 0, 0.6);
 
 	--ficha-azul: #2a3a5f;

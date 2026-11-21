@@ -1,6 +1,6 @@
 // Planeación anual: matriz P/R del programa de un contrato y sitio (vista anual, mensual o semanal),
 // con filtros por distribución y periodicidad, pendientes vencidos, ajustes (reprogramado y no
-// ejecutado) y registro de realizados hechos fuera del sistema.
+// ejecutado), marcas de ejecución sin reporte y registro de realizados hechos fuera del sistema.
 import { fail } from '@sveltejs/kit';
 import { MOTIVOS_AJUSTE, PERIODICIDADES, type MotivoAjuste } from '$lib/dominio/esquemas';
 import { fechaEnZona } from '$lib/dominio/fechas';
@@ -46,6 +46,18 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		programas.find((p) => p.id === url.searchParams.get('programa')) ??
 		programaVigente(programas, fecha);
 	const avance = programa ? await repos.programa.obtenerAvance(programa.id) : null;
+	// Marcas de ejecución por partida y mes, para ofrecer «Desmarcar ejecutado» en el panel.
+	if (avance && programa) {
+		const marcas = new Map(
+			(await repos.programa.listarMarcasEjecucion(programa.id)).map((m) => [
+				`${m.partidaId}|${m.mes}`,
+				m.marcas
+			])
+		);
+		for (const partida of avance.partidas) {
+			for (const celda of partida.celdas) celda.marcas = marcas.get(`${partida.id}|${celda.mes}`);
+		}
+	}
 
 	const distribucion = url.searchParams.get('distribucion');
 	const periodicidad = url.searchParams.get('periodicidad');
@@ -118,6 +130,58 @@ export const actions: Actions = {
 			return { mensaje: 'Realizado registrado.' };
 		} catch (error) {
 			return fail(400, { error: mensajeDeError(error) });
+		}
+	},
+
+	// Marca como ejecutado lo que falta en un mes en curso o terminado, sin reporte todavía, con su
+	// fecha de ejecución (obligatoria).
+	marcarEjecutado: async ({ request, locals }) => {
+		const formulario = await request.formData();
+		const texto = (campo: string) => String(formulario.get(campo) ?? '').trim();
+		const fecha = hoy();
+		const mes = texto('mes');
+		const ejecutadoEl = texto('fecha');
+		const rechazar = (error: string) => fail(400, { accion: 'marcarEjecutado', error });
+		if (mes.slice(0, 7) > fecha.slice(0, 7)) {
+			return rechazar('Solo se marca como ejecutado un mes en curso o terminado.');
+		}
+		if (!/^d{4}-d{2}-d{2}$/.test(ejecutadoEl)) {
+			return rechazar('Indique la fecha de ejecución.');
+		}
+		if (ejecutadoEl > fecha) {
+			return rechazar('La fecha de ejecución no puede ser posterior a hoy.');
+		}
+		const repos = await datos();
+		await exigirCentro(repos, locals, 'programa', texto('programaId'));
+		try {
+			const marca = await repos.programa.marcarEjecutado({
+				programaId: texto('programaId'),
+				partidaId: texto('partidaId'),
+				mes,
+				cantidad: Number(texto('cantidad') || '1'),
+				fecha: ejecutadoEl,
+				nota: texto('nota') || null
+			});
+			return { accion: 'marcarEjecutado', marca };
+		} catch (error) {
+			return rechazar(mensajeDeError(error));
+		}
+	},
+
+	desmarcarEjecutado: async ({ request, locals }) => {
+		const formulario = await request.formData();
+		const texto = (campo: string) => String(formulario.get(campo) ?? '').trim();
+		const repos = await datos();
+		await exigirCentro(repos, locals, 'programa', texto('programaId'));
+		try {
+			await repos.programa.desmarcarEjecutado({
+				programaId: texto('programaId'),
+				partidaId: texto('partidaId'),
+				mes: texto('mes')
+			});
+			return { accion: 'desmarcarEjecutado', mensaje: 'Se quitó la marca de ejecución.' };
+		} catch (error) {
+			return fail(400, { accion: 'desmarcarEjecutado', error: mensajeDeError(error) });
 		}
 	},
 

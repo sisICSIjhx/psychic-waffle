@@ -1,45 +1,26 @@
-/* Diseño nuevo del programa anual («Panel claro», 2026-11-05). Capa sobre programa.css, que se
-   conserva sin cambios como diseño original: aquí solo se reasignan los tokens --pa-* y los tonos
-   e-*, y se ajustan radios, sombras y fichas al estilo de los kits DashStack y «SAAS Dashboard».
-   Se aplica salvo que el usuario elija «Diseño original» (html[data-diseno-programa='original']).
-   Especificidad: el tema oscuro lleva un atributo más que el claro para ganarle en ambos casos. */
+/* Diseño del programa anual («Panel claro», 2026-11-05, cabecera azul), el único desde el
+   2026-11-19. Capa sobre programa.css (estructura y tokens base): aquí se reasignan los tokens
+   --pa-* y los tonos e-*, y se ajustan radios, sombras y fichas al estilo de los kits DashStack y
+   «SAAS Dashboard». «html:root» conserva la especificidad de los selectores anteriores (que
+   excluían el diseño original, ya retirado) para ganarle a programa.css; el tema oscuro lleva un
+   atributo más que el claro para ganarle en ambos casos. */
 
-/* Botón para alternar el diseño y la fila que lo comparte con «Exportar» (en los dos diseños). */
-.programa-anual .fila-acciones {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	align-items: center;
-	justify-content: flex-end;
-}
-.programa-anual .boton-diseno[aria-pressed='true'] {
-	border-color: var(--pa-segmento-activo);
-	color: var(--pa-segmento-activo);
-}
-.programa-anual .boton-diseno[aria-pressed='true'] svg {
-	color: var(--pa-segmento-activo);
-}
-
-/* Distribución y periodicidad: en el diseño nuevo el icono va dentro del selector (como Contrato y
-   Sitio); en el original sigue junto a la etiqueta. */
-html[data-diseno-programa='original'] .programa-anual .icono-en-selector .icono-campo {
-	display: none;
-}
-html:not([data-diseno-programa='original']) .programa-anual .filtro label .icono-etiqueta {
+/* Distribución y periodicidad: el icono va dentro del selector (como Contrato y Sitio). */
+html:root .programa-anual .filtro label .icono-etiqueta {
 	display: none;
 }
 /* Los selectores del programa usan la lista de opciones de la plataforma (app.css). */
-html:not([data-diseno-programa='original']) .programa-anual .control select {
+html:root .programa-anual .control select {
 	appearance: var(--apariencia-select);
 }
-html:not([data-diseno-programa='original']) .programa-anual .icono-en-selector select {
+html:root .programa-anual .icono-en-selector select {
 	padding-left: 37px;
 }
 
 /* =========================================
    Tokens del diseño nuevo
    ========================================= */
-html:not([data-diseno-programa='original']) .programa-anual {
+html:root .programa-anual {
 	--pa-tarjeta: #ffffff;
 	--pa-tarjeta-borde: transparent;
 	--pa-tabla: #ffffff;
@@ -77,34 +58,34 @@ html:not([data-diseno-programa='original']) .programa-anual {
 	--pa-sombra: 0 4px 24px rgba(28, 39, 76, 0.05), 0 1px 2px rgba(28, 39, 76, 0.04);
 	--pa-sombra-menu: 0 12px 32px rgba(28, 39, 76, 0.14), 0 0 0 1px rgba(28, 39, 76, 0.05);
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual {
-	--pa-tarjeta: #273142;
-	--pa-tarjeta-borde: transparent;
-	--pa-tabla: #273142;
-	--pa-cabecera: #313d4f;
-	--pa-cabecera-meses: #2d384a;
-	--pa-anio-par: #2b3546;
-	--pa-linea: #364153;
-	--pa-linea-suave: rgba(54, 65, 83, 0.6);
-	--pa-campo: #1f2836;
-	--pa-campo-borde: #44516a;
-	--pa-campo-borde-hover: #8390a6;
+html[data-theme='dark']:root .programa-anual {
+	--pa-tarjeta: var(--superficie);
+	--pa-tarjeta-borde: var(--borde-panel);
+	--pa-tabla: var(--superficie);
+	--pa-cabecera: var(--superficie-alta);
+	--pa-cabecera-meses: var(--superficie-flotante);
+	--pa-anio-par: color-mix(in srgb, var(--superficie), var(--superficie-alta) 50%);
+	--pa-linea: var(--linea);
+	--pa-linea-suave: color-mix(in srgb, var(--linea) 60%, transparent);
+	--pa-campo: var(--campo-fondo);
+	--pa-campo-borde: var(--borde-campo);
+	--pa-campo-borde-hover: var(--tinta-tenue);
 	--pa-texto: #ffffff;
 	--pa-texto-2: #e3e7ee;
 	--pa-texto-3: #c5ccd8;
 	--pa-texto-4: #a6b0c0;
 	--pa-deshabilitado: #6b778a;
 	--pa-vacio: #4a5568;
-	--pa-pista: #364153;
-	--pa-hover: #2d384a;
-	--pa-segmento: #1f2836;
+	--pa-pista: var(--linea);
+	--pa-hover: var(--superficie-hover);
+	--pa-segmento: var(--campo-fondo);
 	--pa-segmento-activo: #3563e9;
 	--pa-anio-actual: #9bb8ff;
 	--pa-mes-actual: rgba(125, 162, 255, 0.14);
 	--pa-mes-actual-columna: rgba(125, 162, 255, 0.06);
 	--pa-mes-actual-borde: rgba(125, 162, 255, 0.45);
 	--pa-mes-actual-texto: #9bb8ff;
-	--pa-insignia: #323d4e;
+	--pa-insignia: var(--neutro-fondo);
 	--pa-insignia-borde: transparent;
 	--pa-insignia-texto: #d6dbe3;
 	--pa-verde-texto: #5fd4b4;
@@ -118,7 +99,7 @@ html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual {
 
 /* Tonos de estado: los de los kits (verde azulado, azul, naranja, rosa, violeta y gris). Las fichas
    y las insignias van sin borde; la tarjeta del indicador, con sombra. */
-html:not([data-diseno-programa='original']) .programa-anual .e-total {
+html:root .programa-anual .e-total {
 	--c-texto: #2a52cc;
 	--c-punto: #4880ff;
 	--c-icono-fondo: #e5edff;
@@ -126,7 +107,7 @@ html:not([data-diseno-programa='original']) .programa-anual .e-total {
 	--c-tarjeta-borde: transparent;
 	--c-barra: #4880ff;
 }
-html:not([data-diseno-programa='original']) .programa-anual .e-ejecutado {
+html:root .programa-anual .e-ejecutado {
 	--c-fondo: #e9faf5;
 	--c-borde: #b5eadc;
 	--c-division: #ccf1e6;
@@ -139,7 +120,20 @@ html:not([data-diseno-programa='original']) .programa-anual .e-ejecutado {
 	--c-tarjeta-borde: transparent;
 	--c-barra: #00b69b;
 }
-html:not([data-diseno-programa='original']) .programa-anual .e-pendiente {
+html:root .programa-anual .e-ejecutado-sin-reporte {
+	--c-fondo: #f4fbe8;
+	--c-borde: #c6e59a;
+	--c-division: #e2f3c6;
+	--c-texto: #4a7300;
+	--c-punto: #7cb518;
+	--c-icono-fondo: #eaf7d4;
+	--c-icono-borde: transparent;
+	--c-insignia-fondo: #eaf7d4;
+	--c-insignia-borde: transparent;
+	--c-tarjeta-borde: transparent;
+	--c-barra: #7cb518;
+}
+html:root .programa-anual .e-pendiente {
 	--c-fondo: #f0f5ff;
 	--c-borde: #c9d8ff;
 	--c-division: #dce6ff;
@@ -152,7 +146,7 @@ html:not([data-diseno-programa='original']) .programa-anual .e-pendiente {
 	--c-tarjeta-borde: transparent;
 	--c-barra: #4880ff;
 }
-html:not([data-diseno-programa='original']) .programa-anual .e-programado {
+html:root .programa-anual .e-programado {
 	--c-fondo: #fff7ee;
 	--c-borde: #ffd9b0;
 	--c-division: #ffe8cc;
@@ -165,7 +159,7 @@ html:not([data-diseno-programa='original']) .programa-anual .e-programado {
 	--c-tarjeta-borde: transparent;
 	--c-barra: #ffa756;
 }
-html:not([data-diseno-programa='original']) .programa-anual .e-vencido {
+html:root .programa-anual .e-vencido {
 	--c-fondo: #fff1f3;
 	--c-borde: #f9c2cc;
 	--c-division: #fbd8de;
@@ -178,14 +172,14 @@ html:not([data-diseno-programa='original']) .programa-anual .e-vencido {
 	--c-tarjeta-borde: transparent;
 	--c-barra: #f93c65;
 }
-html:not([data-diseno-programa='original']) .programa-anual .e-reprogramado {
+html:root .programa-anual .e-reprogramado {
 	--c-fondo: #f5f1ff;
 	--c-borde: #d8cbff;
 	--c-division: #e6ddff;
 	--c-texto: #5b2ad6;
 	--c-punto: #8280ff;
 }
-html:not([data-diseno-programa='original']) .programa-anual .e-neutro {
+html:root .programa-anual .e-neutro {
 	--c-fondo: #f7f8fb;
 	--c-borde: #dfe3ea;
 	--c-division: #e8ebf0;
@@ -198,13 +192,13 @@ html:not([data-diseno-programa='original']) .programa-anual .e-neutro {
 	--c-tarjeta-borde: transparent;
 	--c-barra: #9aa1ad;
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-total {
+html[data-theme='dark']:root .programa-anual .e-total {
 	--c-texto: #9bb8ff;
 	--c-punto: #7da2ff;
 	--c-icono-fondo: #2a3a5f;
 	--c-barra: #7da2ff;
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-ejecutado {
+html[data-theme='dark']:root .programa-anual .e-ejecutado {
 	--c-fondo: rgba(0, 182, 155, 0.1);
 	--c-borde: rgba(0, 182, 155, 0.35);
 	--c-division: rgba(0, 182, 155, 0.2);
@@ -212,7 +206,17 @@ html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .
 	--c-icono-fondo: rgba(0, 182, 155, 0.18);
 	--c-insignia-fondo: rgba(0, 182, 155, 0.18);
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-pendiente {
+html[data-theme='dark']:root .programa-anual .e-ejecutado-sin-reporte {
+	--c-fondo: rgba(124, 181, 24, 0.1);
+	--c-borde: rgba(124, 181, 24, 0.4);
+	--c-division: rgba(124, 181, 24, 0.22);
+	--c-texto: #b5de6a;
+	--c-punto: #9bd13a;
+	--c-icono-fondo: rgba(124, 181, 24, 0.18);
+	--c-insignia-fondo: rgba(124, 181, 24, 0.18);
+	--c-barra: #9bd13a;
+}
+html[data-theme='dark']:root .programa-anual .e-pendiente {
 	--c-fondo: rgba(72, 128, 255, 0.1);
 	--c-borde: rgba(72, 128, 255, 0.4);
 	--c-division: rgba(72, 128, 255, 0.22);
@@ -222,7 +226,7 @@ html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .
 	--c-insignia-fondo: rgba(72, 128, 255, 0.2);
 	--c-barra: #7da2ff;
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-programado {
+html[data-theme='dark']:root .programa-anual .e-programado {
 	--c-fondo: rgba(255, 167, 86, 0.1);
 	--c-borde: rgba(255, 167, 86, 0.38);
 	--c-division: rgba(255, 167, 86, 0.2);
@@ -230,7 +234,7 @@ html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .
 	--c-icono-fondo: rgba(255, 167, 86, 0.18);
 	--c-insignia-fondo: rgba(255, 167, 86, 0.18);
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-vencido {
+html[data-theme='dark']:root .programa-anual .e-vencido {
 	--c-fondo: rgba(249, 60, 101, 0.1);
 	--c-borde: rgba(249, 60, 101, 0.4);
 	--c-division: rgba(249, 60, 101, 0.22);
@@ -238,234 +242,231 @@ html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .
 	--c-icono-fondo: rgba(249, 60, 101, 0.18);
 	--c-insignia-fondo: rgba(249, 60, 101, 0.18);
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-reprogramado {
+html[data-theme='dark']:root .programa-anual .e-reprogramado {
 	--c-fondo: rgba(130, 128, 255, 0.12);
 	--c-borde: rgba(130, 128, 255, 0.4);
 	--c-division: rgba(130, 128, 255, 0.22);
 	--c-texto: #b9b8ff;
 	--c-punto: #8280ff;
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .e-neutro {
+html[data-theme='dark']:root .programa-anual .e-neutro {
 	--c-fondo: rgba(131, 144, 166, 0.08);
-	--c-borde: #44516a;
-	--c-division: #364153;
+	--c-borde: var(--linea-fuerte);
+	--c-division: var(--linea);
 	--c-texto: #a6b0c0;
 	--c-punto: #8390a6;
-	--c-icono-fondo: #323d4e;
-	--c-insignia-fondo: #323d4e;
+	--c-icono-fondo: var(--neutro-fondo);
+	--c-insignia-fondo: var(--neutro-fondo);
 	--c-barra: #8390a6;
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .vencidos {
+html[data-theme='dark']:root .programa-anual .vencidos {
 	--c-borde: transparent;
 }
 
 /* =========================================
    Forma: paneles de 14 px con sombra, fichas de icono grandes y controles redondeados.
    ========================================= */
-html:not([data-diseno-programa='original']) .programa-anual .titulo-pagina {
+html:root .programa-anual .titulo-pagina {
 	font-size: var(--texto-2xl);
 	font-weight: 800;
 }
-html:not([data-diseno-programa='original']) .programa-anual .selector-vista {
+html:root .programa-anual .selector-vista {
 	gap: 4px;
 	padding: 5px;
 	border-radius: 12px;
 	box-shadow: var(--pa-sombra);
 }
-html:not([data-diseno-programa='original']) .programa-anual .opcion-vista {
+html:root .programa-anual .opcion-vista {
 	min-height: 32px;
 	padding: 6px 16px;
 	border-radius: 8px;
 	font-weight: 600;
 }
-html:not([data-diseno-programa='original']) .programa-anual .opcion-vista[aria-current='page'] {
+html:root .programa-anual .opcion-vista[aria-current='page'] {
 	box-shadow: 0 6px 14px -6px rgba(53, 99, 233, 0.6);
 }
-html:not([data-diseno-programa='original']) .programa-anual .boton-programa {
+html:root .programa-anual .boton-programa {
 	min-height: 42px;
 	border-color: transparent;
 	border-radius: 10px;
 	font-weight: 600;
 }
-html:not([data-diseno-programa='original']) .programa-anual .boton-programa:hover {
+html:root .programa-anual .boton-programa:hover {
 	border-color: var(--pa-campo-borde);
 }
-html:not([data-diseno-programa='original']) .programa-anual .boton-diseno[aria-pressed='true'] {
+html:root .programa-anual .boton-diseno[aria-pressed='true'] {
 	border-color: var(--pa-segmento-activo);
 }
-html:not([data-diseno-programa='original']) .programa-anual .opciones-menu {
+html:root .programa-anual .opciones-menu {
 	border-radius: 12px;
 }
 
 /* Filtros dentro de un panel, como la barra de filtros de DashStack. */
-html:not([data-diseno-programa='original']) .programa-anual .filtros {
+html:root .programa-anual .filtros {
 	padding: 18px 20px;
 	border-radius: 14px;
 	background: var(--pa-tarjeta);
 	box-shadow: var(--pa-sombra);
 }
-html:not([data-diseno-programa='original']) .programa-anual .filtro label {
+html:root .programa-anual .filtro label {
 	font-weight: 700;
 }
-html:not([data-diseno-programa='original']) .programa-anual .control select,
-html:not([data-diseno-programa='original']) .programa-anual .campo-busqueda input {
+html:root .programa-anual .control select,
+html:root .programa-anual .campo-busqueda input {
 	min-height: 42px;
 	border-radius: 10px;
 	background: var(--pa-campo);
 }
-html:not([data-diseno-programa='original']) .programa-anual .control select {
+html:root .programa-anual .control select {
 	background: var(--pa-cabecera-meses);
 	border-color: transparent;
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .control select {
+html[data-theme='dark']:root .programa-anual .control select {
 	background: var(--pa-campo);
 }
-html:not([data-diseno-programa='original']) .programa-anual .control select:hover:not(:focus) {
+html:root .programa-anual .control select:hover:not(:focus) {
 	border-color: var(--pa-campo-borde);
 }
-html:not([data-diseno-programa='original']) .programa-anual .campo-busqueda input {
+html:root .programa-anual .campo-busqueda input {
 	border-color: transparent;
 }
 
 /* Indicadores: tarjeta sin borde con sombra, ficha de icono de 44 px y cifra grande. */
-html:not([data-diseno-programa='original']) .programa-anual .indicadores {
+html:root .programa-anual .indicadores {
 	gap: 16px;
 }
-html:not([data-diseno-programa='original']) .programa-anual .indicador {
+html:root .programa-anual .indicador {
 	gap: 14px;
 	padding: 16px;
 	border-radius: 14px;
 }
-html:not([data-diseno-programa='original']) .programa-anual .indicador.interactivo:hover,
-html:not([data-diseno-programa='original'])
-	.programa-anual
-	.indicador.interactivo[aria-expanded='true'] {
+html:root .programa-anual .indicador.interactivo:hover,
+html:root .programa-anual .indicador.interactivo[aria-expanded='true'] {
 	border-color: var(--c-borde);
 }
-html:not([data-diseno-programa='original']) .programa-anual .cuerpo-indicador {
+html:root .programa-anual .cuerpo-indicador {
 	flex-direction: row-reverse;
 	justify-content: space-between;
 	align-items: flex-start;
 }
-html:not([data-diseno-programa='original']) .programa-anual .icono-indicador {
+html:root .programa-anual .icono-indicador {
 	width: 44px;
 	height: 44px;
 	border-radius: 14px;
 }
-html:not([data-diseno-programa='original']) .programa-anual .icono-indicador svg {
+html:root .programa-anual .icono-indicador svg {
 	width: 22px;
 	height: 22px;
 }
-html:not([data-diseno-programa='original'])
-	.programa-anual
-	.indicador.interactivo
-	.icono-indicador {
+html:root .programa-anual .indicador.interactivo .icono-indicador {
 	margin-right: 18px;
 }
-html:not([data-diseno-programa='original']) .programa-anual .etiqueta-indicador {
+html:root .programa-anual .etiqueta-indicador {
 	font-size: var(--texto-sm);
 	font-weight: 600;
 	line-height: 20px;
 }
-html:not([data-diseno-programa='original']) .programa-anual .cifra-indicador {
+html:root .programa-anual .cifra-indicador {
 	font-size: 1.75rem;
 	font-weight: 800;
 	line-height: 38px;
 }
-html:not([data-diseno-programa='original']) .programa-anual .porcentaje {
+html:root .programa-anual .porcentaje {
 	border-radius: 999px;
 	padding: 2px 8px;
 }
-html:not([data-diseno-programa='original']) .programa-anual .barra {
+html:root .programa-anual .barra {
 	height: 6px;
 }
 
 /* Paneles: cabecera de la matriz, matriz, vencimientos y panel de la celda. */
-html:not([data-diseno-programa='original']) .programa-anual .cabecera-matriz,
-html:not([data-diseno-programa='original']) .programa-anual .matriz-programa,
-html:not([data-diseno-programa='original']) .programa-anual .panel-celda,
-html:not([data-diseno-programa='original']) .programa-anual .vencidos {
+html:root .programa-anual .cabecera-matriz,
+html:root .programa-anual .matriz-programa,
+html:root .programa-anual .panel-celda,
+html:root .programa-anual .vencidos {
 	border-radius: 14px;
 	box-shadow: var(--pa-sombra);
 }
-html:not([data-diseno-programa='original']) .programa-anual .vencidos {
+html:root .programa-anual .vencidos {
 	border-color: transparent;
 	box-shadow:
 		inset 4px 0 0 var(--c-punto, #f93c65),
 		var(--pa-sombra);
 }
-html:not([data-diseno-programa='original']) .programa-anual .titulo-con-icono .icono-indicador {
+html:root .programa-anual .titulo-con-icono .icono-indicador {
 	width: 44px;
 	height: 44px;
 	border-radius: 14px;
 }
-html:not([data-diseno-programa='original']) .programa-anual .titulo-matriz {
+html:root .programa-anual .titulo-matriz {
 	font-size: var(--texto-md);
 	font-weight: 800;
 	letter-spacing: 0;
 }
-html:not([data-diseno-programa='original']) .programa-anual .leyenda li {
+html:root .programa-anual .leyenda li {
 	padding: 4px 10px;
 	border-radius: 999px;
 	background: var(--pa-cabecera-meses);
 	font-weight: 600;
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .leyenda li {
+html[data-theme='dark']:root .programa-anual .leyenda li {
 	background: var(--pa-cabecera);
 }
-html:not([data-diseno-programa='original']) .programa-anual .leyenda .punto {
+html:root .programa-anual .leyenda .punto {
 	width: 8px;
 	height: 8px;
 }
 
 /* Matriz: cabecera gris como las tablas de los kits, celdas-tarjeta más redondeadas. */
-html:not([data-diseno-programa='original']) .programa-anual .matriz {
+html:root .programa-anual .matriz {
 	--pa-cab-fondo: var(--pa-anio-actual);
 	--pa-cab-fondo-par: #2f58d4;
 	--pa-cab-linea: rgba(255, 255, 255, 0.28);
 	--pa-cab-texto: #ffffff;
 }
-html[data-theme='dark']:not([data-diseno-programa='original']) .programa-anual .matriz {
-	--pa-cab-fondo: #2b4a9a;
-	--pa-cab-fondo-par: #264287;
+html[data-theme='dark']:root .programa-anual .matriz {
+	--pa-cab-fondo: var(--superficie-alta);
+	--pa-cab-fondo-par: var(--superficie-hover);
+	--pa-cab-linea: var(--linea-fuerte);
 }
 /* Cabecera en el azul de acento, opaca para que no se transparenten las celdas al desplazar. */
-html:not([data-diseno-programa='original']) .programa-anual .matriz thead th {
+html:root .programa-anual .matriz thead th {
 	background: var(--pa-cab-fondo);
 	border-color: var(--pa-cab-linea);
 	color: var(--pa-cab-texto);
 }
-html:not([data-diseno-programa='original']) .programa-anual .matriz thead th.anio,
-html:not([data-diseno-programa='original']) .programa-anual .matriz thead th.anio-actual {
+html:root .programa-anual .matriz thead th.anio,
+html:root .programa-anual .matriz thead th.anio-actual {
 	color: var(--pa-cab-texto);
 }
-html:not([data-diseno-programa='original']) .programa-anual .matriz thead th.anio-par {
+/* «Semana N» (mensual) y los días (semanal) en blanco, como «Partida»; la semana o el día de hoy
+   conserva su resaltado. */
+html:root .programa-anual .matriz .fila-anios th.semana:not(.mes-actual) {
+	color: var(--pa-cab-texto);
+}
+html:root .programa-anual .matriz thead th.anio-par {
 	background: var(--pa-cab-fondo-par);
 }
-html:not([data-diseno-programa='original']) .programa-anual .matriz thead th.mes-actual {
+html:root .programa-anual .matriz thead th.mes-actual {
 	background: #ffffff;
 	border-color: var(--pa-mes-actual-borde);
 	color: #2a52cc;
 }
-html[data-theme='dark']:not([data-diseno-programa='original'])
-	.programa-anual
-	.matriz
-	thead
-	th.mes-actual {
-	background: #dbe6ff;
-	color: #1b3a8a;
+html[data-theme='dark']:root .programa-anual .matriz thead th.mes-actual {
+	background: var(--accion-suave);
+	color: var(--accion-hover);
 }
-html:not([data-diseno-programa='original']) .programa-anual .tarjeta-celda {
+html:root .programa-anual .tarjeta-celda {
 	border-radius: 10px;
 }
-html:not([data-diseno-programa='original']) .programa-anual .insignia-periodicidad {
+html:root .programa-anual .insignia-periodicidad {
 	border-radius: 999px;
 	font-weight: 600;
 }
-html:not([data-diseno-programa='original']) .programa-anual .pastilla {
+html:root .programa-anual .pastilla {
 	border-color: transparent;
 	background: var(--c-insignia-fondo, var(--c-fondo));
 }
-html:not([data-diseno-programa='original']) .programa-anual .cerrar-panel {
+html:root .programa-anual .cerrar-panel {
 	border-radius: 10px;
 }

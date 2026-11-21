@@ -32,7 +32,7 @@ Verificado el 2026-11-11 contra los archivos locales (rama `feat/concentrado-cen
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
     resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0025`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+  - `supabase/migrations/0001…0027`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
     `npm run bd:script` genera `supabase/esquema_completo.sql` (todo en un script para una base vacía
     de Supabase; una prueba exige que esté al día). Proyecto = cliente. Fotos: local o SharePoint
     (solo URL en `reporte_fotos`).
@@ -42,9 +42,9 @@ Verificado el 2026-11-11 contra los archivos locales (rama `feat/concentrado-cen
     Figma) en `src/app.css`: Nunito Sans y Manrope (`@fontsource-variable`), tokens semánticos de
     ambos temas (contraste AA medido), riel de 240 px con barra superior (fecha, conexión y «Nuevo
     reporte»), paneles de 14 px con sombra, insignias en píldora y fichas de icono; título de cada
-    página en su contenido (`encabezadoDePagina` en `layout/navegacion.ts`). Tema y diseño del
-    programa recordados (`layout/preferencias.ts`): el programa ofrece «Diseño original» (el anterior
-    «Foco operativo», tokens en `planeacion/diseno-original.css`).
+    página en su contenido (`encabezadoDePagina` en `layout/navegacion.ts`). Tema recordado
+    (`layout/preferencias.ts`). El programa anual tiene un solo diseño (cabecera azul,
+    `planeacion/programa-nuevo.css` sobre `programa.css`); «Diseño original» se retiró el 2026-11-19.
 - Rutas: `/` «Mi trabajo» (avance del mes, tarjetas y siguiente trabajo; `?ver=`); `/planeacion`
   matriz P/R con estados de ejecución y documental y ajustes (`?vista=mensual` y `?vista=semanal`);
   `/seguimiento?centro=&mes=` captura manual de actividades, documentos, atenciones nocturnas y
@@ -154,6 +154,9 @@ Verificado el 2026-11-11 contra los archivos locales (rama `feat/concentrado-cen
   por mes; la 0025 está aplicada en la base local de trabajo. Etapa 5 (2026-11-11, rama
   `feat/concentrado-centros`, sin migración): concentrado en `/cumplimiento`. Sigue la etapa 6
   (automatizaciones de la fase 2).
+- Cambio `marcar-ejecutado` (2026-11-19, migraciones 0026, aplicada en la base de trabajo con respaldo, y 0027, fecha de ejecución obligatoria, también aplicada con respaldo):
+  «Marcar ejecutado» y «Desmarcar ejecutado» en el panel de la celda del programa anual; los
+  reportes emitidos del mes absorben la marca y la tarjeta sin reporte tiene tono propio.
 - Rendimiento y seguridad (2026-11-05): JavaScript por página −65 a −73 %, DOCX con `noSandbox`,
   giradas guardadas, generación compartida y precalentada; CSP, encabezados y permisos completos en
   el catálogo. Detalle y 10 propuestas en `docs/OPTIMIZACION_SEGURIDAD_Y_PROPUESTAS.md`.

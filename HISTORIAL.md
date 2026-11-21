@@ -3,6 +3,171 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-11-19 — Filas del mismo alto y descripciones desplegables en las matrices
+
+- Motivo: a pedido del usuario. El alto de cada fila variaba con la longitud del nombre de la
+  partida.
+- Alcance (cambio de nivel 1, sin cambios de datos), en las matrices anual, mensual y semanal:
+  - `NombrePartida.svelte`: el nombre se corta a tres líneas con «…», sin cambiar el tamaño del
+    texto. Un clic lo despliega completo y otro lo recorta (`aria-expanded`).
+  - `BotonDescripciones.svelte`: botón de icono en la cabecera «Partida» que muestra completas o
+    recortadas todas las descripciones (`aria-pressed`). La elección se comparte entre las tres
+    vistas y se recuerda en el navegador (`descripciones.ts`, clave `icsi-descripciones-completas`).
+  - Mismo alto en todas las filas: 80 px en escritorio y 99 px en celular, con el nombre y la
+    periodicidad. El estado y su cuenta («Programado 0/31») ya no saltan de línea; si no cupieran,
+    el estado se cortaría con «…».
+- Archivos: `NombrePartida.svelte`, `BotonDescripciones.svelte`, `descripciones.ts`,
+  `PlaneacionView.svelte` (y su prueba), `MatrizMensual.svelte`, `VistaSemanal.svelte` y
+  `programa.css`.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), `npm run lint` y `vitest run`
+  (78 archivos y 572 pruebas, con una nueva del clic y del botón de la cabecera).
+- Validación visual: Chromium con una copia aislada de la base. Las 55 filas de la anual miden
+  80 px y las 30 de la mensual y de la semanal también. A 375 px las 55 miden 99 px. Con el botón
+  las filas crecen y al recortarlas vuelven a 80 px. Ningún estado quedó cortado y no hubo
+  errores en la consola.
+
+## 2026-11-19 — Fecha de ejecución obligatoria al marcar ejecutado
+
+- Motivo: a pedido del usuario, cada marca de «Marcar ejecutado» debe llevar su fecha de
+  ejecución.
+- Alcance (ajuste del cambio OpenSpec `marcar-ejecutado`, migración 0027):
+  - Diálogo: el campo «Fecha de ejecución» es obligatorio, va dentro del mes y no puede ser
+    posterior a hoy. «Marcar ejecutado» queda deshabilitado mientras falte.
+  - Acción `marcarEjecutado`: rechaza la marca sin fecha con «Indique la fecha de ejecución.».
+  - `0027_fecha_ejecucion_obligatoria.sql`: `api_marcar_ejecutado` exige la fecha y la tabla
+    agrega `programa_realizados_manuales_marca_con_fecha` (`NOT VALID`), para no rechazar las
+    marcas anteriores sin fecha. El esquema completo se regeneró.
+- Archivos: `DialogoEjecutado.svelte`, `src/routes/planeacion/+page.server.ts`,
+  `repositorios/programa.ts`, la migración 0027, `esquema_completo.sql`, las pruebas
+  `cumplimiento.spec.ts` y `PlaneacionView.svelte.spec.ts`, y la propuesta, la spec y las tareas
+  de `marcar-ejecutado`.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), `npm run lint`,
+  `vitest run` (78 archivos y 571 pruebas) y `openspec validate marcar-ejecutado`. Las pruebas
+  nuevas comprueban el rechazo sin fecha en la función y en la tabla, y el botón del diálogo
+  deshabilitado hasta indicar la fecha.
+- Base de trabajo: la 0027 se aplicó el mismo día con el servidor detenido y respaldo idéntico en
+  `storage/respaldos/pglite-antes-0027`. Se comprobó que las 38 tablas y los totales de
+  `v_realizado` (1 332 celdas) no cambian, que no había marcas previas, que la restricción existe
+  (sin validar, como se diseñó), que la función rechaza una marca sin fecha y que el servidor
+  arranca sin errores.
+
+## 2026-11-19 — Navegación de las vistas mensual y semanal
+
+- Motivo: a pedido del usuario. El año se repetía tres veces en la navegación de meses, los meses
+  vecinos se veían igual que el actual y las vistas del programa quedaban lejos de «Matriz» y
+  «Lista» y del número de semana.
+- Alcance (cambio de nivel 1, sin cambios de datos): componente nuevo
+  `planeacion/NavegacionPeriodo.svelte`, un control con el periodo actual al centro y los vecinos
+  en letra menor y tenue, con flechas de chevrón y nombre accesible completo.
+  - Mensual: «‹ oct · Noviembre 2026 · dic ›». El año del vecino solo aparece si cambia
+    («ene 2027»).
+  - Semanal: «‹ 9–15 nov · Semana 47 (16–22 nov 2026) · 23–29 nov ›».
+  - Las vistas Anual, Mensual y Semanal pasan a la barra de cada vista (ranura «herramientas»):
+    junto a «Matriz» y «Lista» en la mensual y a la altura de la semana en la semanal. Se quitó la
+    barra aparte y las clases `navegacion-meses` y `mes-semanal`.
+- Archivos: `NavegacionPeriodo.svelte`, `VistaMensual.svelte`, `VistaSemanal.svelte`,
+  `PlaneacionView.svelte` (y su prueba) y `programa.css`.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), `npm run lint` y `vitest run`
+  (78 archivos y 570 pruebas). Las pruebas de la vista comprueban el texto de la navegación, los
+  nombres accesibles y que las vistas estén en la barra mensual.
+- Validación visual: Chromium con una copia aislada de la base, en las vistas mensual y semanal, a
+  1200 y 900 px y a 375 × 812, en los dos temas, sin desbordes.
+- Ajuste del mismo día, a pedido del usuario:
+  - El mes o la semana que contiene la fecha de hoy (no el elegido) se muestra en la navegación
+    con el azul de la vista activa, con texto blanco y `aria-current="date"` (`esHoy` en
+    `NavegacionPeriodo`). Los demás periodos van en blanco.
+  - En la cabecera de la matriz, «Semana N» de la vista mensual y los días de la semanal van en
+    blanco como «Partida» (`programa-nuevo.css`). La semana o el día de hoy conservan su
+    resaltado.
+  - Validado con `npm run check`, `npm run lint`, 570 pruebas (con aserciones nuevas de `es-hoy`)
+    y Chromium en noviembre (mes actual) y octubre, en ambos temas.
+
+## 2026-11-19 — Programa anual: herramientas junto al buscador, celular y un solo diseño
+
+- Motivo: pedido del usuario. Las vistas Anual, Mensual y Semanal, «Exportar» y «Diseño
+  original» estaban lejos de la matriz. En celular la matriz era casi ilegible y la cabecera fija
+  fallaba. Además, el usuario eligió quedarse solo con el diseño de cabecera azul.
+- Alcance (cambio directo de nivel 1 o 2, sin cambios de datos):
+  - Las vistas y «Exportar» pasan a la barra del buscador, que ahora mide como máximo 360 px. En
+    las vistas mensual y semanal la barra solo lleva las herramientas. «Exportar» queda como botón
+    de icono con flecha y nombre accesible.
+  - Celular (≤ 760 px): solo número y partida quedan fijos y más angostos. La periodicidad pasa
+    bajo el nombre en las tres matrices y el nombre largo se corta a cuatro líneas, con el texto
+    completo en el título.
+  - Corregido el error de la cabecera fija: la celda «Periodicidad» seguía fija con un desfase,
+    dejaba un hueco y tapaba los meses.
+  - Los menús de filtro y exportación ya no se abren fuera de la pantalla.
+  - Retirado «Diseño original»: el botón, `diseno-original.css`, la preferencia
+    `icsi-diseno-programa` y su parte del script de `app.html` (el hash de la CSP se recalcula al
+    arrancar). En `programa-nuevo.css`, `html:root` reemplaza al selector que excluía el diseño
+    original y conserva la misma especificidad.
+- Archivos: `PlaneacionView.svelte` (y su prueba), `MatrizMensual.svelte`, `VistaSemanal.svelte`,
+  `programa.css`, `programa-nuevo.css`, `app.html`, `app.css`, `layout/preferencias.ts` (y su
+  prueba). Se eliminó `planeacion/diseno-original.css`.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), `npm run lint` y `vitest run`
+  (78 archivos y 570 pruebas; se quitaron 3 del diseño original y se agregó 1 de «Exportar»).
+- Validación visual: Chromium con una copia aislada de la base, a 375 × 812 y 1400 × 900 y en los
+  dos temas. Se comprobaron la cabecera fija al desplazar en ambos sentidos, la barra junto al
+  buscador, los menús dentro de la pantalla y la CSP con el hash nuevo tras reiniciar.
+- Pendiente: en el tema oscuro la cabecera de la matriz usa la superficie oscura del cambio de tema
+  sin confirmar del 2026-11-11, no el azul.
+- Ajuste del mismo día, a pedido del usuario: la búsqueda ya no tiene ancho máximo y ocupa el
+  espacio libre. «Exportar» va antes de las vistas como botón de solo icono, sin flecha y del mismo
+  tamaño que el filtro (40 × 42), y conserva su menú de formatos. Las tres vistas miden lo mismo
+  (columnas iguales: 100 px en escritorio y 92 px a 375 px de ancho). En celular, «Exportar» y las
+  vistas comparten una fila sin desbordar. Validado con `npm run check`, `npm run lint`, 570
+  pruebas y Chromium a 1400 × 900 y 375 × 812.
+
+## 2026-11-19 — Marcar ejecutado sin reporte en el programa anual
+
+- Motivo: el usuario necesita registrar que una partida ya se ejecutó aunque el reporte todavía no
+  exista. Por ejemplo, la partida 2 de Cerritos es diaria y se documenta con un solo reporte al
+  final del mes. Antes, «Ejecutado» solo se lograba con un reporte emitido o con «Registrar
+  realizado externo», y un realizado seguido del reporte del mismo mes contaba dos veces.
+- Alcance (cambio OpenSpec `marcar-ejecutado`, migración 0026): «Marcar ejecutado» en el panel de
+  la celda del mes en curso o de uno terminado. Pide cantidad hasta lo que falta, y fecha y nota
+  opcionales. La notificación ofrece «Deshacer» y el panel ofrece «Desmarcar ejecutado». La marca
+  es un realizado con `origen = 'marca'` y `fecha_ejecucion`. `v_realizado` la cuenta solo en lo
+  que no cubren los reportes emitidos del mes, y si ya hay un reporte parcial, lo marcado se suma a
+  lo documentado. La tarjeta «Ejecutado» sin reporte que lo cubra usa un tono propio (verde lima,
+  borde discontinuo) en sus dos filas y aparece en la leyenda. Los realizados importados y los
+  externos no cambian.
+- Archivos: `supabase/migrations/0026_marcar_ejecutado.sql`, `supabase/esquema_completo.sql`,
+  `src/lib/server/repositorios/programa.ts`, `src/routes/planeacion/+page.server.ts`,
+  `src/lib/dominio/esquemas.ts`, `src/lib/components/planeacion/DialogoEjecutado.svelte`,
+  `src/lib/components/views/PlaneacionView.svelte`, `programa.css`, `programa-nuevo.css` y
+  `src/lib/server/repositorios/cumplimiento.spec.ts`.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), `npm run lint` y `npm run test`
+  (78 archivos y 572 pruebas). Las 3 pruebas nuevas comprueban la absorción en una partida diaria,
+  la suma tras un reporte parcial, el límite de cantidad, la fecha fuera del mes y la acción de
+  desmarcar.
+- Validación visual: Chromium sobre una copia aislada de la base de trabajo, sin cuentas. Se marcó
+  y desmarcó noviembre de la partida 2 de Cerritos. Se comprobaron el tono en los temas claro y
+  oscuro, la leyenda, que diciembre no ofrece la acción y que no hubo errores en la consola ni en el
+  servidor.
+- Base de trabajo: la 0026 se aplicó el mismo día con el servidor detenido y respaldo previo en
+  `storage/respaldos/pglite-antes-0026`, que es idéntico al original. Se comprobó que las 38 tablas
+  se mantienen, que `v_realizado` conserva sus totales (1 332 celdas y el mismo realizado), que
+  existen la columna `fecha_ejecucion` y las tres funciones, y que el servidor arranca sin errores.
+- Pendientes: las vistas mensual y semanal todavía no usan el tono nuevo.
+
+## 2026-11-11 — Tema oscuro con fondo casi negro
+
+- Motivo: reducir el tono azulado del tema oscuro. El fondo usa negro suave (`#101012`), con
+  grises diferenciados para la navegación, los paneles y los campos. Se mantienen los acentos y
+  colores de estado.
+- Alcance: `src/app.css` ajusta la paleta oscura global; `programa-nuevo.css` la comparte y usa
+  una cabecera oscura con énfasis azul en el mes actual. Se conservan el tema claro y la variante
+  «Diseño original» del programa.
+- Validación visual: Chromium con una base aislada sin datos, en «Mi trabajo» y el estado vacío
+  de «Programa anual». Se comprobó que el tema claro conserva sus colores. Sobre la superficie
+  oscura, el contraste medido fue 7,85:1 para texto tenue, 3,70:1 para borde de campo y 6,94:1
+  para el indicador de foco.
+- Validación automatizada: `npm run check` (sin errores ni avisos), `npm run lint` y 445 pruebas
+  del servidor. Con Chrome instalado y una configuración temporal de Playwright, pasaron 120 de
+  124 pruebas de componentes. Las cuatro fallas son de la vista ampliada o el giro de fotos;
+  se reprodujo con los estilos anteriores la prueba de apertura de la vista ampliada.
+
 ## 2026-11-11 — Etapa 5: concentrado de centros de costo
 
 - Motivo: etapa 5 del plan de seguimiento (`docs/PLAN_SEGUIMIENTO_CENTROS_COSTO.md`). Cambio directo

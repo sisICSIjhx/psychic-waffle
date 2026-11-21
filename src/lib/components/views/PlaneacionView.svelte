@@ -1,13 +1,14 @@
-<!-- Programa anual (diseño «Nueva versión programa anual»): encabezado con vistas y exportación,
-     filtros, indicadores del ciclo, leyenda, búsqueda y matriz de partidas por mes. Cada celda es una
+<!-- Programa anual (diseño «Nueva versión programa anual», cabecera azul): filtros, indicadores del
+     ciclo, leyenda, barra con búsqueda, filtro, vistas y exportación, y matriz de partidas por mes
+     (en celular solo número y partida quedan fijos y la periodicidad va bajo el nombre). Cada celda es una
      tarjeta con el estado de ejecución, el documental y «Visualizar»; elegirla abre un panel con sus
-     datos y acciones (capturar o continuar, ajustar y registrar un realizado externo). Vistas mensual
+     datos y acciones (capturar o continuar, marcar o desmarcar ejecutado, ajustar y registrar un
+     realizado externo); «Ejecutado» sin reporte que lo cubra tiene tono propio. Vistas mensual
      y semanal aparte (la semanal con la misma matriz). Estilos y tokens --pa-* de ambos temas en
      planeacion/programa.css, bajo el contenedor .programa-anual. -->
 <script lang="ts">
 	import '$lib/components/planeacion/programa.css';
 	import '$lib/components/planeacion/programa-nuevo.css';
-	import '$lib/components/planeacion/diseno-original.css';
 	import { onMount, tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
@@ -41,18 +42,14 @@
 	import type { FiltroPlaneacion, PendienteVencido } from '$lib/dominio/planeacion';
 	import Aviso from '$lib/components/catalogo/Aviso.svelte';
 	import DialogoAjuste from '$lib/components/planeacion/DialogoAjuste.svelte';
+	import DialogoEjecutado from '$lib/components/planeacion/DialogoEjecutado.svelte';
+	import BotonDescripciones from '$lib/components/planeacion/BotonDescripciones.svelte';
+	import NombrePartida from '$lib/components/planeacion/NombrePartida.svelte';
 	import VistaMensual from '$lib/components/planeacion/VistaMensual.svelte';
 	import VistaSemanal from '$lib/components/planeacion/VistaSemanal.svelte';
 	import { llamarAccion } from '$lib/components/reportes/acciones';
 	import EncabezadoPagina from '$lib/components/ui/EncabezadoPagina.svelte';
 	import { notificaciones } from '$lib/components/ui/notificaciones';
-	import {
-		CLAVE_DISENO_PROGRAMA,
-		disenoProgramaInicial,
-		guardarPreferencia,
-		leerPreferencia,
-		type DisenoPrograma
-	} from '$lib/layout/preferencias';
 
 	type Partida = AvancePrograma['partidas'][number];
 
@@ -106,8 +103,6 @@
 			'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
 		no_ejecutado: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
 		cerrar: '<path d="M18 6 6 18M6 6l12 12"/>',
-		diseno:
-			'<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>',
 		siguiente: '<path d="M5 12h14M13 6l6 6-6 6"/>'
 	} as const;
 
@@ -153,6 +148,15 @@
 		no_ejecutado: 'neutro',
 		sin_programa: 'neutro'
 	};
+
+	/**
+	 * Tono de la tarjeta: el del estado, salvo «Ejecutado» sin reporte que lo cubra, que tiene uno
+	 * propio en sus dos filas (se ejecutó, falta documentarlo).
+	 */
+	const tonoCelda = (c: CeldaPrograma, estado: EstadoEjecucion) =>
+		estado === 'ejecutado' && estadoDocumental(c) !== 'con_reporte'
+			? 'ejecutado-sin-reporte'
+			: TONO[estado];
 
 	/** Consulta de una captura nueva con contrato, sitio, partida, mes y, si aplica, la reprogramación. */
 	const consultaCaptura = (partidaId: string, mes: string, reprogramacion?: string) =>
@@ -407,6 +411,71 @@
 			}
 		};
 
+	// Marcar ejecutado sin reporte (cambio marcar-ejecutado): diálogo de la celda del panel, con
+	// «Deshacer» en la notificación, y «Desmarcar ejecutado» directo desde el panel.
+	let marcado: { partida: Partida; celda: CeldaPrograma } | null = null;
+	let marcarAbierto = false;
+	let errorMarcar = '';
+	let dialogoMarcar: DialogoEjecutado | undefined;
+
+	async function abrirMarcar(partida: Partida, celda: CeldaPrograma) {
+		marcado = { partida, celda };
+		errorMarcar = '';
+		marcarAbierto = true;
+		await tick();
+		await dialogoMarcar?.reiniciar();
+	}
+
+	$: if (marcado) {
+		const partida = partidas.find((p) => p.id === marcado!.partida.id);
+		const celda = partida?.celdas.find((c) => c.mes === marcado!.celda.mes);
+		if (partida && celda && celda !== marcado.celda) marcado = { partida, celda };
+	}
+
+	/** Mes en curso o terminado: los únicos que se pueden marcar como ejecutados. */
+	const marcable = (c: CeldaPrograma) => c.mes.slice(0, 7) <= hoy.slice(0, 7);
+
+	async function desmarcar(partidaId: string, mes: string, deshacer = false) {
+		if (!programa) return;
+		const datos = new FormData();
+		datos.set('programaId', programa.id);
+		datos.set('partidaId', partidaId);
+		datos.set('mes', mes);
+		const resultado = await llamarAccion('desmarcarEjecutado', datos, resolve('/planeacion'));
+		if (!resultado.ok) {
+			notificaciones.mostrar({
+				mensaje: String(resultado.datos.error ?? 'No se pudo quitar la marca.')
+			});
+		} else if (!deshacer) {
+			notificaciones.mostrar({ mensaje: `Se quitó la marca de ejecución de ${textoMes(mes)}.` });
+		}
+		await invalidateAll();
+	}
+
+	const alMarcar: SubmitFunction =
+		() =>
+		async ({ result, update }) => {
+			if (result.type === 'failure') {
+				errorMarcar = String(result.data?.error ?? 'No se pudo marcar como ejecutado.');
+				marcarAbierto = true;
+				return;
+			}
+			errorMarcar = '';
+			await update({ reset: false });
+			const marca =
+				result.type === 'success'
+					? (result.data?.marca as { partidaId: string; mes: string; cantidad: number } | undefined)
+					: undefined;
+			if (marca) {
+				notificaciones.mostrar({
+					mensaje: `Se marcó ${plural(marca.cantidad, 'ejecución', 'ejecuciones')} de ${textoMes(marca.mes)} como hecha${marca.cantidad === 1 ? '' : 's'}; falta el reporte.`,
+					textoDeshacer: 'Deshacer',
+					plazo: 10_000,
+					alDeshacer: () => desmarcar(marca.partidaId, marca.mes, true)
+				});
+			}
+		};
+
 	$: avisoGeneral = (form?.accion ? null : form) as { mensaje?: string; error?: string } | null;
 
 	/** «Mayo–Septiembre 2026» o, si cambia el año, «Noviembre 2025–Enero 2026». */
@@ -458,28 +527,6 @@
 			behavior: 'smooth'
 		});
 	}
-	// Diseño del programa: el nuevo o, si el usuario lo prefiere, el original (diseno-original.css).
-	// app.html ya aplicó el guardado antes de pintar; aquí solo se sincroniza el botón.
-	let diseno: DisenoPrograma = 'nuevo';
-	function aplicarDiseno(valor: DisenoPrograma) {
-		const raiz = document.documentElement;
-		raiz.classList.add('cambiando-tema');
-		raiz.setAttribute('data-diseno-programa', valor);
-		void getComputedStyle(raiz).color;
-		requestAnimationFrame(() =>
-			requestAnimationFrame(() => raiz.classList.remove('cambiando-tema'))
-		);
-	}
-	function cambiarDiseno() {
-		diseno = diseno === 'nuevo' ? 'original' : 'nuevo';
-		aplicarDiseno(diseno);
-		guardarPreferencia(CLAVE_DISENO_PROGRAMA, diseno === 'original' ? 'original' : null);
-	}
-	onMount(() => {
-		diseno = disenoProgramaInicial(leerPreferencia(CLAVE_DISENO_PROGRAMA));
-		aplicarDiseno(diseno);
-	});
-
 	onMount(() => {
 		const observador = new ResizeObserver(medirTabla);
 		if (contenedorTabla) observador.observe(contenedorTabla);
@@ -506,83 +553,13 @@
 />
 
 <div class="programa-anual">
-	<EncabezadoPagina
-		ceja={`Programa / ${VISTAS.find((v) => v.valor === vista)?.texto ?? 'Anual'}`}
-		titulo="Programa anual"
-		descripcion="Consulte y gestione el avance de sus partidas por contrato, sitio y periodo."
-	>
-		<svelte:fragment slot="acciones">
-			<div class="acciones-programa">
-				{#if programa}
-					<nav class="selector-vista" aria-label="Vista de la planeación">
-						<!-- enlaceVista aplica resolve() a la ruta; los filtros van en la consulta. -->
-						<!-- eslint-disable svelte/no-navigation-without-resolve -->
-						{#each VISTAS as v (v.valor)}
-							<a
-								class="opcion-vista"
-								href={enlaceVista(v.valor, mesVista)}
-								aria-current={vista === v.valor ? 'page' : undefined}
-								><svg
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-									><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
-									{@html v.icono}</svg
-								>{v.texto}</a
-							>
-						{/each}
-						<!-- eslint-enable svelte/no-navigation-without-resolve -->
-					</nav>
-				{/if}
-				<div class="fila-acciones">
-					{#if programa && vista === 'anual'}
-						<details class="menu-desplegable menu-exportar" bind:this={menuExportar}>
-							<summary class="boton-programa"
-								><svg
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-									><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
-									{@html ICONOS.descargar}</svg
-								>
-								Exportar
-								<svg
-									class="flecha"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									aria-hidden="true"
-									><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
-									{@html ICONOS.flecha}</svg
-								></summary
-							>
-							<div class="opciones-menu">
-								<button type="button" class="opcion-menu" on:click={exportarCsv}
-									>Matriz en CSV (Excel)</button
-								>
-								<p class="nota-menu">Partidas visibles con estado, documento y R/P de cada mes.</p>
-							</div>
-						</details>
-					{/if}
-					<button
-						type="button"
-						class="boton-programa boton-diseno"
-						aria-pressed={diseno === 'original'}
-						title={diseno === 'nuevo'
-							? 'Volver al diseño anterior del programa'
-							: 'Usar el diseño nuevo del programa'}
-						on:click={cambiarDiseno}
+	<!-- «Exportar» (solo icono, con su menú de formatos) y vistas: junto al buscador en la anual y,
+	     en la mensual y la semanal, en la barra de su navegación (ranura «herramientas»). -->
+	{#snippet herramientas()}
+		<div class="herramientas-programa">
+			{#if vista === 'anual'}
+				<details class="menu-desplegable menu-exportar" bind:this={menuExportar}>
+					<summary class="boton-programa boton-icono" aria-label="Exportar" title="Exportar"
 						><svg
 							viewBox="0 0 24 24"
 							fill="none"
@@ -592,14 +569,48 @@
 							stroke-linejoin="round"
 							aria-hidden="true"
 							><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
-							{@html ICONOS.diseno}</svg
-						>
-						Diseño original</button
+							{@html ICONOS.descargar}</svg
+						></summary
 					>
-				</div>
-			</div>
-		</svelte:fragment>
-	</EncabezadoPagina>
+					<div class="opciones-menu">
+						<button type="button" class="opcion-menu" on:click={exportarCsv}
+							>Matriz en CSV (Excel)</button
+						>
+						<p class="nota-menu">Partidas visibles con estado, documento y R/P de cada mes.</p>
+					</div>
+				</details>
+			{/if}
+			<nav class="selector-vista" aria-label="Vista de la planeación">
+				<!-- enlaceVista aplica resolve() a la ruta; los filtros van en la consulta. -->
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				{#each VISTAS as v (v.valor)}
+					<a
+						class="opcion-vista"
+						href={enlaceVista(v.valor, mesVista)}
+						aria-current={vista === v.valor ? 'page' : undefined}
+						><svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							><!-- eslint-disable-next-line svelte/no-at-html-tags -- trazos constantes del icono -->
+							{@html v.icono}</svg
+						>{v.texto}</a
+					>
+				{/each}
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			</nav>
+		</div>
+	{/snippet}
+
+	<EncabezadoPagina
+		ceja={`Programa / ${VISTAS.find((v) => v.valor === vista)?.texto ?? 'Anual'}`}
+		titulo="Programa anual"
+		descripcion="Consulte y gestione el avance de sus partidas por contrato, sitio y periodo."
+	/>
 
 	{#if contratos.length === 0}
 		<p class="view-note">
@@ -781,7 +792,9 @@
 					`${resolve('/historial')}?${consultaHistorial(partidaId, mes)}`}
 				{puedeAjustar}
 				on:ajustar={(e) => abrirAjuste(e.detail.partida, e.detail.celda)}
-			/>
+			>
+				<svelte:fragment slot="herramientas">{@render herramientas()}</svelte:fragment>
+			</VistaMensual>
 		{:else if vista === 'semanal' && mesVista}
 			<VistaSemanal
 				{partidas}
@@ -793,7 +806,9 @@
 				enlaceSemana={(mes, numero) => enlaceVista('semanal', mes, formato, numero)}
 				enlaceReportes={(partidaId, mes) =>
 					`${resolve('/historial')}?${consultaHistorial(partidaId, mes)}`}
-			/>
+			>
+				<svelte:fragment slot="herramientas">{@render herramientas()}</svelte:fragment>
+			</VistaSemanal>
 		{:else}
 			<section class="indicadores" aria-label="Indicadores del ciclo">
 				<div
@@ -985,6 +1000,11 @@
 						<li class="e-{TONO[estado]}">
 							<span class="punto"></span>{ETIQUETA_EJECUCION[estado]}
 						</li>
+						{#if estado === 'ejecutado'}
+							<li class="e-ejecutado-sin-reporte">
+								<span class="punto"></span>Ejecutado sin reporte
+							</li>
+						{/if}
 					{/each}
 				</ul>
 			</section>
@@ -1049,6 +1069,7 @@
 						{/each}
 					</div>
 				</details>
+				{@render herramientas()}
 			</div>
 
 			<div class="espacio-programa" class:con-panel={!!elegida}>
@@ -1070,7 +1091,9 @@
 							<thead>
 								<tr class="fila-anios">
 									<th scope="col" rowspan="2" class="columna-numero">#</th>
-									<th scope="col" rowspan="2" class="columna-partida">Partida</th>
+									<th scope="col" rowspan="2" class="columna-partida"
+										><span class="cabecera-partida">Partida <BotonDescripciones /></span></th
+									>
 									<th scope="col" rowspan="2" class="columna-periodicidad">Periodicidad</th>
 									{#each anios as grupo, i (grupo.anio)}
 										<th
@@ -1099,7 +1122,12 @@
 								{#each visibles as p (p.id)}
 									<tr class:fila-elegida={elegida?.partida.id === p.id}>
 										<td class="columna-numero">{p.numero}</td>
-										<th scope="row" class="columna-partida">{textoOracion(p.actividad)}</th>
+										<th scope="row" class="columna-partida"
+											><NombrePartida texto={textoOracion(p.actividad)} /><span
+												class="insignia-periodicidad periodicidad-movil"
+												>{ETIQUETA_PERIODICIDAD[p.periodicidad]}</span
+											></th
+										>
 										<td class="columna-periodicidad"
 											><span class="insignia-periodicidad"
 												>{ETIQUETA_PERIODICIDAD[p.periodicidad]}</span
@@ -1118,7 +1146,7 @@
 												class:elegida={elegidaAqui}
 											>
 												{#if estado !== 'sin_programa' || celda.ajustes.length || celda.realizado > 0}
-													<div class="tarjeta-celda e-{TONO[estado]}">
+													<div class="tarjeta-celda e-{tonoCelda(celda, estado)}">
 														<button
 															id={`celda-${p.id}-${celda.mes}`}
 															type="button"
@@ -1139,7 +1167,8 @@
 															>
 															<span
 																class="linea-celda documento {documental}"
-																class:alerta={documental === 'sin_reporte' && estado === 'vencido'}
+																class:alerta={documental === 'sin_reporte' &&
+																	(estado === 'vencido' || estado === 'ejecutado')}
 																aria-hidden="true"
 																><span class="punto"></span><span class="texto-linea"
 																	>{documentoCelda(celda)}</span
@@ -1274,7 +1303,7 @@
 							</div>
 							<div>
 								<dt>Ejecución</dt>
-								<dd class="estado-panel e-{TONO[estado]}">
+								<dd class="estado-panel e-{tonoCelda(celda, estado)}">
 									<span class="punto" aria-hidden="true"></span>
 									{ETIQUETA_EJECUCION[estado]}
 								</dd>
@@ -1318,6 +1347,23 @@
 								>
 							{/if}
 							<!-- eslint-enable svelte/no-navigation-without-resolve -->
+							{#if puedeAjustar && falta > 0 && marcable(celda)}
+								<button
+									type="button"
+									class="boton contorno"
+									aria-label={`Marcar ejecutada la partida ${p.numero} en ${textoMes(celda.mes)}`}
+									on:click={() => abrirMarcar(p, celda)}>Marcar ejecutado</button
+								>
+								<p class="nota-panel">Ya se hizo el trabajo; el reporte puede venir después.</p>
+							{/if}
+							{#if puedeAjustar && celda.marcas}
+								<button
+									type="button"
+									class="boton contorno"
+									aria-label={`Desmarcar la ejecución de la partida ${p.numero} en ${textoMes(celda.mes)}`}
+									on:click={() => desmarcar(p.id, celda.mes)}>Desmarcar ejecutado</button
+								>
+							{/if}
 							{#if puedeAjustar && (falta > 0 || celda.ajustes.length)}
 								<button
 									type="button"
@@ -1427,6 +1473,19 @@
 				{alEnviar}
 				error={errorAjuste}
 				on:cancelar={() => (errorAjuste = '')}
+			/>
+		{/if}
+		{#if marcado}
+			<DialogoEjecutado
+				bind:this={dialogoMarcar}
+				bind:abierto={marcarAbierto}
+				programaId={programa.id}
+				partida={marcado.partida}
+				celda={marcado.celda}
+				{hoy}
+				alEnviar={alMarcar}
+				error={errorMarcar}
+				on:cancelar={() => (errorMarcar = '')}
 			/>
 		{/if}
 	{/if}

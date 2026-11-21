@@ -13,15 +13,6 @@ export function temaInicial(guardado: string | null, sistemaOscuro: boolean): Te
 	return sistemaOscuro ? 'dark' : 'light';
 }
 
-export type DisenoPrograma = 'nuevo' | 'original';
-
-export const CLAVE_DISENO_PROGRAMA = 'icsi-diseno-programa';
-
-/** El programa anual usa el diseño nuevo salvo que se haya elegido el original. */
-export function disenoProgramaInicial(guardado: string | null): DisenoPrograma {
-	return guardado === 'original' ? 'original' : 'nuevo';
-}
-
 /** Lee una preferencia; devuelve null si el navegador no permite el almacenamiento. */
 export function leerPreferencia(clave: string): string | null {
 	try {
