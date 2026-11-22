@@ -2,8 +2,7 @@
      desde la cabecera. -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { resolve } from '$app/paths';
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import IconoAnimado from '$lib/components/ui/IconoAnimado.svelte';
 	import { SESION_ABIERTA, type SesionArmazon } from '$lib/dominio/permisos';
 	import { ETIQUETAS_ROL } from '$lib/dominio/personal';
