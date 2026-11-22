@@ -26,16 +26,16 @@ Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
     conceptos agregados y 6 actualizados en 7 de las 10 plantillas.
 - Ramas: todo el trabajo sin confirmar de `feat/kpi-seguimiento-centros` (este cambio,
   `capturar-actividad`, `reporte-fotografico-excel` y los ajustes de los importadores) quedó en un
-  commit; `main` local incluye además `origin/main`, `feat/concentrado-centros` y el commit
-  pendiente de `feat/alcances-personal-bd`. Sin push.
+  commit; `main` incluye además `origin/main`, `feat/concentrado-centros` y el commit pendiente de
+  `feat/alcances-personal-bd`. `main` se subió a GitHub el mismo día, con autorización del usuario.
 - Validación: `npm run check` 0 errores y 0 avisos; `npm run lint` (Prettier y ESLint) sin
   observaciones; `npm run test` 94 archivos y 708 pruebas. En la base de trabajo, después del
   complemento: 41 tablas, 40 con el mismo número de filas que el respaldo y `plantilla_conceptos` de
   110 a 122; el ensayo repetido no cambia nada; `api_estatus_centros` devuelve los 16 centros de
   costo para 2026-11. Servidor reiniciado y `/acceso` responde. Sin validación visual.
 - Pendientes: revisión de código y recorrido del usuario operativo a 375 px y en escritorio
-  (tareas 4.1 a 4.3 del cambio); subir `main` a GitHub cuando el usuario lo autorice; aplicar las
-  migraciones en el proyecto alojado de Supabase cuando exista.
+  (tareas 4.1 a 4.3 del cambio); aplicar las migraciones en el proyecto alojado de Supabase cuando
+  exista; decidir si se borran las ramas ya fusionadas.
 
 ## 2026-11-22 — Reporte fotográfico en Excel: plantilla y generador (sin conectar)
 
