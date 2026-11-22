@@ -9,7 +9,9 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 	const mes = mesDeSeguimiento(url.searchParams.get('mes'));
 	const concepto = z.uuid().safeParse(params.concepto);
 	if (!concepto.success) error(404, 'No encontrado');
-	const archivo = await (await datos()).seguimiento.archivo(sitioId, mes, concepto.data);
+	// `?adjunto=acuse` descarga el acuse de recibido en lugar del archivo de la carpeta.
+	const adjunto = url.searchParams.get('adjunto') === 'acuse' ? 'acuse' : 'carpeta';
+	const archivo = await (await datos()).seguimiento.archivo(sitioId, mes, concepto.data, adjunto);
 	if (!archivo) error(404, 'No encontrado');
 	const nombre = encodeURIComponent(Buffer.from(archivo.nombre).toString('utf8')).replace(
 		/['()*]/g,

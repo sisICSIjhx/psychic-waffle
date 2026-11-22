@@ -1,6 +1,6 @@
 # Contexto breve del proyecto
 
-Verificado el 2026-11-11 contra los archivos locales (rama `feat/concentrado-centros`).
+Verificado el 2026-11-22 contra los archivos locales (rama `main`, que reúne todas las ramas).
 
 ## Producto y arquitectura
 
@@ -31,8 +31,10 @@ Verificado el 2026-11-11 contra los archivos locales (rama `feat/concentrado-cen
     reglas en `dominio/seguimiento.ts`).
   - `src/lib/server/`: acceso a datos por funciones SQL `api_*` (`bd/`, `repositorios/`), servicio de
     captura (`captura.ts`), fotos y almacenamiento local, generación DOCX (`documentos/`, con el índice
-    resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`) e importación del Excel y de reportes existentes (`importacion/`).
-  - `supabase/migrations/0001…0027`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
+    resuelto por `paginacion.ts` e `indice.ts`; plantilla v2 en `plantillas/`), reporte fotográfico en
+    Excel (`documentos/fotografico.ts`, aún sin ruta) e importación del Excel y de reportes existentes
+    (`importacion/`).
+  - `supabase/migrations/0001…0029`: esquema, RLS y funciones; PGlite las aplica al abrir la base.
     `npm run bd:script` genera `supabase/esquema_completo.sql` (todo en un script para una base vacía
     de Supabase; una prueba exige que esté al día). Proyecto = cliente. Fotos: local o SharePoint
     (solo URL en `reporte_fotos`).
@@ -40,8 +42,8 @@ Verificado el 2026-11-11 contra los archivos locales (rama `feat/concentrado-cen
     notificaciones con deshacer, botones segmentados, selector con búsqueda y `EncabezadoPagina`).
     Sistema visual «Panel claro» (2026-11-05, inspirado en los kits DashStack y «SAAS Dashboard» de
     Figma) en `src/app.css`: Nunito Sans y Manrope (`@fontsource-variable`), tokens semánticos de
-    ambos temas (contraste AA medido), riel de 240 px con barra superior (fecha, conexión y «Nuevo
-    reporte»), paneles de 14 px con sombra, insignias en píldora y fichas de icono; título de cada
+    ambos temas (contraste AA medido), riel de 240 px con barra superior (fecha, conexión y menú
+    «Capturar»: actividad o reporte), paneles de 14 px con sombra, insignias en píldora y fichas de icono; título de cada
     página en su contenido (`encabezadoDePagina` en `layout/navegacion.ts`). Tema recordado
     (`layout/preferencias.ts`). El programa anual tiene un solo diseño (cabecera azul,
     `planeacion/programa-nuevo.css` sobre `programa.css`); «Diseño original» se retiró el 2026-11-19.
@@ -154,9 +156,37 @@ Verificado el 2026-11-11 contra los archivos locales (rama `feat/concentrado-cen
   por mes; la 0025 está aplicada en la base local de trabajo. Etapa 5 (2026-11-11, rama
   `feat/concentrado-centros`, sin migración): concentrado en `/cumplimiento`. Sigue la etapa 6
   (automatizaciones de la fase 2).
+- Cambio `kpi-estatus-centros` (migración 0028, plan en `docs/PLAN_KPI_CENTROS_COSTO.md`): estatus
+  y KPI por centro de costo y mes (`api_estatus_centros`, reglas en `dominio/estatus.ts`) en
+  `/cumplimiento` y `/seguimiento`; conceptos de plantilla con indicador, «por definir» y carpeta;
+  reporte por partida, partidas escritas a mano, atenciones de emergencia, carpetas con recepción y
+  acuse, y adicionales en `/cobranza`. La 0028 está aplicada en la base de trabajo y las plantillas
+  se complementaron con la matriz el 2026-11-22 (`npm run importar:centros -- <archivo>
+--complementar`, con respaldo). Faltan la revisión de código y el recorrido del usuario operativo
+  (tareas 4.x).
 - Cambio `marcar-ejecutado` (2026-11-19, migraciones 0026, aplicada en la base de trabajo con respaldo, y 0027, fecha de ejecución obligatoria, también aplicada con respaldo):
   «Marcar ejecutado» y «Desmarcar ejecutado» en el panel de la celda del programa anual; los
   reportes emitidos del mes absorben la marca y la tarjeta sin reporte tiene tono propio.
+- Cambio `capturar-actividad` (2026-11-21, migración 0029, aplicada en la base de trabajo el
+  2026-11-22 con respaldo):
+  «Capturar» de la barra superior con «Actividad» (ventana: centro de costo, partida con búsqueda,
+  Sí/No, fecha opcional y personas; ruta `/actividades`, capacidad `capturar`) y «Reporte». Los
+  centros sin programa anual enlazan a `/seguimiento` hasta que se carguen sus programas.
+- Programas anuales recibidos (2026-11-22): Vitromex 1 (EM-11027) y Vitromex 2 (EM-11035) cargados
+  en la base de trabajo con el contrato provisional `VITROMEX-POR-CONFIRMAR` (18 partidas por
+  confirmar y programa de 2026-01 a 2026-12 en cada uno; el importador lee su formato de una columna
+  por mes y `--meses-ocultos`). Virtual (EM-30179): 37 partidas confirmadas con la numeración del
+  libro de alcances (importador de catálogo sin hoja de programa y `--conservar-alcances`); sigue sin
+  programa por meses. Proagro EM-30184: 34 equipos en el catálogo (31 del «Plan de acción»). Los
+  alcances por tipo de mantenimiento de Proagro están agregados a sus partidas (correspondencia y
+  partidas del contrato en `insumos/PROAGROINDUSTRIAS/*.json`) y sus 56 partidas, confirmadas con
+  el nombre del contrato. Falta Yazbek (propuesta con importes, sin P/R) y los equipos de EM-30185:
+  detalle en HISTORIAL.md.
+- Cambio `reporte-fotografico-excel` (2026-11-22, sin migración ni interfaz): plantilla
+  `plantillas/REPORTE-FOTOGRAFICO.v1.xlsx` y generador `documentos/fotografico.ts` del reporte
+  fotográfico de estimación (Excel horizontal, una hoja por reporte); `dominio/tipos-documento.ts`
+  declara el formato de descarga de cada tipo. Sin conectar a rutas ni botones: faltan las decisiones
+  de `design.md` (D10), empezando por dónde se guardan los datos de la estimación.
 - Rendimiento y seguridad (2026-11-05): JavaScript por página −65 a −73 %, DOCX con `noSandbox`,
   giradas guardadas, generación compartida y precalentada; CSP, encabezados y permisos completos en
   el catálogo. Detalle y 10 propuestas en `docs/OPTIMIZACION_SEGURIDAD_Y_PROPUESTAS.md`.
@@ -164,7 +194,7 @@ Verificado el 2026-11-11 contra los archivos locales (rama `feat/concentrado-cen
   histórico antes de usar el tablero; proyecto alojado de
   Supabase (3.8); asignar rol y centros de costo al personal; contratos de los centros de costo nuevos; inicio de sesión con Microsoft; almacenamiento en SharePoint; destino de
   despliegue
-  (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar el contrato de Virtual y las partidas
-  derivadas por confirmar; probar HEIC con una foto real.
+  (con `adapter-node`, `BODY_SIZE_LIMIT` ≥ 16 MB); confirmar los contratos de Virtual y Vitromex y las
+  partidas por confirmar de Vitromex; probar HEIC con una foto real.
 - Herramientas: OpenSpec 1.14.2 y CodeGraph 1.6.2 (MCP en `.mcp.json`; `npm run graph:sync` tras cambios
   grandes).

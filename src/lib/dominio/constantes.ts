@@ -65,8 +65,35 @@ export const TIPOS_CONCEPTO = [
 	'carpeta'
 ] as const;
 export type TipoConcepto = (typeof TIPOS_CONCEPTO)[number];
-export const NIVELES_CONCEPTO = ['contrato', 'orden_compra', 'periodo', 'actividad'] as const;
+export const NIVELES_CONCEPTO = [
+	'contrato',
+	'orden_compra',
+	'periodo',
+	'actividad',
+	'partida'
+] as const;
 export type NivelConcepto = (typeof NIVELES_CONCEPTO)[number];
+/** Qué mide un concepto para los indicadores del centro de costo (cambio kpi-estatus-centros, D1). */
+export const INDICADORES_CONCEPTO = [
+	'monto_contrato',
+	'monto_cobrado',
+	'monto_facturado',
+	'periodicidad',
+	'em_programadas',
+	'em_realizadas',
+	'em_cobradas',
+	'actividad_cobrada'
+] as const;
+export type IndicadorConcepto = (typeof INDICADORES_CONCEPTO)[number];
+/** Camino de una carpeta: se prepara, se entrega y el cliente la recibe (con comentarios o bien). */
+export const ESTADOS_ENTREGA_CARPETA = [
+	'pendiente',
+	'en_proceso',
+	'entregada',
+	'recibida_comentarios',
+	'recibida'
+] as const;
+export type EstadoCarpeta = (typeof ESTADOS_ENTREGA_CARPETA)[number];
 export const MODOS_CONTRATO = ['obligatorio', 'opcional', 'sin_contrato'] as const;
 export type ModoContrato = (typeof MODOS_CONTRATO)[number];
 export const ORIGENES_ACTIVIDADES = ['programa_anual', 'mensual', 'ninguno'] as const;

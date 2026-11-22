@@ -4,17 +4,18 @@ import {
 	bloquesAplicados,
 	conceptoValido,
 	estadoContratoCentro,
+	indicadoresDeConcepto,
 	nivelesDeBloque,
 	tiposDeBloque
 } from './seguimiento';
 
 describe('combinaciones de los conceptos', () => {
-	it('el bloque fija el nivel, salvo el programa', () => {
+	it('el bloque fija el nivel, salvo el programa y los documentos', () => {
 		expect(nivelesDeBloque('contrato')).toEqual(['contrato']);
 		expect(nivelesDeBloque('ordenes_compra')).toEqual(['orden_compra']);
-		expect(nivelesDeBloque('documentos')).toEqual(['actividad']);
+		expect(nivelesDeBloque('documentos')).toEqual(['actividad', 'partida']);
 		expect(nivelesDeBloque('carpetas')).toEqual(['periodo']);
-		expect(nivelesDeBloque('programa')).toEqual(['periodo', 'actividad']);
+		expect(nivelesDeBloque('programa')).toEqual(['periodo', 'actividad', 'partida']);
 	});
 
 	it('las carpetas solo son entregas, y ningún otro bloque las usa', () => {
@@ -29,9 +30,30 @@ describe('combinaciones de los conceptos', () => {
 		for (const bloque of BLOQUES_SEGUIMIENTO)
 			for (const tipo of TIPOS_CONCEPTO)
 				for (const nivel of NIVELES_CONCEPTO) if (conceptoValido(bloque, tipo, nivel)) validas++;
-		// contrato, órdenes y documentos: 7 tipos × 1 nivel; programa: 7 × 2; carpetas: 1 × 1.
-		expect(validas).toBe(7 * 3 + 7 * 2 + 1);
+		// contrato y órdenes: 7 tipos × 1 nivel; documentos: 7 × 2; programa: 7 × 3; carpetas: 1 × 1.
+		expect(validas).toBe(7 * 2 + 7 * 2 + 7 * 3 + 1);
 		expect(conceptoValido('documentos', 'casilla', 'periodo')).toBe(false);
+		expect(conceptoValido('documentos', 'casilla', 'partida')).toBe(true);
+		expect(conceptoValido('contrato', 'monto', 'partida')).toBe(false);
+	});
+
+	it('un indicador solo se ofrece donde tiene sentido', () => {
+		expect(indicadoresDeConcepto('contrato', 'monto', 'contrato')).toEqual([
+			'monto_contrato',
+			'monto_cobrado',
+			'monto_facturado'
+		]);
+		expect(indicadoresDeConcepto('contrato', 'texto', 'contrato')).toEqual(['periodicidad']);
+		expect(indicadoresDeConcepto('programa', 'cantidad', 'periodo')).toEqual([
+			'em_programadas',
+			'em_realizadas',
+			'em_cobradas'
+		]);
+		expect(indicadoresDeConcepto('programa', 'casilla', 'actividad')).toEqual([
+			'actividad_cobrada'
+		]);
+		expect(indicadoresDeConcepto('ordenes_compra', 'monto', 'orden_compra')).toEqual([]);
+		expect(indicadoresDeConcepto('documentos', 'casilla', 'partida')).toEqual([]);
 	});
 });
 

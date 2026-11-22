@@ -1,6 +1,10 @@
-// Concentrado de centros de costo y tablero de cumplimiento del programa: indicadores a un mes de corte (por omisión, el mes en curso),
-// con filtros por cliente, contrato, sitio y periodicidad en la dirección. Los cálculos los hace la
-// vista con src/lib/dominio/cumplimiento.ts sobre el avance de cada programa.
+// Tablero de estatus de los centros de costo y cumplimiento del programa anual: indicadores a un mes
+// de corte (por omisión, el mes en curso), con filtros por cliente, contrato, sitio, periodicidad,
+// estatus y búsqueda en la dirección. El estatus de cada centro se calcula aquí
+// (components/cumplimiento/tablero.ts sobre dominio/estatus.ts); los indicadores del programa anual
+// los calcula la vista con src/lib/dominio/cumplimiento.ts.
+import { esEstatus, tarjetasDelTablero } from '$lib/components/cumplimiento/tablero';
+import type { ProgramaCumplimiento } from '$lib/dominio/cumplimiento';
 import { PERIODICIDADES } from '$lib/dominio/esquemas';
 import { fechaEnZona } from '$lib/dominio/fechas';
 import { alcanceDe, centrosVisibles, filtrarPor } from '$lib/server/alcance';
@@ -9,40 +13,37 @@ import { puede } from '$lib/server/permisos';
 import type { PageServerLoad } from './$types';
 
 /**
- * Centros de costo visibles y, de los que capturan sus actividades cada mes, cuántas programaron y
- * ejecutaron en el mes de corte. Los que tienen programa anual se miden con sus programas.
+ * Tablero de estatus: una tarjeta por centro de costo visible, con una sola consulta del resumen
+ * (`api_estatus_centros`). Lo financiero solo viaja si quien consulta tiene `verContrato`.
  */
-async function centrosDelConcentrado(
+async function tableroDeEstatus(
 	repos: Awaited<ReturnType<typeof datos>>,
 	locals: App.Locals | undefined,
-	corte: string
+	programas: readonly ProgramaCumplimiento[],
+	corte: string,
+	hoy: string
 ) {
-	const centros = await repos.centrosCosto.listar(centrosVisibles(locals));
-	const mensuales = centros.filter((c) => c.plantilla?.origenActividades === 'mensual');
-	const meses = await Promise.all(
-		mensuales.map((c) => repos.seguimiento.obtener(c.id, corte.slice(0, 7)))
-	);
-	return {
-		centros: centros.map(({ id, clave, nombre, plantilla, contratos }) => ({
+	const visibles = centrosVisibles(locals);
+	const centros = await repos.centrosCosto.listar(visibles);
+	const resumenes = await repos.estatus.obtener({
+		sitioIds: visibles,
+		mes: corte.slice(0, 7),
+		hoy,
+		verContrato: puede(locals, 'verContrato')
+	});
+	return tarjetasDelTablero(
+		centros.map(({ id, clave, nombre, plantilla, contratos }) => ({
 			id,
 			clave,
 			nombre,
 			plantilla: plantilla && { origenActividades: plantilla.origenActividades },
 			contratos: contratos.map((c) => ({ id: c.id, numero: c.numero }))
 		})),
-		actividades: Object.fromEntries(
-			mensuales.map((c, i) => {
-				const programadas = meses[i].actividades.filter((a) => a.programada);
-				return [
-					c.id,
-					{
-						programadas: programadas.length,
-						ejecutadas: programadas.filter((a) => a.ejecutada).length
-					}
-				];
-			})
-		)
-	};
+		resumenes,
+		programas,
+		corte,
+		hoy
+	);
 }
 
 export const load: PageServerLoad = async ({ url, locals }) => {
@@ -89,13 +90,27 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		}),
 		(p) => p.sitio.id
 	);
-	// Concentrado (etapa 5): todos los centros de costo de quien consulta, tengan o no programa. Solo
-	// sin filtro de contrato; con uno elegido la página es el detalle de ese contrato o centro.
+	// Tablero de estatus: todos los centros de costo de quien consulta, tengan o no programa. Solo sin
+	// filtro de contrato; con uno elegido la página es el detalle de ese contrato o centro.
+	const estatus = url.searchParams.get('estatus');
 	const concentrado =
-		cliente || contrato ? null : await centrosDelConcentrado(repos, locals, corte);
+		cliente || contrato
+			? null
+			: {
+					tarjetas: await tableroDeEstatus(
+						repos,
+						locals,
+						programas as unknown as ProgramaCumplimiento[],
+						corte,
+						hoy
+					),
+					estatus: esEstatus(estatus) ? estatus : null,
+					busqueda: (url.searchParams.get('q') ?? '').trim().slice(0, 100)
+				};
 	return {
 		concentrado,
-		verCobranza: puede(locals, 'verContrato') || puede(locals, 'verEnlacePrograma'),
+		// «Contrato y cobranza» solo se ofrece a quien ve el contrato: sin esa capacidad no hay finanzas.
+		verCobranza: puede(locals, 'verContrato'),
 		hoy,
 		corte,
 		corteLimitado,

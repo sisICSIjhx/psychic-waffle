@@ -998,10 +998,23 @@ td.acciones-fila > * + * {
 	border-color: color-mix(in srgb, var(--peligro-borde) var(--mezcla-borde-insignia), transparent);
 	color: var(--peligro);
 }
-.status-badge.accion-crear {
+.status-badge.accion-crear,
+.status-badge.info,
+.status-badge.por-definir {
 	background: var(--info-fondo);
 	border-color: color-mix(in srgb, var(--info-borde) var(--mezcla-borde-insignia), transparent);
 	color: var(--info);
+}
+/* Insignia de estatus de un centro de costo: más grande y con icono de 16 px. */
+.status-badge.grande {
+	gap: 6px;
+	padding: 4px 12px;
+	font-size: var(--texto-sm);
+}
+.status-badge.grande svg {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
 }
 
 /* =========================================
@@ -1135,6 +1148,34 @@ details[open] > summary.view-heading {
 		padding-block: 11px;
 	}
 }
+/* <summary> con aspecto de botón (se combina con .boton): abre un formulario sin JavaScript. */
+details > summary.resumen-boton {
+	display: inline-flex;
+	min-height: 44px;
+	padding-block: 6px;
+	list-style: none;
+}
+details > summary.resumen-boton::-webkit-details-marker {
+	display: none;
+}
+details > summary.resumen-boton::marker {
+	content: '';
+}
+details > summary.resumen-boton.primario:hover {
+	color: var(--relleno-accion-texto);
+}
+details > summary.resumen-boton.contorno:hover {
+	color: var(--accion-hover);
+}
+details[open] > summary.resumen-boton {
+	margin-bottom: 12px;
+}
+
+/* Etiqueta de una celda de .tabla-apilable: solo se ve cuando la tabla se apila (ventanas estrechas),
+   porque en escritorio ya la nombra el encabezado de la columna. */
+.etiqueta-celda {
+	display: none;
+}
 
 /* =========================================
    Ventanas estrechas: el menú pasa a panel superpuesto.
@@ -1196,6 +1237,54 @@ details[open] > summary.view-heading {
 	}
 	.lista-editable li {
 		flex-wrap: wrap;
+	}
+	/* Botón a todo el ancho: la acción principal de una tarjeta en teléfono. */
+	.boton.ancho {
+		width: 100%;
+	}
+	/* Tabla que se apila: cada fila es un bloque y cada celda lleva su etiqueta visible. Poner los
+	   roles de tabla en el marcado (role="table", "row", "cell"…): «display: block» los quita en
+	   algunos navegadores. */
+	.tabla-apilable,
+	.tabla-apilable tbody,
+	.tabla-apilable tfoot,
+	.tabla-apilable tr,
+	.tabla-apilable th,
+	.tabla-apilable td {
+		display: block;
+		width: auto;
+	}
+	.tabla-apilable thead {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+	}
+	.tabla-apilable tr {
+		padding: 12px 0;
+		border-bottom: 1px solid var(--linea);
+	}
+	.tabla-apilable tr:last-child {
+		border-bottom: none;
+	}
+	.tabla-apilable th,
+	.tabla-apilable td {
+		padding: 4px 0;
+		border: none;
+		text-align: left;
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+	.tabla-apilable tbody tr:hover > td {
+		background: none;
+	}
+	.tabla-apilable .etiqueta-celda {
+		display: block;
+		color: var(--tinta-secundaria);
+		font-size: var(--texto-xs);
+		font-weight: 600;
 	}
 }
 /* En teléfonos el encabezado del editor deja de ser fijo (EditorReporte): no hace falta reservarle espacio. */

@@ -86,7 +86,9 @@ export const esquemaMarcaEjecucion = z.object({
 	/** Lo que se pidió marcar (no lo guardado para sumarse a lo ya documentado). */
 	cantidad: z.coerce.number().int(),
 	fechaEjecucion: z.iso.date().nullable(),
-	nota: z.string()
+	nota: z.string(),
+	/** Personas que realizaron la actividad (cambio capturar-actividad). */
+	personalIds: z.array(z.uuid()).default([])
 });
 export type MarcaEjecucion = z.infer<typeof esquemaMarcaEjecucion>;
 
@@ -143,6 +145,8 @@ export class RepositorioPrograma {
 		/** Día de ejecución dentro del mes (obligatorio). */
 		fecha: string;
 		nota?: string | null;
+		/** Personas activas que realizaron la actividad (opcional). */
+		personalIds?: string[];
 	}): Promise<MarcaEjecucion> {
 		return esquemaMarcaEjecucion.parse(await this.sql.llamar('api_marcar_ejecutado', marca));
 	}

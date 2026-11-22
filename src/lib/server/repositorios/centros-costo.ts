@@ -9,13 +9,15 @@ import {
 	esquemaPlantillaSeguimiento,
 	esquemaPlantillaSeguimientoEntrada,
 	esquemaResultadoCargaCentros,
+	esquemaResultadoComplemento,
 	type CargaCentrosCosto,
 	type CentroCosto,
 	type CentroCostoEntrada,
 	type ContratoCentros,
 	type PlantillaSeguimiento,
 	type PlantillaSeguimientoEntrada,
-	type ResultadoCargaCentros
+	type ResultadoCargaCentros,
+	type ResultadoComplemento
 } from '../../dominio/esquemas.ts';
 import type { ClienteSql } from '../bd/cliente.ts';
 
@@ -78,6 +80,18 @@ export class RepositorioCentrosCosto {
 		const entrada = esquemaCargaCentrosCosto.parse(carga);
 		return esquemaResultadoCargaCentros.parse(
 			await this.sql.llamar('api_importar_centros_costo', { ...entrada, ensayo })
+		);
+	}
+
+	/**
+	 * Complementa las plantillas que ya existen (cambio kpi-estatus-centros, D10): agrega los conceptos
+	 * que falten y actualiza indicador, «por definir» y carpeta de los existentes. No cambia tipo,
+	 * bloque ni nivel, ni elimina conceptos. Con `ensayo` (por omisión) solo informa.
+	 */
+	async complementar(carga: CargaCentrosCosto, ensayo = true): Promise<ResultadoComplemento> {
+		const { plantillas } = esquemaCargaCentrosCosto.parse(carga);
+		return esquemaResultadoComplemento.parse(
+			await this.sql.llamar('api_complementar_plantillas', { plantillas, ensayo })
 		);
 	}
 

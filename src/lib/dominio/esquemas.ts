@@ -21,6 +21,7 @@ import {
 	MOTIVOS_AJUSTE,
 	BLOQUES_SEGUIMIENTO,
 	TIPOS_CONCEPTO,
+	INDICADORES_CONCEPTO,
 	NIVELES_CONCEPTO,
 	MODOS_CONTRATO,
 	ORIGENES_ACTIVIDADES
@@ -826,7 +827,13 @@ export const esquemaConceptoSeguimiento = z.object({
 	etiqueta: z.string(),
 	tipo: z.enum(TIPOS_CONCEPTO),
 	nivel: z.enum(NIVELES_CONCEPTO),
-	orden: z.number().int().positive()
+	orden: z.number().int().positive(),
+	/** Qué mide el concepto para los indicadores del centro; null si no mide nada. */
+	indicador: z.enum(INDICADORES_CONCEPTO).nullable(),
+	/** Aún no se sabe cómo es: se muestra «Por definir», admite captura y no cuenta. */
+	porDefinir: z.boolean(),
+	/** Carpeta (concepto del bloque carpetas) a la que pertenece un documento. */
+	carpetaId: id.nullable()
 });
 export type ConceptoSeguimiento = z.infer<typeof esquemaConceptoSeguimiento>;
 
@@ -847,7 +854,14 @@ const esquemaConceptoEntrada = z.object({
 	bloque: z.enum(BLOQUES_SEGUIMIENTO),
 	etiqueta: z.string(),
 	tipo: z.enum(TIPOS_CONCEPTO),
-	nivel: z.enum(NIVELES_CONCEPTO).optional()
+	nivel: z.enum(NIVELES_CONCEPTO).optional(),
+	// Un concepto que no trae estas llaves conserva lo que tenía.
+	indicador: z.enum(INDICADORES_CONCEPTO).nullable().optional(),
+	porDefinir: z.boolean().optional(),
+	/** La carpeta de un documento, por id… */
+	carpetaId: id.nullable().optional(),
+	/** …o por la etiqueta de un concepto de carpeta de la misma lista (sirve para uno nuevo). */
+	carpeta: z.string().nullable().optional()
 });
 
 /** Alta o edición con la lista completa de conceptos; la base valida bloque, tipo y nivel. */
@@ -905,7 +919,7 @@ export const esquemaCargaCentrosCosto = z.object({
 				descripcion: textoOpcional.optional(),
 				modoContrato: z.enum(MODOS_CONTRATO),
 				origenActividades: z.enum(ORIGENES_ACTIVIDADES),
-				conceptos: z.array(esquemaConceptoEntrada.omit({ id: true }))
+				conceptos: z.array(esquemaConceptoEntrada.omit({ id: true, carpetaId: true }))
 			})
 		)
 		.default([]),
@@ -948,6 +962,31 @@ export const esquemaResultadoCargaCentros = z.object({
 	)
 });
 export type ResultadoCargaCentros = z.infer<typeof esquemaResultadoCargaCentros>;
+
+/** Informe de `npm run importar:centros -- --complementar` (cambio kpi-estatus-centros, D10). */
+export const esquemaResultadoComplemento = z.object({
+	ensayo: z.boolean(),
+	aplicado: z.boolean(),
+	resumen: z.object({
+		agregados: z.number().int(),
+		actualizados: z.number().int(),
+		ausentes: z.number().int(),
+		invalidas: z.number().int()
+	}),
+	plantillas: z.array(
+		z.object({
+			nombre: textoOpcional,
+			estado: z.enum(['complementada', 'sin_cambios', 'ausente', 'invalida']),
+			/** Conceptos que la plantilla no tenía. */
+			agregados: z.number().int(),
+			/** Conceptos existentes que cambian de indicador, «por definir» o carpeta. */
+			actualizados: z.number().int(),
+			cambios: z.array(z.string()),
+			avisos: z.array(z.string())
+		})
+	)
+});
+export type ResultadoComplemento = z.infer<typeof esquemaResultadoComplemento>;
 
 /** Contrato con su cliente y sus centros de costo, para filtrar por alcance. */
 export const esquemaContratoCentros = z.object({

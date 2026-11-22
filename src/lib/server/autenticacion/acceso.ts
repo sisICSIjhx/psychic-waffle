@@ -29,6 +29,8 @@ export type DecisionAcceso =
 const MODIFICACIONES: readonly (readonly [prefijo: string, capacidad: Capacidad | 'sesion'])[] = [
 	['/reportes', 'capturar'],
 	['/captura', 'capturar'],
+	// Capturar una actividad del programa anual desde la barra superior (cambio capturar-actividad).
+	['/actividades', 'capturar'],
 	['/planeacion', 'ajustarPrograma'],
 	['/seguimiento', 'editarSeguimiento'],
 	// Cada acción comprueba su capacidad: contrato, enlace del programa o cobranza.

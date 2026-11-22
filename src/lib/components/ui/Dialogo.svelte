@@ -13,6 +13,8 @@
 	export let confirmarDeshabilitado = false;
 	/** Sin acción que confirmar (solo «Cancelar»), p. ej. cuando solo se pueden anular ajustes. */
 	export let conConfirmar = true;
+	/** Con false, «confirmar» no cierra: quien lo usa cierra al terminar (p. ej., tras guardar). */
+	export let cerrarAlConfirmar = true;
 
 	const dispatch = createEventDispatcher<{ confirmar: void; cancelar: void }>();
 
@@ -48,7 +50,7 @@
 
 	function confirmar() {
 		dispatch('confirmar');
-		abierto = false;
+		if (cerrarAlConfirmar) abierto = false;
 	}
 </script>
 

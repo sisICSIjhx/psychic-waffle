@@ -5,6 +5,7 @@ import { RepositorioCatalogo } from './catalogo.ts';
 import { RepositorioCentrosCosto } from './centros-costo.ts';
 import { RepositorioContratoCobranza } from './contrato-cobranza.ts';
 import { RepositorioEquipos } from './equipos.ts';
+import { RepositorioEstatus } from './estatus.ts';
 import { RepositorioPersonal } from './personal.ts';
 import { RepositorioPrograma } from './programa.ts';
 import { RepositorioReportes } from './reportes.ts';
@@ -16,6 +17,7 @@ export interface Repositorios {
 	centrosCosto: RepositorioCentrosCosto;
 	contratoCobranza: RepositorioContratoCobranza;
 	equipos: RepositorioEquipos;
+	estatus: RepositorioEstatus;
 	personal: RepositorioPersonal;
 	programa: RepositorioPrograma;
 	reportes: RepositorioReportes;
@@ -30,6 +32,7 @@ export function crearRepositorios(sql: ClienteSql): Repositorios {
 		centrosCosto: new RepositorioCentrosCosto(sql),
 		contratoCobranza: new RepositorioContratoCobranza(sql),
 		equipos: new RepositorioEquipos(sql),
+		estatus: new RepositorioEstatus(sql),
 		personal: new RepositorioPersonal(sql),
 		programa: new RepositorioPrograma(sql),
 		reportes: new RepositorioReportes(sql),

@@ -6,8 +6,35 @@
 	import BotonPanel from './BotonPanel.svelte';
 
 	export let menuAbierto = true;
-	/** «Nuevo reporte» solo se ofrece a quien puede capturar. */
+	/** «Capturar» (actividad o reporte) solo se ofrece a quien puede capturar. */
 	export let puedeCapturar = true;
+
+	// «Actividad» abre la ventana «Capturar actividad» (cambio capturar-actividad). Su código se
+	// descarga la primera vez que se pide, no con cada página.
+	let VentanaActividad:
+		| typeof import('$lib/components/actividades/DialogoActividad.svelte').default
+		| null = null;
+	let actividadAbierta = false;
+	async function abrirActividad() {
+		cerrarCapturar();
+		if (!VentanaActividad) {
+			VentanaActividad = (await import('$lib/components/actividades/DialogoActividad.svelte'))
+				.default;
+		}
+		actividadAbierta = true;
+	}
+
+	// «Capturar» despliega sus opciones como el menú de descargas; se cierra al elegir una, con Esc
+	// o con un clic fuera.
+	let menuCapturar: HTMLDetailsElement | undefined;
+	function cerrarCapturar(devolverFoco = false) {
+		if (!menuCapturar?.open) return;
+		menuCapturar.open = false;
+		if (devolverFoco) menuCapturar.querySelector('summary')?.focus();
+	}
+	function alHacerClic(evento: MouseEvent) {
+		if (menuCapturar && !menuCapturar.contains(evento.target as Node)) cerrarCapturar();
+	}
 
 	/** Fecha de hoy en la zona del proyecto, con mayúscula inicial («Jueves, 5 de noviembre de 2026»). */
 	const textoHoy = new Intl.DateTimeFormat('es-MX', {
@@ -85,25 +112,55 @@
 			{/if}
 		</div>
 		{#if puedeCapturar}
-			<a
-				class="boton primario compacto acceso-captura"
-				href={resolve('/captura')}
-				aria-label="Nuevo reporte"
-				title="Nuevo reporte"
-			>
-				<svg
-					aria-hidden="true"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2.25"
-					stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg
+			<details class="menu-capturar" bind:this={menuCapturar}>
+				<summary
+					class="boton primario compacto resumen-boton acceso-captura"
+					aria-label="Capturar"
+					title="Capturar"
 				>
-				<span>Nuevo reporte</span>
-			</a>
+					<svg
+						aria-hidden="true"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.25"
+						stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg
+					>
+					<span>Capturar</span>
+					<svg
+						class="flecha"
+						aria-hidden="true"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.25"
+						stroke-linecap="round"
+						stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
+					>
+				</summary>
+				<div class="opciones-captura">
+					<button type="button" class="opcion-captura" on:click={abrirActividad}>
+						<span class="titulo-opcion">Actividad</span>
+						<span class="nota-opcion">Si se realizó o no una actividad del programa anual.</span>
+					</button>
+					<a class="opcion-captura" href={resolve('/captura')} on:click={() => cerrarCapturar()}>
+						<span class="titulo-opcion">Reporte</span>
+						<span class="nota-opcion">Nuevo reporte FOR-ICSI-RMT-01 de una partida.</span>
+					</a>
+				</div>
+			</details>
 		{/if}
 	</div>
 </header>
+
+{#if VentanaActividad}
+	<svelte:component this={VentanaActividad} bind:abierto={actividadAbierta} />
+{/if}
+
+<svelte:window
+	on:click={alHacerClic}
+	on:keydown={(e) => e.key === 'Escape' && cerrarCapturar(true)}
+/>
 
 <style>
 	.header-left {
@@ -155,6 +212,71 @@
 		padding: 6px 16px;
 		border-radius: 10px;
 	}
+	/* Menú «Capturar»: «Actividad» y «Reporte» bajo el botón, alineados a su borde derecho. */
+	.menu-capturar {
+		position: relative;
+	}
+	.menu-capturar[open] > .acceso-captura {
+		margin-bottom: 0;
+	}
+	.acceso-captura svg {
+		width: 16px;
+		height: 16px;
+	}
+	.acceso-captura .flecha {
+		width: 14px;
+		height: 14px;
+		transition: transform 0.15s ease-out;
+	}
+	.menu-capturar[open] .flecha {
+		transform: rotate(180deg);
+	}
+	.opciones-captura {
+		position: absolute;
+		top: calc(100% + 6px);
+		right: 0;
+		z-index: 30;
+		display: grid;
+		gap: 2px;
+		min-width: 260px;
+		padding: 6px;
+		border-radius: var(--radio-flotante);
+		background: var(--superficie-flotante);
+		box-shadow: var(--sombra-flotante);
+	}
+	.opcion-captura {
+		display: grid;
+		gap: 2px;
+		width: 100%;
+		padding: 8px 12px;
+		border: 0;
+		border-radius: var(--radio-control);
+		background: none;
+		color: var(--tinta);
+		font: inherit;
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+	}
+	.opcion-captura:hover,
+	.opcion-captura:focus-visible {
+		background: var(--superficie-hover);
+	}
+	.titulo-opcion {
+		font-size: var(--texto-sm);
+		font-weight: 700;
+	}
+	.nota-opcion {
+		color: var(--tinta-tenue);
+		font-size: var(--texto-xs);
+	}
+	/* Con el dedo, 44 px también entre 421 y 768 px (un teléfono de 430 px cae ahí). Con «.boton»
+	   para ganarle al alto de «.boton.compacto» de app.css. */
+	@media (pointer: coarse) {
+		.boton.acceso-captura {
+			min-height: 44px;
+		}
+	}
 	.sin-conexion {
 		display: inline-flex;
 		align-items: center;
@@ -185,8 +307,12 @@
 			height: 44px;
 			padding: 0;
 		}
-		.acceso-captura span {
+		.acceso-captura span,
+		.acceso-captura .flecha {
 			display: none;
+		}
+		.acceso-captura {
+			justify-content: center;
 		}
 	}
 </style>

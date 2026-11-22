@@ -3,27 +3,28 @@
 // ofrezca combinaciones válidas. Sin Zod: lo usan los componentes del navegador.
 import type {
 	BloqueSeguimiento,
+	IndicadorConcepto,
 	ModoContrato,
 	NivelConcepto,
 	OrigenActividades,
 	TipoConcepto
 } from './constantes.ts';
-import { BLOQUES_SEGUIMIENTO, TIPOS_CONCEPTO } from './constantes.ts';
+import { BLOQUES_SEGUIMIENTO, INDICADORES_CONCEPTO, TIPOS_CONCEPTO } from './constantes.ts';
 
 export const ETIQUETA_BLOQUE: Record<BloqueSeguimiento, string> = {
 	contrato: 'Contrato',
 	ordenes_compra: 'Órdenes de compra',
 	programa: 'Programa y actividades',
-	documentos: 'Documentos por actividad',
+	documentos: 'Documentos',
 	carpetas: 'Carpetas'
 };
 
 export const AYUDA_BLOQUE: Record<BloqueSeguimiento, string> = {
 	contrato: 'Datos del contrato: número, enlace, periodicidad, montos.',
 	ordenes_compra: 'Datos de cada orden de compra, incluidas las adicionales.',
-	programa: 'Cantidades del mes (por periodo) o de cada actividad.',
-	documentos: 'Casillas de cada ejecución de una partida: ODT, AST, PT, reporte…',
-	carpetas: 'Entregas por periodo: quién entrega, quién recibe, fecha y enlace o archivo.'
+	programa: 'Cantidades del mes (por periodo), de cada actividad o de cada partida.',
+	documentos: 'Casillas de cada ejecución (ODT, AST, PT…) o de cada partida (reporte).',
+	carpetas: 'Entregas por periodo: quién entrega, quién recibe, fechas y acuse de recibido.'
 };
 
 export const ETIQUETA_TIPO: Record<TipoConcepto, string> = {
@@ -41,8 +42,48 @@ export const ETIQUETA_NIVEL: Record<NivelConcepto, string> = {
 	contrato: 'Por contrato',
 	orden_compra: 'Por orden de compra',
 	periodo: 'Por mes',
-	actividad: 'Por actividad'
+	actividad: 'Por actividad',
+	partida: 'Por partida'
 };
+
+/** Qué mide el concepto para los indicadores del centro de costo (cambio kpi-estatus-centros, D1). */
+export const ETIQUETA_INDICADOR: Record<IndicadorConcepto, string> = {
+	monto_contrato: 'Monto del contrato',
+	monto_cobrado: 'Monto cobrado',
+	monto_facturado: 'Monto facturado',
+	periodicidad: 'Periodicidad',
+	em_programadas: 'EM programadas',
+	em_realizadas: 'EM realizadas',
+	em_cobradas: 'EM con cobro',
+	actividad_cobrada: 'Actividad cobrada'
+};
+
+/** Dónde tiene sentido cada indicador; la base valida lo mismo (`indicador_valido`). */
+const DONDE_INDICADOR: Record<
+	IndicadorConcepto,
+	readonly [BloqueSeguimiento, TipoConcepto, NivelConcepto]
+> = {
+	monto_contrato: ['contrato', 'monto', 'contrato'],
+	monto_cobrado: ['contrato', 'monto', 'contrato'],
+	monto_facturado: ['contrato', 'monto', 'contrato'],
+	periodicidad: ['contrato', 'texto', 'contrato'],
+	em_programadas: ['programa', 'cantidad', 'periodo'],
+	em_realizadas: ['programa', 'cantidad', 'periodo'],
+	em_cobradas: ['programa', 'cantidad', 'periodo'],
+	actividad_cobrada: ['programa', 'casilla', 'actividad']
+};
+
+/** Indicadores que puede declarar un concepto con ese bloque, tipo y nivel. */
+export function indicadoresDeConcepto(
+	bloque: BloqueSeguimiento,
+	tipo: TipoConcepto,
+	nivel: NivelConcepto
+): IndicadorConcepto[] {
+	return INDICADORES_CONCEPTO.filter((indicador) => {
+		const [b, t, n] = DONDE_INDICADOR[indicador];
+		return b === bloque && t === tipo && n === nivel;
+	});
+}
 
 export const ETIQUETA_MODO_CONTRATO: Record<ModoContrato, string> = {
 	obligatorio: 'Contrato obligatorio',
@@ -64,9 +105,9 @@ export function nivelesDeBloque(bloque: BloqueSeguimiento): NivelConcepto[] {
 		case 'ordenes_compra':
 			return ['orden_compra'];
 		case 'programa':
-			return ['periodo', 'actividad'];
+			return ['periodo', 'actividad', 'partida'];
 		case 'documentos':
-			return ['actividad'];
+			return ['actividad', 'partida'];
 		case 'carpetas':
 			return ['periodo'];
 	}

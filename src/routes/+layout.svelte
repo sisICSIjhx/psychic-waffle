@@ -169,7 +169,8 @@
 			on:toggleTheme={toggleTheme}
 		/>
 
-		<main class="main" id="contenido" tabindex="-1">
+		<!-- Con el menú superpuesto abierto, el contenido de atrás no recibe el foco ni los toques. -->
+		<main class="main" id="contenido" tabindex="-1" inert={ventanaEstrecha && mobileMenuOpen}>
 			<div class="view-section">
 				{#if encabezado}
 					<EncabezadoPagina ceja={encabezado.ceja} titulo={encabezado.titulo} />

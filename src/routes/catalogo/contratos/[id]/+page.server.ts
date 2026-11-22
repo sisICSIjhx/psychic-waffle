@@ -9,7 +9,11 @@ import {
 	leerConfirmacion
 } from '$lib/server/edicion-catalogo';
 import { mensajeDeError } from '$lib/server/errores';
-import { analizarHojas, ErrorImportacion } from '$lib/server/importacion/catalogo';
+import {
+	analizarHojas,
+	conservarRegistrado,
+	ErrorImportacion
+} from '$lib/server/importacion/catalogo';
 import {
 	advertenciasDelEnsayo,
 	analizarProgramaAnual,
@@ -298,11 +302,24 @@ export const actions: Actions = {
 				};
 			}
 			const catalogo = analizarHojas(hojas);
+			let partidas = catalogo.partidas;
+			if (!catalogo.programa) {
+				// Un libro solo de alcances no borra la cantidad anual ni la distribución registradas.
+				const registradas = await Promise.all(
+					(await repos.catalogo.listarPartidas({ contratoId: params.id, sitioId })).map((p) =>
+						repos.catalogo.obtenerPartida(p.id)
+					)
+				);
+				partidas = conservarRegistrado(partidas, registradas, {
+					sinPrograma: true,
+					alcances: false
+				});
+			}
 			const carga = {
 				contratoId: params.id,
 				sitioId,
 				programa: catalogo.programa,
-				partidas: catalogo.partidas
+				partidas
 			};
 			const resultado = await repos.catalogo.importarCatalogo(carga, true);
 			const token = await guardarImportacionPendiente(almacenamiento(), {

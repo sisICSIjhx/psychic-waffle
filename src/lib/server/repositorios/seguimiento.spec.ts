@@ -208,7 +208,13 @@ describe('seguimiento operativo en PGlite', () => {
 			archivoNombre: null,
 			quitarArchivo: false
 		};
-		await expect(b.guardar(carpeta)).rejects.toMatchObject({ tipo: 'invalido' });
+		// Entregar exige quién entrega y la fecha; el enlace o el archivo son opcionales (0028).
+		await expect(b.guardar({ ...carpeta, entregaId: null })).rejects.toMatchObject({
+			tipo: 'invalido'
+		});
+		await expect(
+			b.guardar({ ...carpeta, enlace: 'https://ejemplo.com/carpeta' })
+		).rejects.toThrow();
 		const archivo = Buffer.from('archivo de prueba').toString('base64');
 		await b.guardar({ ...carpeta, archivo, archivoNombre: 'prueba.txt' });
 		expect((await b.obtener()).carpetas).toMatchObject([

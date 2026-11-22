@@ -7,11 +7,17 @@
 //   --cliente <clave> --cliente-nombre <nombre> --razon-social <texto>
 //   --vigencia <AAAA-MM-DD>:<AAAA-MM-DD> --sitio-nombre <nombre> --crear
 // Los firmantes que trae la hoja no se importan: se listan para registrarlos desde /catalogo.
+// Un libro solo de alcances (sin hoja de programa, como el de Virtual) actualiza las partidas sin
+// tocar cantidad anual, distribución ni meses. --conservar-alcances no reemplaza los alcances
+// ejecutables de las partidas que ya los tienen (los tomados de los reportes, con su desarrollo).
 //
 // Programa anual sin catálogo (formato de Proagro, uno o varios sitios en una hoja):
 //   npm run importar -- <archivo.xlsx> --programa --contrato <número> --sitio <clave> [--aplicar]
 //     [--anio <AAAA>] [--usar-actividad <n[,n…]>] [--periodicidad <n>=<valor>]…
 //     [--ajustar-vigencia <AAAA-MM-DD>:<AAAA-MM-DD> --motivo <texto>] [--confirmar]
+//     [--meses-ocultos]
+// También lee el formato de Vitromex (una columna por mes con la cantidad). --meses-ocultos incluye
+// los meses de columnas ocultas, que por omisión se ignoran.
 // Solo cambia la periodicidad, la cantidad anual, los meses y las marcas R; el contrato y el sitio
 // deben existir. No se combina con --crear. --ajustar-vigencia corrige la vigencia por la edición del
 // contrato (mismas validaciones que /catalogo) y exige --motivo (10 a 500 caracteres); queda en la
@@ -24,7 +30,11 @@ import type { Contrato } from '../src/lib/dominio/esquemas.ts';
 import { repositoriosDesdeEntorno } from '../src/lib/server/datos-entorno.ts';
 import { validarMotivo } from '../src/lib/dominio/bitacora.ts';
 import { normalizarParaComparar } from '../src/lib/server/documentos/auditoria.ts';
-import { analizarLibroCatalogo, ErrorImportacion } from '../src/lib/server/importacion/catalogo.ts';
+import {
+	analizarLibroCatalogo,
+	conservarRegistrado,
+	ErrorImportacion
+} from '../src/lib/server/importacion/catalogo.ts';
 import {
 	advertenciasDelEnsayo,
 	analizarAjustes,
@@ -59,7 +69,9 @@ const { values: opciones, positionals } = parseArgs({
 		periodicidad: { type: 'string', multiple: true, default: [] },
 		'ajustar-vigencia': { type: 'string' },
 		motivo: { type: 'string' },
-		confirmar: { type: 'boolean', default: false }
+		confirmar: { type: 'boolean', default: false },
+		'meses-ocultos': { type: 'boolean', default: false },
+		'conservar-alcances': { type: 'boolean', default: false }
 	}
 });
 
@@ -86,7 +98,8 @@ async function importarSoloPrograma(): Promise<void> {
 		const hojas = await leerLibro(readFileSync(resolve(archivo!)));
 		analisis = analizarProgramaAnual(hojas, {
 			claveSitio: claveSitio!,
-			anio: opciones.anio ? Number(opciones.anio) : undefined
+			anio: opciones.anio ? Number(opciones.anio) : undefined,
+			mesesOcultos: opciones['meses-ocultos']
 		});
 		analisis = aplicarAjustes(
 			analisis,
@@ -291,15 +304,33 @@ try {
 			contrato && sitioAsociado
 				? { contrato, sitio: sitioAsociado }
 				: await prepararDestino(repos, contrato);
+		let partidas = catalogo.partidas;
+		if (opciones['conservar-alcances'] || !catalogo.programa) {
+			const registradas = await Promise.all(
+				(
+					await repos.catalogo.listarPartidas({
+						contratoId: destino.contrato.id,
+						sitioId: destino.sitio.id
+					})
+				).map((p) => repos.catalogo.obtenerPartida(p.id))
+			);
+			partidas = conservarRegistrado(partidas, registradas, {
+				sinPrograma: !catalogo.programa,
+				alcances: opciones['conservar-alcances']
+			});
+		}
 		const resultado = await repos.catalogo.importarCatalogo(
 			{
 				contratoId: destino.contrato.id,
 				sitioId: destino.sitio.id,
 				programa: catalogo.programa,
-				partidas: catalogo.partidas
+				partidas
 			},
 			!opciones.aplicar
 		);
+		for (const p of resultado.partidas.filter((x) => x.accion !== 'sin_cambios')) {
+			console.log(`  ${p.numero} ${p.accion}: ${p.actividad}`);
+		}
 		const { crear, actualizar, sinCambios } = resultado.resumen;
 		console.log(
 			`${resultado.ensayo ? 'Ensayo (no se guardó nada)' : 'Importación aplicada'}: ${crear} por crear, ${actualizar} por actualizar, ${sinCambios} sin cambios. Programa: ${resultado.programa.accion}.`

@@ -3,6 +3,225 @@
 Registro de cambios y decisiones significativas. Zona horaria: America/Mexico_City (pendiente de confirmar).
 Consultar por tema. El estado vigente está en docs/CONTEXTO_PROYECTO.md.
 
+## 2026-11-22 — Estatus y KPI por centro de costo: base de trabajo al día y ramas unificadas
+
+- Motivo: el usuario autorizó migrar la base de trabajo (tarea 5.4 del cambio OpenSpec
+  `kpi-estatus-centros`) y unificar las ramas. El cambio no tenía entrada propia en este historial.
+- Alcance del cambio `kpi-estatus-centros` (nivel 3, migración 0028; plan en
+  `docs/PLAN_KPI_CENTROS_COSTO.md`): indicador, «por definir» y carpeta en cada concepto de
+  plantilla y nivel «por partida»; en `/seguimiento`, reporte por partida, partidas escritas a mano
+  también con programa anual, atenciones de emergencia con horario y personal y carpeta con
+  entrega, recepción y acuse; en `/cobranza`, adicionales y monto cobrado derivado de la cobranza;
+  estatus del centro (`api_estatus_centros`, reglas en `dominio/estatus.ts`) con KPI, estatus
+  general y «qué falta» en el concentrado de `/cumplimiento` y en `/seguimiento`; pantallas
+  pensadas para teléfono; `npm run importar:centros -- <archivo> --complementar` agrega a las
+  plantillas existentes los conceptos de la matriz sin cambiar tipo, bloque ni nivel.
+- Base de trabajo:
+  - La 0028 y la 0029 ya estaban aplicadas desde la carga de Vitromex del mismo día (se aplican al
+    abrir la base; respaldo previo `storage/respaldos/pglite-antes-vitromex`). Se comprobó en una
+    copia: 30 migraciones registradas, tabla `adicionales` y función `api_estatus_centros`.
+  - Faltaba complementar las plantillas con la matriz (`insumos/centros-costo/`, archivo del
+    2026-11-20). Ensayo y aplicación primero en una copia; después, con el servidor detenido y el
+    respaldo `storage/respaldos/pglite-antes-complementar-plantillas`, en la base de trabajo: 12
+    conceptos agregados y 6 actualizados en 7 de las 10 plantillas.
+- Ramas: todo el trabajo sin confirmar de `feat/kpi-seguimiento-centros` (este cambio,
+  `capturar-actividad`, `reporte-fotografico-excel` y los ajustes de los importadores) quedó en un
+  commit; `main` local incluye además `origin/main`, `feat/concentrado-centros` y el commit
+  pendiente de `feat/alcances-personal-bd`. Sin push.
+- Validación: `npm run check` 0 errores y 0 avisos; `npm run lint` (Prettier y ESLint) sin
+  observaciones; `npm run test` 94 archivos y 708 pruebas. En la base de trabajo, después del
+  complemento: 41 tablas, 40 con el mismo número de filas que el respaldo y `plantilla_conceptos` de
+  110 a 122; el ensayo repetido no cambia nada; `api_estatus_centros` devuelve los 16 centros de
+  costo para 2026-11. Servidor reiniciado y `/acceso` responde. Sin validación visual.
+- Pendientes: revisión de código y recorrido del usuario operativo a 375 px y en escritorio
+  (tareas 4.1 a 4.3 del cambio); subir `main` a GitHub cuando el usuario lo autorice; aplicar las
+  migraciones en el proyecto alojado de Supabase cuando exista.
+
+## 2026-11-22 — Reporte fotográfico en Excel: plantilla y generador (sin conectar)
+
+- Motivo: el usuario pidió tener en la plataforma la plantilla de los reportes complementarios de
+  Proagro, horizontales y en Excel, sin agregarla todavía a ningún botón, y que la descarga
+  considere Excel además de Word.
+- Alcance (nivel 3, cambio OpenSpec `reporte-fotografico-excel`, sin migración ni interfaz):
+  - Plantilla `src/lib/server/plantillas/REPORTE-FOTOGRAFICO.v1.xlsx` (55 KB): hoja maestra y hoja
+    modelo con los estilos, anchos, altos, combinadas, página carta horizontal y área de impresión
+    del libro que se arma a mano; solo 17 rótulos fijos y el logotipo de ICSI. La construye
+    `scripts/construir-plantilla-fotografico.ts` (`npm run plantilla:fotografico`, solo en local) y
+    la audita contra los textos del original antes de escribirla.
+  - Generador `src/lib/server/documentos/fotografico.ts` sobre JSZip (sin biblioteca de Excel):
+    una hoja por reporte y hojas de continuación con más de 8 fotos, fotos en cuadrícula de hasta
+    4 × 2 ajustadas a 11 × 8.25 cm con el tratamiento de `sharp` del DOCX (perfiles de 1024 a
+    640 px), círculo con el número de la actividad sobre cada foto, lista de actividades en una o
+    dos columnas con filas que crecen, firmas y «n DE m». Las tres celdas de la estimación son
+    fórmulas a la hoja maestra con el resultado guardado. `reporteFotograficoDe` convierte un
+    reporte de la plataforma (alcances como actividades).
+  - Reglas puras en `src/lib/dominio/reporte-fotografico.ts`; escritura mínima de libros en
+    `src/lib/server/documentos/libro-xlsx.ts`.
+  - `src/lib/dominio/tipos-documento.ts`: cada tipo de documento declara su formato de descarga
+    (Word o Excel). La ruta `/reportes/[id]/documento` no cambió.
+  - `plantillas/vigente.ts` empaqueta la plantilla (`?inline`) y `vite.config.ts` incluye
+    `**/*.xlsx`. Scripts `plantilla:fotografico` y `prueba:fotografico` (muestra con datos
+    ficticios en `storage/prueba-documental`).
+- Validación: pruebas nuevas 25 de 25 (`reporte-fotografico.spec.ts` y `fotografico.spec.ts`, datos
+  ficticios); `check` 0/0; Prettier y ESLint de los archivos tocados; `spec validate
+reporte-fotografico-excel --strict` válido; `verificar:datos` sin coincidencias. Muestra de 6
+  hojas y 22 fotos de relleno abierta en Microsoft Excel 365 con una instancia propia y en solo
+  lectura: abre sin reparar, fórmulas resueltas, horizontal, una página por hoja y las formas
+  esperadas; se revisó la imagen de tres hojas. No comprobado: fotos reales, impresión en papel,
+  LibreOffice ni visores web.
+- Pendientes (decisiones del usuario, en `design.md` D10): de dónde salen el número de estimación,
+  la fecha de entrega y el periodo estimado (no existen en la base), el importe, la orden de compra
+  y la descripción de la obra; si 8 fotos por hoja; si las actividades son los alcances del reporte;
+  de qué firmantes salen «CONTRATISTA» y «AUTORIZA»; el logotipo del cliente; y qué reportes entran
+  en un libro. Después, conectar el generador (entrada desde la base, ruta, registro y botón).
+  `spec:check` sigue marcando un aviso anterior en `marcar-ejecutado`, ajeno a este cambio.
+
+## 2026-11-22 — Alcances de Proagro por partida, con el contrato como referencia
+
+- Motivo: el usuario indicó que los alcances del «Plan de acción» de Proagro van por partida y
+  entregó el contrato escaneado (orden de compra 145, páginas 20 a 30) para tomar de ahí el número
+  y el nombre de cada partida.
+- Alcance (solo datos, sin cambios de código): se leyeron las 11 páginas del contrato (imágenes
+  extraídas del PDF; no hay OCR instalado) y se guardó la lista de partidas, sin precios, en
+  `insumos/PROAGROINDUSTRIAS/partidas-contrato-oc145.json`. Número, periodicidad y cantidad anual
+  de las 31 partidas de EM-30184 y las 25 de EM-30185 coinciden con la base; ocho nombres difieren
+  en detalles. La correspondencia de las 27 columnas de la hoja «ALCANCES» quedó en
+  `insumos/PROAGROINDUSTRIAS/correspondencia-alcances.json`: 20 columnas con partida y 7 sin ella
+  (transmisor de flujo, calentadores, indicador de nivel, tanque de condensados, sistema eléctrico
+  y los dos registradores). Se agregaron 915 alcances después de los que cada partida ya tenía,
+  sin repetir un mismo texto dentro de la partida; no se quitó ni cambió ninguno.
+- Validación: ensayo y aplicación primero en una copia de la base; cada partida guardada se
+  comprobó contra la anterior (alcances previos intactos y en orden, mismas herramientas, equipos
+  y estado) y repetir la carga no agrega nada. Base de trabajo con respaldo
+  `storage/respaldos/pglite-antes-alcances-proagro`. Sin validación visual.
+- Confirmación (a pedido del usuario): las 56 partidas quedaron confirmadas con el nombre del
+  contrato (28 nombres cambiaron, contando mayúsculas y acentos; ocho en su redacción). Antes se
+  comprobó que periodicidad y cantidad coinciden con el contrato y, al guardar cada partida, que
+  alcances, herramientas, equipos, descripción y objetivo quedaron iguales. Respaldo
+  `storage/respaldos/pglite-antes-confirmar-proagro`; ensayo repetido sin cambios.
+- Pendientes: la segunda columna «Protección atmosférica y tierras» trae chapodeo y limpieza
+  y se asignó a las partidas de orden y limpieza; varias columnas son largas (la partida de
+  instrumentación recibió 51 líneas); el contrato trae además alcances propios por partida, que no
+  se cargaron.
+
+## 2026-11-22 — Catálogo de Virtual con la numeración del libro y equipos de Proagro
+
+- Motivo: el usuario decidió que en Virtual (EM-30179) manda la numeración del libro de alcances
+  y pidió guardar los libros en `insumos/` y revisar los nuevos de Proagro (alcances y catálogos de
+  equipo).
+- Alcance (nivel 2, sin migración):
+  - El importador del catálogo acepta un libro solo de alcances, sin hoja de programa: cabeceras
+    «Nº», «ALCANCES» y «PERIODICIDAD», viñetas en una sola celda (una línea sin viñeta que empieza
+    en minúscula continúa la anterior) y número repetido resuelto por la fila visible (dos filas
+    visibles se rechazan). `conservarRegistrado` evita que ese libro borre la cantidad anual y la
+    distribución registradas (script y `/catalogo/contratos/[id]`) y, con `--conservar-alcances`, los
+    alcances ejecutables que la partida ya tiene.
+  - Virtual: los 239 alcances registrados ya eran las viñetas del libro más el desarrollo tomado
+    de los reportes, así que se conservaron. Se eliminaron las partidas 36 y 37 de servicios
+    (ocultas en el libro, sin reportes), «Drenado» y «Purgado» pasaron de 38 y 39 a 36 y 37, se
+    crearon la 13 y la 26, cambió la periodicidad de la 10 (trimestral) y la 19 (anual) y las 37
+    partidas quedaron confirmadas con actividad, entregas, ODM/PT/AST y materiales del libro.
+  - Proagro EM-30184: catálogo de equipos del «Plan de acción» (31 equipos) cargado con el
+    importador de Equipos; antes se completaron con el libro los 12 equipos ya registrados con el
+    mismo TAG (los derivados de reportes solo tenían TAG) para no duplicarlos.
+  - Libros copiados a `insumos/VIRTUAL`, `insumos/VITROMEX` e `insumos/YAZBEK` (ignorados por Git).
+- Archivos: `src/lib/server/importacion/catalogo.ts`, `programa.ts`, `importacion.spec.ts`,
+  `scripts/importar-catalogo.ts` y `src/routes/catalogo/contratos/[id]/+page.server.ts`.
+- Validación: `check` 0/0; Prettier y ESLint de los archivos tocados; pruebas de
+  `src/lib/server/importacion/` y `src/routes/catalogo` 63 de 63; `verificar:datos` sin
+  coincidencias. Cada carga se ensayó y aplicó primero en una copia de la base. En la base de
+  trabajo, con respaldos `storage/respaldos/pglite-antes-virtual` y `pglite-antes-equipos-proagro`:
+  Virtual 37 partidas confirmadas, 253 alcances (234 con desarrollo; los 5 que faltan eran de las
+  dos partidas eliminadas) y ensayo repetido sin cambios; EM-30184 con 34 equipos sin TAG repetidos.
+  Sin validación visual.
+- Pendientes (decisiones del usuario): Virtual sigue sin programa por meses (el libro no lo trae) y
+  «ICSI / VIRTUAL» en materiales quedó como «cliente»; en EM-30184 tres equipos derivados de
+  reportes no están en el catálogo (PIT-0001, TI-6002 y TIT-6002; el libro trae PIT-001, TI-6001 y
+  TIT-6001) y 17 fechas de calibración no son fechas en el libro; los alcances del «Plan de acción»
+  vienen por tipo de mantenimiento (27 columnas), no por partida, y la biblioteca de alcances no
+  admite el mismo texto en dos grupos: falta definir cómo cargarlos; catálogo de equipos de
+  EM-30185; reporte fotográfico horizontal en Excel («REPORTES complementarios»), por diseñar.
+
+## 2026-11-22 — Programas anuales recibidos: el importador lee el formato de Vitromex
+
+- Motivo: el usuario entregó los programas anuales que ya tiene (Virtual Agua Dulce EM-30179,
+  Vitromex San José 1 EM-11027 y San José 2 EM-11035, Yazbek EM-11025) y el catálogo de la
+  EM-30167, que es idéntico al que ya estaba en `insumos/CERRITOS` (mismo SHA-256).
+- Alcance (nivel 2, sin migración): `analizarProgramaAnual` acepta el libro de Vitromex: cabecera
+  «Nº», una columna por mes con la cantidad del mes (2 en las quincenales, 4 o 5 en la semanal), el
+  año en una celda sobre los meses y sin columna de cantidad anual (se toma la suma de lo programado
+  y se recalcula si se ajusta la periodicidad). Opción `mesesOcultos` y `--meses-ocultos` en
+  `npm run importar -- --programa`: el libro de San José 2 llega con once meses ocultos.
+- Archivos: `src/lib/server/importacion/programa.ts`, `programa.spec.ts` y
+  `scripts/importar-catalogo.ts`.
+- Validación: `check` 0/0; Prettier y ESLint de los tres archivos sin observaciones; pruebas de
+  `src/lib/server/importacion/` 56 de 56. En una copia de la base local (fuera del repositorio), con
+  un cliente y un contrato provisionales de Vitromex: ensayo y aplicación de los dos libros, 18
+  partidas y 235 programados en cada sitio de 2026-01 a 2026-12; el ensayo repetido no cambia nada.
+- Carga en la base de trabajo (autorizada por el usuario con contrato provisional): respaldo en
+  `storage/respaldos/pglite-antes-vitromex`; alta del cliente `vitromex` y del contrato
+  `VITROMEX-POR-CONFIRMAR` (2026-01-01 a 2026-12-31) con los sitios EM-11027 y EM-11035; ensayo y
+  aplicación de los dos libros (18 partidas por confirmar y 235 programados en cada sitio); el
+  ensayo repetido no cambia nada y las partidas y programas de Cerritos, Proagro y Virtual quedaron
+  igual. Al abrir la base se aplicó la migración 0029, que estaba pendiente. Sin validación visual.
+- Pendientes (decisiones del usuario): número y vigencia reales del contrato de Vitromex; contrato
+  de Yazbek (o provisional como el de Virtual); el libro de Yazbek es una
+  propuesta con importes por mes y subíndices («4.1»), sin P/R: definir si se convierte a partidas.
+  El libro de Virtual se atendió en la entrada siguiente del mismo día.
+
+## 2026-11-21 — «Capturar actividad»: ventana para registrar si se realizó una partida
+
+- Motivo: a pedido del usuario, «Actividad» del menú «Capturar» abre una ventana con el centro de
+  costo, la actividad (lista con búsqueda), si se realizó o no, la fecha (hoy si se deja vacía) y,
+  opcionalmente, las personas que la realizaron. Aplica a los centros con programa anual; los demás
+  van por ahora a la vista de seguimiento, mientras llegan sus programas.
+- Alcance (nivel 3, cambio OpenSpec `capturar-actividad`, migración 0029):
+  - «Sí» registra una marca de ejecución de 1 (la de «Marcar ejecutado») con la fecha y las
+    personas; «No», un ajuste «No ejecutado» de 1 con motivo «Otro» y una nota de origen. Se rechaza
+    un mes sin nada pendiente, una fecha futura o fuera del programa y personas inactivas.
+  - `0029_personal_marca_ejecucion.sql`: tabla `programa_marca_personal` (RLS, solo el rol de
+    servicio; se borra con la marca) y `api_marcar_ejecutado` con `personalIds`. Esquema completo
+    regenerado.
+  - Ruta `/actividades` (`GET` opciones y partidas, `POST` registro) con alcance por centro de costo;
+    la guardia exige `capturar` (reporteador incluido). «Marcar ejecutado» de la matriz sigue con
+    `ajustarPrograma`.
+  - La ventana se descarga solo la primera vez que se pide. `Dialogo.svelte` admite
+    `cerrarAlConfirmar={false}` para no cerrar hasta guardar.
+  - La prueba de la 0028 (`kpi-estatus.spec.ts`) ya no exige que la 0028 sea la última migración.
+- Archivos: `supabase/migrations/0029_personal_marca_ejecucion.sql`, `supabase/esquema_completo.sql`,
+  `src/lib/dominio/actividades.ts`, `src/routes/actividades/+server.ts`,
+  `src/lib/components/actividades/DialogoActividad.svelte`, `src/lib/layout/HeaderBar.svelte`,
+  `src/lib/components/ui/Dialogo.svelte`, `src/lib/server/repositorios/programa.ts`,
+  `src/lib/server/autenticacion/acceso.ts`, sus pruebas y `openspec/changes/capturar-actividad/`.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), Prettier y ESLint en los
+  archivos tocados, `openspec validate capturar-actividad --strict` y `npm run test` (92 archivos y
+  677 pruebas; nuevas: dominio, ruta sobre PGlite, ventana y barra).
+- Validación visual: Chromium con `vite dev --mode prueba` (la 0029 se aplicó en esa base): menú,
+  ventana, búsqueda de la partida, Sí con una persona de prueba y registro; «Ejecutadas» del
+  programa pasó de 1 a 2 y apareció la notificación.
+- Pendiente: la 0029 se aplica en la base de trabajo al reiniciar el servidor normal (respaldar
+  antes `storage/pglite`); cargar los programas anuales del resto de los centros de costo.
+
+## 2026-11-21 — «Nuevo reporte» de la barra superior pasa a ser el menú «Capturar»
+
+- Motivo: a pedido del usuario, el botón «Nuevo reporte» de la barra superior se cambia por
+  «Capturar», que despliega una lista como la de descargas con «Actividad» o «Reporte». (Un primer
+  intento en el panel de la celda del programa anual se deshizo: no era ese botón).
+- Alcance (nivel 1, sin cambios de datos ni permisos):
+  - «Actividad» lleva a `/seguimiento` (captura de actividades del centro de costo y mes); solo con
+    la capacidad `editarSeguimiento`. Sustituido el mismo día por la ventana «Capturar actividad»
+    (entrada anterior).
+  - «Reporte» lleva a `/captura`, como antes «Nuevo reporte»; solo con `capturar`.
+  - El botón aparece si se tiene alguna de las dos. El menú se cierra al elegir, con Esc (el foco
+    vuelve al botón) o con un clic fuera. A 420 px o menos queda el botón de icono de 44 px.
+- Archivos: `src/lib/layout/HeaderBar.svelte` (y su prueba) y `src/routes/+layout.svelte`.
+- Validación automatizada: `npm run check` (0 errores y 0 avisos), Prettier y ESLint en los
+  archivos tocados, `HeaderBar.svelte.spec.ts` (2 pruebas) y `PlaneacionView.svelte.spec.ts`
+  (14 pruebas, restaurado).
+- Validación visual: Chromium con `vite dev --mode prueba` a 1440 px y a 375 px: el menú se
+  despliega bajo el botón, alineado a la derecha y dentro de la pantalla, y se cierra con un clic
+  fuera.
+
 ## 2026-11-19 — Filas del mismo alto y descripciones desplegables en las matrices
 
 - Motivo: a pedido del usuario. El alto de cada fila variaba con la longitud del nombre de la

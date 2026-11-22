@@ -1,11 +1,13 @@
 // Análisis de un libro de programa anual sin hoja de catálogo (formato de Proagro): una hoja con fila
 // de meses (con o sin año), columna P/R y, opcionalmente, varios sitios separados por filas
-// «(ERM nnnnn)». Devuelve el programa del bloque del sitio elegido con sus advertencias.
+// «(ERM nnnnn)». Devuelve el programa del bloque del sitio elegido con sus advertencias. También
+// acepta el formato de Vitromex: una columna por mes con la cantidad y sin columna de cantidad anual.
 import { diasDelMes, MESES } from '../../dominio/documento.ts';
 import { normalizarParaComparar } from '../documentos/auditoria.ts';
 import {
 	cantidadDelMes,
 	ErrorImportacion,
+	hojaDeCatalogo,
 	periodicidadDeTexto,
 	rangosDeMeses,
 	type Periodicidad
@@ -29,6 +31,8 @@ export interface PartidaPrograma {
 	actividad: string;
 	periodicidad: Periodicidad;
 	cantidadAnual: number | null;
+	/** El libro no trae la cantidad anual: es la suma de lo programado y se recalcula con ella. */
+	cantidadDerivada?: boolean;
 	meses: { mes: string; cantidad: number }[];
 	realizados: { mes: string; cantidad: number }[];
 	/** Columnas marcadas por mes en las filas P y R, para recalcular si cambia la periodicidad. */
@@ -180,9 +184,12 @@ function columnaPR(hoja: Hoja, filaMeses: number, primeraColumnaMes: number): nu
 	return -1;
 }
 
-/** Catálogo si alguna hoja es de catálogo o alcances; programa si una hoja tiene meses y P/R. */
+/**
+ * Catálogo si alguna hoja es de catálogo o alcances (por su nombre o por sus cabeceras); programa si
+ * una hoja tiene meses y P/R.
+ */
 export function tipoDeLibro(hojas: Hoja[]): TipoLibro {
-	if (hojas.some((h) => /CATALOGO|ALCANCES/.test(normalizar(h.nombre)))) return 'catalogo';
+	if (hojaDeCatalogo(hojas)) return 'catalogo';
 	if (hojas.some((h) => hojaDePrograma(h))) return 'programa';
 	throw new ErrorImportacion(
 		'El libro no tiene una estructura reconocida. Se aceptan dos formatos: el catálogo (hoja «PROGRAMA ANUAL» con cabeceras y hoja «Catálogo de Conceptos-ALCANCES») o un programa anual (una hoja con la fila de meses y la columna P/R, con uno o varios sitios).',
@@ -216,11 +223,13 @@ export interface OpcionesPrograma {
 	claveSitio: string;
 	/** Año del primer mes cuando el libro no lo trae. */
 	anio?: number;
+	/** Incluir las columnas de meses ocultas (un libro guardado con un solo mes a la vista). */
+	mesesOcultos?: boolean;
 }
 
 export function analizarProgramaAnual(
 	hojas: Hoja[],
-	{ claveSitio, anio }: OpcionesPrograma
+	{ claveSitio, anio, mesesOcultos = false }: OpcionesPrograma
 ): ProgramaAnalizado {
 	const hoja = hojas.find((h) => hojaDePrograma(h));
 	if (!hoja) {
@@ -243,7 +252,9 @@ export function analizarProgramaAnual(
 		let titulo: number | null = null;
 		for (let fila = 0; fila < filaMeses && titulo === null; fila++) {
 			for (const v of hoja.filas[fila] ?? []) {
-				const m = /PROGRAMA ANUAL (?:DE )?(\d{4})/.exec(normalizar(v));
+				// El año va en el título o solo en una celda sobre los meses («2026»).
+				const m =
+					/PROGRAMA ANUAL (?:DE )?(\d{4})/.exec(normalizar(v)) ?? /^(20\d{2})$/.exec(normalizar(v));
 				if (m) {
 					titulo = Number(m[1]);
 					break;
@@ -271,7 +282,8 @@ export function analizarProgramaAnual(
 	});
 	const rangos = rangosDeMeses(hoja, filaMeses, conAnio).map((r) => {
 		const columnas: number[] = [];
-		for (let c = r.columna; c <= r.hasta; c++) if (!hoja.columnasOcultas.has(c)) columnas.push(c);
+		for (let c = r.columna; c <= r.hasta; c++)
+			if (mesesOcultos || !hoja.columnasOcultas.has(c)) columnas.push(c);
 		return { ...r, columnas };
 	});
 	const visibles = rangos.filter((r) => r.columnas.length > 0);
@@ -299,18 +311,35 @@ export function analizarProgramaAnual(
 	const primeraColumnaMes = Math.min(...rangos.map((r) => r.columna));
 	const pr = columnaPR(hoja, filaMeses, primeraColumnaMes);
 	const columnas = { numero: pr - 4, actividad: pr - 3, cantidad: pr - 2, periodicidad: pr - 1 };
+	// Un libro con cabeceras y sin columna de cantidad (Vitromex): la cantidad anual es la suma de
+	// lo programado.
+	let sinCantidad = false;
+	let cabecerasCompletas = false;
 	for (let fila = 0; fila <= filaMeses + 1 && fila < hoja.filas.length; fila++) {
 		const celdas = (hoja.filas[fila] ?? []).map((v) => normalizar(v));
 		const buscar = (prueba: (t: string) => boolean) => celdas.findIndex((t) => t && prueba(t));
 		const encontradas = {
-			numero: buscar((t) => t === 'PARTIDA' || t === 'NO.' || t === 'ITEM'),
+			numero: buscar(
+				(t) => t === 'PARTIDA' || t === 'ITEM' || /^(N[º°O]\.?|NUM\.?|NUMERO)$/.test(t)
+			),
 			actividad: buscar((t) => t === 'ACTIVIDAD'),
 			cantidad: buscar((t) => t.startsWith('CANTIDAD')),
 			periodicidad: buscar((t) => t.startsWith('PERIODICIDAD') || t === 'FRECUENCIA')
 		};
-		if (Object.values(encontradas).every((c) => c !== -1)) Object.assign(columnas, encontradas);
+		const { cantidad, ...obligatorias } = encontradas;
+		if (Object.values(obligatorias).some((c) => c === -1)) continue;
+		if (cantidad !== -1) {
+			Object.assign(columnas, encontradas);
+			cabecerasCompletas = true;
+			sinCantidad = false;
+		} else if (!cabecerasCompletas) {
+			Object.assign(columnas, encontradas);
+			sinCantidad = true;
+		}
 	}
-	if (Object.values(columnas).some((c) => c < 0)) {
+	if (
+		Object.entries(columnas).some(([nombre, c]) => c < 0 && !(nombre === 'cantidad' && sinCantidad))
+	) {
 		throw new ErrorImportacion(
 			`La hoja «${hoja.nombre}» no tiene las columnas de partida, actividad, cantidad y periodicidad antes de P/R`,
 			hoja.nombre,
@@ -425,7 +454,7 @@ export function analizarProgramaAnual(
 				nombreColumna(columnas.periodicidad)
 			);
 		}
-		const valorCantidad = valorEn(hoja, fila, columnas.cantidad);
+		const valorCantidad = sinCantidad ? null : valorEn(hoja, fila, columnas.cantidad);
 		if (valorCantidad !== null && typeof valorCantidad !== 'number') {
 			throw new ErrorImportacion(
 				`La partida ${numero} (fila ${fila + 1}) no tiene un número en la columna de cantidad ${nombreColumna(columnas.cantidad)}: «${texto(valorCantidad)}»`,
@@ -440,6 +469,12 @@ export function analizarProgramaAnual(
 			visibles.map((r) => {
 				let marcas = 0;
 				for (const c of r.columnas) {
+					// Un mes de una sola columna con un número trae la cantidad del mes, no una marca.
+					const valor = hoja.filas[f]?.[c];
+					if (r.columnas.length === 1 && typeof valor === 'number' && Number.isInteger(valor)) {
+						marcas += Math.max(valor, 0);
+						continue;
+					}
 					const m = marcada(hoja, f, c);
 					if (m === 'marca') marcas++;
 					else if (m === 'otro') {
@@ -500,7 +535,13 @@ export function analizarProgramaAnual(
 			numero,
 			actividad,
 			periodicidad,
-			cantidadAnual: periodicidad === 'cuando_aplique' ? null : (valorCantidad as number | null),
+			cantidadAnual:
+				periodicidad === 'cuando_aplique'
+					? null
+					: sinCantidad
+						? meses.reduce((s, m) => s + m.cantidad, 0)
+						: (valorCantidad as number | null),
+			...(sinCantidad ? { cantidadDerivada: true } : {}),
 			meses,
 			realizados,
 			marcas,
@@ -601,11 +642,17 @@ export function aplicarAjustes(
 		const periodicidad = ajustes.periodicidades.get(n);
 		const conActividad = ajustes.usarActividad.includes(n) ? { ...p, usarActividad: true } : p;
 		if (!periodicidad || periodicidad === p.periodicidad) return conActividad;
+		const meses = cantidadesDeMarcas(periodicidad, p.marcas);
 		const ajustada = {
 			...conActividad,
 			periodicidad,
-			cantidadAnual: periodicidad === 'cuando_aplique' ? null : p.cantidadAnual,
-			meses: cantidadesDeMarcas(periodicidad, p.marcas),
+			cantidadAnual:
+				periodicidad === 'cuando_aplique'
+					? null
+					: p.cantidadDerivada
+						? meses.reduce((s, m) => s + m.cantidad, 0)
+						: p.cantidadAnual,
+			meses,
 			realizados: cantidadesDeMarcas(periodicidad, p.marcasR)
 		};
 		// Las advertencias que dependían de la periodicidad anterior se recalculan.

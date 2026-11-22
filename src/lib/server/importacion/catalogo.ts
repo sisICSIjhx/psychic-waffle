@@ -166,12 +166,6 @@ function ubicarCabeceras(
 const es = (esperado: string) => (t: string) => t === esperado;
 const empieza = (prefijo: string) => (t: string) => t.startsWith(prefijo);
 
-function buscarHoja(hojas: Hoja[], prueba: (nombre: string) => boolean, descripcion: string): Hoja {
-	const hoja = hojas.find((h) => prueba(normalizar(h.nombre)));
-	if (!hoja) throw new ErrorImportacion(`El libro no tiene la hoja ${descripcion}`, descripcion);
-	return hoja;
-}
-
 const MESES_NORMALIZADOS = MESES.map((m) => normalizarParaComparar(m).toUpperCase());
 
 /** «MAYO 2026» → «2026-05-01». */
@@ -331,6 +325,9 @@ function analizarPrograma(hoja: Hoja, advertencias: string[]) {
 }
 
 interface FilaCatalogo {
+	/** Fila de Excel (base 1) y si está oculta, para resolver números repetidos. */
+	fila: number;
+	oculta: boolean;
 	numero: string;
 	actividad: string;
 	distribucion: string;
@@ -346,27 +343,41 @@ interface FilaCatalogo {
 	alcances: { tipo: TipoAlcance; texto: string }[];
 }
 
-function analizarCatalogo(hoja: Hoja) {
-	const { fila: filaCabecera, columnas } = ubicarCabeceras(
-		hoja,
-		{
-			ITEM: es('ITEM'),
-			ACTIVIDAD: es('ACTIVIDAD'),
-			DESCRIPCION: es('DESCRIPCION'),
-			FRECUENCIA: es('FRECUENCIA')
-		},
-		{
-			DISTRIBUCION: es('DISTRIBUCION'),
-			ENTREGA: es('ENTREGA'),
-			ENTREGA_OMA: empieza('ENTREGA DE ACUERDO'),
-			ENTREGA_PROPUESTA: empieza('ENTREGA PROPUESTA'),
-			ODM: empieza('REQUIERE ODM'),
-			PT: empieza('REQUIERE PT'),
-			AST: empieza('REQUIERE AST'),
-			MATERIAL: empieza('MATERIAL'),
-			HOMOLOGADOS: empieza('REPORTES HOMOLOGADOS')
-		}
+/** Cabeceras de la hoja de conceptos; el libro de Virtual usa «Nº», «ALCANCES» y «PERIODICIDAD». */
+const CABECERAS_CATALOGO: Record<string, (t: string) => boolean> = {
+	ITEM: (t) => t === 'ITEM' || /^(N[º°O]\.?|NUM\.?|NUMERO)$/.test(t),
+	ACTIVIDAD: es('ACTIVIDAD'),
+	DESCRIPCION: (t) => t === 'DESCRIPCION' || t === 'ALCANCES',
+	FRECUENCIA: (t) => t === 'FRECUENCIA' || t.startsWith('PERIODICIDAD')
+};
+
+/** Hoja de conceptos: por su nombre o, si no, la primera que tiene sus cuatro cabeceras. */
+export function hojaDeCatalogo(hojas: Hoja[]): Hoja | undefined {
+	return (
+		hojas.find((h) => /CATALOGO|ALCANCES/.test(normalizar(h.nombre))) ??
+		hojas.find((h) => {
+			try {
+				ubicarCabeceras(h, CABECERAS_CATALOGO);
+				return true;
+			} catch {
+				return false;
+			}
+		})
 	);
+}
+
+function analizarCatalogo(hoja: Hoja, advertencias: string[]) {
+	const { fila: filaCabecera, columnas } = ubicarCabeceras(hoja, CABECERAS_CATALOGO, {
+		DISTRIBUCION: es('DISTRIBUCION'),
+		ENTREGA: es('ENTREGA'),
+		ENTREGA_OMA: empieza('ENTREGA DE ACUERDO'),
+		ENTREGA_PROPUESTA: empieza('ENTREGA PROPUESTA'),
+		ODM: empieza('REQUIERE ODM'),
+		PT: empieza('REQUIERE PT'),
+		AST: empieza('REQUIERE AST'),
+		MATERIAL: empieza('MATERIAL'),
+		HOMOLOGADOS: empieza('REPORTES HOMOLOGADOS')
+	});
 	const filaSiNo = hoja.filas[filaCabecera + 1] ?? [];
 	/** «X» en la columna SI (la de la cabecera) o en NO (la siguiente). */
 	const requiere = (fila: number, columna: number | undefined) => {
@@ -387,6 +398,8 @@ function analizarCatalogo(hoja: Hoja) {
 		if (/^\d+[A-Z]?$/.test(numero)) {
 			cerrar();
 			actual = {
+				fila: fila + 1,
+				oculta: hoja.filasOcultas.has(fila),
 				numero,
 				actividad: texto(celdas[columnas.ACTIVIDAD]),
 				distribucion:
@@ -412,13 +425,47 @@ function analizarCatalogo(hoja: Hoja) {
 				continuacionActividad.push(extra);
 		}
 		if (!actual) continue;
+		let previo: { tipo: TipoAlcance; texto: string } | null = null;
 		for (const linea of String(celdas[columnas.DESCRIPCION] ?? '').split(/\r?\n/)) {
 			const alcance = clasificarLinea(linea);
-			if (alcance) actual.alcances.push(alcance);
+			if (!alcance) continue;
+			// En una celda de varias líneas, la que no trae viñeta y empieza en minúscula continúa el
+			// alcance anterior (un salto de línea dentro de la viñeta).
+			if (previo?.tipo === 'alcance' && alcance.tipo === 'nota' && /^\p{Ll}/u.test(alcance.texto)) {
+				previo.texto = `${previo.texto} ${alcance.texto}`;
+				continue;
+			}
+			actual.alcances.push(alcance);
+			previo = alcance;
 		}
 	}
 	cerrar();
-	return filas;
+
+	// Un número repetido solo se acepta si una de las filas está oculta: se usa la visible.
+	const porNumero = new Map<string, FilaCatalogo[]>();
+	for (const f of filas) {
+		const clave = f.numero.replace(/^0+(?=\d)/, '');
+		porNumero.set(clave, [...(porNumero.get(clave) ?? []), f]);
+	}
+	const descartadas = new Set<FilaCatalogo>();
+	for (const [numero, repetidas] of porNumero) {
+		if (repetidas.length === 1) continue;
+		const visibles = repetidas.filter((f) => !f.oculta);
+		if (visibles.length !== 1) {
+			throw new ErrorImportacion(
+				`La partida ${numero} se repite en las filas ${repetidas.map((f) => f.fila).join(' y ')} de la hoja «${hoja.nombre}»`,
+				hoja.nombre,
+				'ITEM'
+			);
+		}
+		for (const f of repetidas.filter((x) => x.oculta)) {
+			descartadas.add(f);
+			advertencias.push(
+				`La partida ${numero} aparece también en la fila oculta ${f.fila} («${f.actividad}»); se usa la fila visible ${visibles[0].fila}.`
+			);
+		}
+	}
+	return filas.filter((f) => !descartadas.has(f));
 }
 
 const DISTRIBUCION: Record<string, PartidaImportada['distribucion']> = {
@@ -476,21 +523,35 @@ function datoTrasEtiqueta(hoja: Hoja, etiqueta: string): string | null {
 
 export function analizarHojas(hojas: Hoja[]): CatalogoImportado {
 	const advertencias: string[] = [];
-	const hojaPrograma = buscarHoja(hojas, (n) => n.includes('PROGRAMA'), '«PROGRAMA ANUAL»');
-	const hojaCatalogo = buscarHoja(
-		hojas,
-		(n) => n.includes('CATALOGO') || n.includes('ALCANCES'),
-		'«Catálogo de Conceptos-ALCANCES»'
+	const hojaCatalogo = hojaDeCatalogo(hojas);
+	if (!hojaCatalogo) {
+		throw new ErrorImportacion(
+			'El libro no tiene la hoja «Catálogo de Conceptos-ALCANCES»',
+			'«Catálogo de Conceptos-ALCANCES»'
+		);
+	}
+	// La hoja del programa es opcional: un libro solo de alcances actualiza las partidas sin meses.
+	const hojaPrograma = hojas.find(
+		(h) => h !== hojaCatalogo && normalizar(h.nombre).includes('PROGRAMA')
 	);
-	const { programa, filas: filasPrograma } = analizarPrograma(hojaPrograma, advertencias);
-	const filasCatalogo = analizarCatalogo(hojaCatalogo);
+	const { programa, filas: filasPrograma } = hojaPrograma
+		? analizarPrograma(hojaPrograma, advertencias)
+		: { programa: null, filas: [] };
+	if (!hojaPrograma) {
+		advertencias.push(
+			'El libro no trae la hoja del programa anual: se importan las partidas y sus alcances, sin cantidad anual ni meses.'
+		);
+	}
+	const filasCatalogo = analizarCatalogo(hojaCatalogo, advertencias);
 	const programaPorNumero = new Map(
 		filasPrograma.map((f) => [f.numero.replace(/^0+(?=\d)/, ''), f])
 	);
 
 	const partidas: PartidaImportada[] = filasCatalogo.map((c) => {
 		const p = programaPorNumero.get(c.numero.replace(/^0+(?=\d)/, ''));
-		if (!p) advertencias.push(`La partida ${c.numero} no aparece en el programa anual.`);
+		if (!p && hojaPrograma) {
+			advertencias.push(`La partida ${c.numero} no aparece en el programa anual.`);
+		}
 		const periodicidad = periodicidadDeTexto(c.textoFrecuencia) ?? p?.periodicidad ?? null;
 		if (!periodicidad) {
 			throw new ErrorImportacion(
@@ -545,13 +606,53 @@ export function analizarHojas(hojas: Hoja[]): CatalogoImportado {
 		}
 	}
 	return {
-		usuario: datoTrasEtiqueta(hojaPrograma, 'USUARIO'),
-		estacion: datoTrasEtiqueta(hojaPrograma, 'ESTACION'),
+		usuario: hojaPrograma ? datoTrasEtiqueta(hojaPrograma, 'USUARIO') : null,
+		estacion: hojaPrograma ? datoTrasEtiqueta(hojaPrograma, 'ESTACION') : null,
 		programa,
 		partidas,
-		firmantesPropuestos: firmantesDeHoja(hojaPrograma),
+		firmantesPropuestos: hojaPrograma ? firmantesDeHoja(hojaPrograma) : [],
 		advertencias
 	};
+}
+
+/** Lo que la importación necesita de una partida ya registrada para no borrarlo. */
+export interface PartidaRegistrada {
+	numero: string;
+	cantidadAnual: number | null;
+	distribucion: PartidaImportada['distribucion'];
+	alcances: { tipo: string }[];
+}
+
+/**
+ * Ajusta las partidas del libro para conservar datos registrados que la importación reemplazaría:
+ * sin hoja de programa, la cantidad anual y la distribución que el libro no trae; con `alcances`,
+ * los alcances ejecutables de las partidas que ya los tienen (p. ej. los tomados de los reportes,
+ * con su desarrollo): del libro solo pasan sus notas y normas.
+ */
+export function conservarRegistrado(
+	partidas: PartidaImportada[],
+	registradas: PartidaRegistrada[],
+	opciones: { sinPrograma: boolean; alcances: boolean }
+): PartidaImportada[] {
+	const comparable = (numero: string) =>
+		numero
+			.trim()
+			.replace(/^0+(?=\d)/, '')
+			.toUpperCase();
+	const porNumero = new Map(registradas.map((r) => [comparable(r.numero), r]));
+	return partidas.map((p) => {
+		const registrada = porNumero.get(comparable(p.numero));
+		if (!registrada) return p;
+		const ajustada = { ...p };
+		if (opciones.sinPrograma) {
+			if (p.periodicidad !== 'cuando_aplique') ajustada.cantidadAnual ??= registrada.cantidadAnual;
+			ajustada.distribucion ??= registrada.distribucion;
+		}
+		if (opciones.alcances && registrada.alcances.some((a) => a.tipo === 'alcance')) {
+			ajustada.alcances = p.alcances.filter((a) => a.tipo !== 'alcance');
+		}
+		return ajustada;
+	});
 }
 
 export async function analizarLibroCatalogo(

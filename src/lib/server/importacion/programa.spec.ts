@@ -271,6 +271,104 @@ describe('columnas, marcas y actividad', () => {
 	});
 });
 
+describe('formato de una columna por mes', () => {
+	const MESES_LIBRO = [
+		'ENERO',
+		'FEBRERO',
+		'MARZO',
+		'ABRIL',
+		'MAYO',
+		'JUNIO',
+		'JULIO',
+		'AGOSTO',
+		'SEPTIEMBRE',
+		'OCTUBRE',
+		'NOVIEMBRE',
+		'DICIEMBRE'
+	];
+	const partida = (
+		numero: number,
+		actividad: string,
+		periodicidad: string,
+		cantidades: (number | null)[]
+	) => [
+		[numero, actividad, periodicidad, 'P', ...cantidades],
+		[null, null, null, 'R']
+	];
+	const cadaMes = (cantidad: number) => MESES_LIBRO.map(() => cantidad);
+	const hojaPorMes = (): Hoja => ({
+		nombre: 'Table 1',
+		filas: [
+			['PROGRAMA ANUAL DE OPERACIÓN Y MANTENIMIENTO EM-11111 SITIO FICTICIO'],
+			['Nº', 'ACTIVIDAD', 'PERIODICIDAD', 'ESTADO', 2026],
+			[null, null, null, null, ...MESES_LIBRO],
+			...partida(1, 'LIMPIEZA FICTICIA', 'MENSUAL', cadaMes(1)),
+			...partida(2, 'OBRA CIVIL FICTICIA', 'QUINCENAL', cadaMes(2)),
+			...partida(
+				3,
+				'VERIFICACIÓN FICTICIA',
+				'TRIMESTRAL',
+				MESES_LIBRO.map((_, m) => (m % 3 === 0 ? 1 : null))
+			),
+			...partida(4, 'DESCARGA FICTICIA', 'SEMANAL', [5, 4, 4, 5, 4, 4, 4, 4, 4, 4, 4, 4]),
+			['ELABORÓ REVISÓ APROBÓ']
+		],
+		combinadas: [],
+		rellenos: [],
+		columnasOcultas: new Set(),
+		filasOcultas: new Set()
+	});
+
+	it('toma el año de la celda sobre los meses y la cantidad de cada mes de su número', () => {
+		const analisis = analizarProgramaAnual([hojaPorMes()], { claveSitio: 'EM-11111' });
+		expect(analisis.programa).toMatchObject({
+			periodoInicio: '2026-01-01',
+			periodoFin: '2026-12-31'
+		});
+		expect(analisis.partidas.map((p) => [p.numero, p.periodicidad, p.cantidadAnual])).toEqual([
+			['1', 'mensual', 12],
+			['2', 'quincenal', 24],
+			['3', 'trimestral', 4],
+			['4', 'semanal', 50]
+		]);
+		expect(analisis.partidas[1].meses.every((m) => m.cantidad === 2)).toBe(true);
+		expect(analisis.partidas[2].meses.map((m) => m.mes)).toEqual([
+			'2026-01-01',
+			'2026-04-01',
+			'2026-07-01',
+			'2026-10-01'
+		]);
+		expect(analisis.partidas[3].meses[0]).toEqual({ mes: '2026-01-01', cantidad: 5 });
+		expect(analisis.advertencias).toEqual([]);
+	});
+
+	it('ignora los meses ocultos salvo que se pidan', () => {
+		const hoja = {
+			...hojaPorMes(),
+			columnasOcultas: new Set([4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15])
+		};
+		const visible = analizarProgramaAnual([hoja], { claveSitio: 'EM-11111' });
+		expect(visible.programa).toMatchObject({
+			periodoInicio: '2026-09-01',
+			periodoFin: '2026-09-30'
+		});
+		const completo = analizarProgramaAnual([hoja], { claveSitio: 'EM-11111', mesesOcultos: true });
+		expect(completo.programa).toMatchObject({
+			periodoInicio: '2026-01-01',
+			periodoFin: '2026-12-31'
+		});
+		expect(completo.partidas[3].cantidadAnual).toBe(50);
+		expect(completo.advertencias).toEqual([]);
+	});
+
+	it('sin columna de cantidad, la cantidad anual sigue a la periodicidad ajustada', () => {
+		const analisis = analizarProgramaAnual([hojaPorMes()], { claveSitio: 'EM-11111' });
+		const ajustado = aplicarAjustes(analisis, analizarAjustes(['2=mensual'], []));
+		expect(ajustado.partidas[1]).toMatchObject({ periodicidad: 'mensual', cantidadAnual: 12 });
+		expect(ajustado.advertencias.some((a) => /2 marcas en 2026-01/.test(a.texto))).toBe(true);
+	});
+});
+
 describe('advertencias del libro', () => {
 	it('informa suma distinta, mensual sin marca, fila roja, R sin P, ocultas y fila oculta', async () => {
 		const hojas = await hojasDe({

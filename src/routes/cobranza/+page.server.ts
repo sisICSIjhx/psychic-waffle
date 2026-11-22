@@ -3,8 +3,12 @@
 import { randomUUID } from 'node:crypto';
 import { error, fail } from '@sveltejs/kit';
 import { PASOS_COBRANZA, valorDeCampo } from '$lib/dominio/cobranza';
+import { filasConcentrado } from '$lib/dominio/concentrado';
+import type { CentroCosto } from '$lib/dominio/esquemas';
+import { resumirCentro } from '$lib/dominio/estatus';
 import type { Capacidad } from '$lib/dominio/permisos';
 import { fechaEnZona } from '$lib/dominio/fechas';
+import { textoMes } from '$lib/dominio/textos';
 import { centrosVisibles } from '$lib/server/alcance';
 import { ErrorDatos } from '$lib/server/bd/cliente';
 import { datos } from '$lib/server/datos';
@@ -20,7 +24,31 @@ function anioDe(url: URL, hoy: string): number {
 	return anio.data;
 }
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+/**
+ * Estatus del centro en el mes en curso, para el resumen: el mismo cálculo del tablero (con el
+ * avance del programa anual si lo tiene). Solo se consulta con la capacidad `verContrato`.
+ */
+async function estatusDelMes(
+	repos: Awaited<ReturnType<typeof datos>>,
+	centro: CentroCosto,
+	hoy: string
+) {
+	const mes = hoy.slice(0, 7);
+	const resumen = await repos.estatus.deCentro(centro.id, { mes, hoy, verContrato: true });
+	if (!resumen?.finanzas) return null;
+	const corte = `${mes}-01`;
+	const programas = await repos.programa.obtenerCumplimiento({ corte, sitioId: centro.id });
+	const [fila] = filasConcentrado([centro], programas, {}, corte, hoy);
+	const { estatus, kpis } = resumirCentro(resumen, fila.fuente === 'programa' ? fila : null);
+	return {
+		mes,
+		estatus,
+		cobranza: kpis.find((kpi) => kpi.clave === 'cobranza') ?? null,
+		pasos: resumen.finanzas.mes
+	};
+}
+
+export const load: PageServerLoad = async ({ locals, url, request }) => {
 	const ver = {
 		contrato: puede(locals, 'verContrato'),
 		programa: puede(locals, 'verEnlacePrograma')
@@ -38,20 +66,27 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const hoy = fechaEnZona();
 	const anio = anioDe(url, hoy);
 	const repos = await datos();
-	const centros = (await repos.centrosCosto.listar(centrosVisibles(locals))).map(
-		({ id, clave, nombre }) => ({ id, clave, nombre })
-	);
-	const centro = id === null ? centros[0] : centros.find((c) => c.id === id);
-	if (id !== null && !centro) error(404, 'No encontrado');
+	const visibles = await repos.centrosCosto.listar(centrosVisibles(locals));
+	const completo = id === null ? visibles[0] : visibles.find((c) => c.id === id);
+	if (id !== null && !completo) error(404, 'No encontrado');
 	const puedeEditarContrato = puede(locals, 'editarContrato');
+	const detalle = completo
+		? await repos.contratoCobranza.obtener(completo.id, anio, hoy, ver)
+		: null;
 	return {
-		centros,
-		centro: centro ?? null,
+		centros: visibles.map(({ id, clave, nombre }) => ({ id, clave, nombre })),
+		centro: completo ? { id: completo.id, clave: completo.clave, nombre: completo.nombre } : null,
 		anio,
-		detalle: centro ? await repos.contratoCobranza.obtener(centro.id, anio, hoy, ver) : null,
+		hoy,
+		detalle,
+		// Insignia y barra del resumen: solo con el contrato a la vista.
+		estatus: completo && detalle?.contrato ? await estatusDelMes(repos, completo, hoy) : null,
 		puedeEditarContrato,
 		puedeEditarCobranza: puede(locals, 'editarCobranza'),
-		idOrden: puedeEditarContrato ? randomUUID() : ''
+		idOrden: puedeEditarContrato ? randomUUID() : '',
+		idAdicional: puedeEditarContrato ? randomUUID() : '',
+		// En teléfono, contrato, órdenes y carta llegan plegados (son de consulta ocasional).
+		movil: /Mobi|Android/i.test(request.headers.get('user-agent') ?? '')
 	};
 };
 
@@ -61,10 +96,45 @@ const CAPACIDAD_DE_ACCION: Record<string, Capacidad> = {
 	nuevaOrden: 'editarContrato',
 	editarOrden: 'editarContrato',
 	quitarOrden: 'editarContrato',
+	// Adicionales: administración los registra; contabilidad solo llena lo cobrado.
+	nuevoAdicional: 'editarContrato',
+	editarAdicional: 'editarContrato',
+	quitarAdicional: 'editarContrato',
+	cobroAdicional: 'editarCobranza',
 	carta: 'editarContrato',
 	programa: 'editarContrato',
 	cobranza: 'editarCobranza'
 };
+
+const MENSAJE_DE_ACCION: Record<string, string> = {
+	contrato: 'Contrato guardado.',
+	nuevaOrden: 'Orden de compra agregada.',
+	editarOrden: 'Orden de compra guardada.',
+	quitarOrden: 'Orden de compra quitada.',
+	nuevoAdicional: 'Adicional registrado.',
+	editarAdicional: 'Adicional guardado.',
+	quitarAdicional: 'Adicional quitado.',
+	cobroAdicional: 'Cobro guardado.',
+	carta: 'Carta guardada.',
+	programa: 'Enlace guardado.',
+	cobranza: 'Cobranza guardada.'
+};
+
+/** Lugar de la página que muestra el resultado; lo envía el formulario y vuelve tal cual. */
+const ANCLA = /^r-[a-z]+(?:-[0-9a-f-]{36})?$/;
+/** Hasta doce enteros y dos decimales, sin signos ni separadores de miles. */
+const MONTO = /^\d{1,12}(?:\.\d{1,2})?$/;
+
+function montoDe(campo: string, cual = 'el monto'): number | null {
+	if (!campo) return null;
+	if (!MONTO.test(campo)) {
+		throw new ErrorDatos(
+			'invalido',
+			`Escriba ${cual} con números, sin signos ni comas (por ejemplo, 15000.50).`
+		);
+	}
+	return Number(campo);
+}
 
 function cambiosDe(formulario: FormData, anio: number) {
 	const texto = (nombre: string) => String(formulario.get(nombre) ?? '').trim();
@@ -88,7 +158,29 @@ function cambiosDe(formulario: FormData, anio: number) {
 		case 'editarOrden':
 			return { accion, id: texto('id'), valores: valores() };
 		case 'quitarOrden':
+		case 'quitarAdicional':
 			return { accion, id: texto('id') };
+		case 'nuevoAdicional':
+		case 'editarAdicional': {
+			const periodoInicio = texto('periodoInicio') || null;
+			const periodoFin = texto('periodoFin') || null;
+			if (!texto('ordenCompra')) throw new ErrorDatos('invalido', 'Escriba la orden de compra.');
+			if (periodoInicio && periodoFin && periodoFin < periodoInicio) {
+				throw new ErrorDatos('invalido', 'El fin de la ejecución no puede ser anterior al inicio.');
+			}
+			return {
+				accion,
+				id: texto('id'),
+				ordenCompra: texto('ordenCompra'),
+				descripcion: texto('descripcion') || null,
+				fechaSolicitud: texto('fechaSolicitud') || null,
+				periodoInicio,
+				periodoFin,
+				montoPactado: montoDe(texto('montoPactado'))
+			};
+		}
+		case 'cobroAdicional':
+			return { accion, id: texto('id'), montoCobrado: montoDe(texto('montoCobrado')) };
 		case 'carta':
 			return { accion, fecha: texto('fecha') || null, enlace: texto('enlace') || null };
 		case 'programa':
@@ -98,13 +190,15 @@ function cambiosDe(formulario: FormData, anio: number) {
 				accion,
 				meses: Array.from({ length: 12 }, (_, i) => {
 					const mm = String(i + 1).padStart(2, '0');
-					const monto = texto(`monto-${mm}`);
 					return {
 						mes: `${anio}-${mm}-01`,
 						...Object.fromEntries(
 							PASOS_COBRANZA.map(([paso]) => [paso, formulario.has(`${paso}-${mm}`)])
 						),
-						montoCobrado: monto ? Number(monto) : null
+						montoCobrado: montoDe(
+							texto(`monto-${mm}`),
+							`el monto de ${textoMes(`${anio}-${mm}`).split(' ')[0]}`
+						)
 					};
 				})
 			};
@@ -113,22 +207,45 @@ function cambiosDe(formulario: FormData, anio: number) {
 	}
 }
 
+/** Lo escrito en el alta de un adicional, para no perderlo si el envío falla sin JavaScript. */
+const CAMPOS_ADICIONAL = [
+	'ordenCompra',
+	'descripcion',
+	'fechaSolicitud',
+	'periodoInicio',
+	'periodoFin',
+	'montoPactado'
+] as const;
+
 export const actions: Actions = {
 	guardar: async ({ request, locals, url }) => {
 		const formulario = await request.formData();
-		const capacidad = CAPACIDAD_DE_ACCION[String(formulario.get('accion') ?? '')];
+		const accion = String(formulario.get('accion') ?? '');
+		const pedida = String(formulario.get('ancla') ?? '');
+		const ancla = ANCLA.test(pedida) ? pedida : undefined;
+		const capacidad = CAPACIDAD_DE_ACCION[accion];
 		if (!capacidad || !puede(locals, capacidad)) {
-			return fail(403, { error: 'No tiene permiso para hacer este cambio.' });
+			return fail(403, { error: 'No tiene permiso para hacer este cambio.', ancla });
 		}
 		const sitio = centroDeSeguimiento(locals, url.searchParams.get('centro'));
 		const anio = anioDe(url, fechaEnZona());
 		try {
 			await (await datos()).contratoCobranza.guardar(sitio, cambiosDe(formulario, anio));
-			return { mensaje: 'Guardado.' };
+			return { mensaje: MENSAJE_DE_ACCION[accion] ?? 'Guardado.', ancla };
 		} catch (causa) {
 			if (causa instanceof ErrorDatos && causa.tipo === 'no_encontrado') error(404, causa.message);
 			const estado = causa instanceof ErrorDatos && causa.tipo === 'conflicto' ? 409 : 400;
-			return fail(estado, { error: mensajeDeError(causa) });
+			return fail(estado, {
+				error: mensajeDeError(causa),
+				ancla,
+				...(accion === 'nuevoAdicional'
+					? {
+							enviado: Object.fromEntries(
+								CAMPOS_ADICIONAL.map((campo) => [campo, String(formulario.get(campo) ?? '')])
+							) as Record<(typeof CAMPOS_ADICIONAL)[number], string>
+						}
+					: {})
+			});
 		}
 	}
 };

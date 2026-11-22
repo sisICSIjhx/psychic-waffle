@@ -1,7 +1,8 @@
 // Contrato, órdenes de compra, carta de finalización, enlace del programa anual y cobranza mensual
-// de un centro de costo (etapa 4 del seguimiento, migración 0025).
+// de un centro de costo (etapa 4 del seguimiento, migración 0025), con los adicionales y el monto
+// cobrado derivado de la cobranza (cambio kpi-estatus-centros, D6 y D7).
 import { z } from 'zod';
-import { MODOS_CONTRATO, TIPOS_CONCEPTO } from '../../dominio/constantes.ts';
+import { INDICADORES_CONCEPTO, MODOS_CONTRATO, TIPOS_CONCEPTO } from '../../dominio/constantes.ts';
 import type { ClienteSql } from '../bd/cliente.ts';
 
 const valor = z.union([z.boolean(), z.number().nonnegative(), z.string().max(2048), z.null()]);
@@ -19,6 +20,16 @@ const mesCobranza = z.object({
 	cobrado: z.boolean(),
 	montoCobrado: monto.nullable()
 });
+/** Lo que llena administración de un adicional; lo cobrado es de contabilidad (`cobroAdicional`). */
+const datosAdicional = {
+	ordenCompra: z.string().trim().min(1).max(100),
+	descripcion: z.string().trim().min(1).max(500).nullable(),
+	fechaSolicitud: z.iso.date().nullable(),
+	periodoInicio: z.iso.date().nullable(),
+	periodoFin: z.iso.date().nullable(),
+	montoPactado: monto.nullable()
+};
+const adicional = z.object({ id: z.uuid(), ...datosAdicional, montoCobrado: monto.nullable() });
 
 const contrato = z.object({
 	modoContrato: z.enum(MODOS_CONTRATO).nullable(),
@@ -27,11 +38,16 @@ const contrato = z.object({
 			id: z.uuid(),
 			bloque: z.enum(['contrato', 'ordenes_compra']),
 			tipo: z.enum(TIPOS_CONCEPTO),
-			etiqueta: z.string()
+			etiqueta: z.string(),
+			/** «monto_cobrado» ya no se captura: se muestra `cobradoTotal`. */
+			indicador: z.enum(INDICADORES_CONCEPTO).nullable(),
+			porDefinir: z.boolean()
 		})
 	),
 	valores,
 	ordenes: z.array(z.object({ id: z.uuid(), valores })),
+	/** Trabajos adicionales al contrato del centro; el contrato madre es el del centro. */
+	adicionales: z.array(adicional),
 	contratos: z.array(
 		z.object({
 			id: z.uuid(),
@@ -42,7 +58,9 @@ const contrato = z.object({
 	),
 	carta: z.object({ fecha: z.iso.date().nullable(), enlace: z.string().nullable() }),
 	cartaFaltante: z.boolean(),
-	cobranza: z.array(mesCobranza)
+	cobranza: z.array(mesCobranza),
+	/** Suma de la cobranza mensual de todos los años: el monto cobrado del contrato. */
+	cobradoTotal: z.number().nonnegative()
 });
 const contratoCobranza = z.object({
 	plantillaId: z.uuid().nullable(),
@@ -53,12 +71,18 @@ const contratoCobranza = z.object({
 });
 export type ContratoCobranza = z.infer<typeof contratoCobranza>;
 export type DatosContrato = z.infer<typeof contrato>;
+export type Adicional = z.infer<typeof adicional>;
 
 const comando = z.discriminatedUnion('accion', [
 	z.object({ accion: z.literal('contrato'), valores }),
 	z.object({ accion: z.literal('nuevaOrden'), id: z.uuid(), valores }),
 	z.object({ accion: z.literal('editarOrden'), id: z.uuid(), valores }),
 	z.object({ accion: z.literal('quitarOrden'), id: z.uuid() }),
+	// Adicionales: alta, edición y baja son de quien edita el contrato; el cobro, de contabilidad.
+	z.object({ accion: z.literal('nuevoAdicional'), id: z.uuid(), ...datosAdicional }),
+	z.object({ accion: z.literal('editarAdicional'), id: z.uuid(), ...datosAdicional }),
+	z.object({ accion: z.literal('quitarAdicional'), id: z.uuid() }),
+	z.object({ accion: z.literal('cobroAdicional'), id: z.uuid(), montoCobrado: monto.nullable() }),
 	z.object({ accion: z.literal('carta'), fecha: z.iso.date().nullable(), enlace }),
 	z.object({ accion: z.literal('programa'), enlace }),
 	z.object({ accion: z.literal('cobranza'), meses: z.array(mesCobranza).min(1).max(12) })

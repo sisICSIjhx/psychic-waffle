@@ -2,8 +2,16 @@ import { readFile } from 'node:fs/promises';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { crearClientePglite } from '../bd/pglite';
 import { crearRepositorios, type Repositorios } from '../repositorios/index';
-import { analizarLibroCatalogo, clasificarLinea, ErrorImportacion } from './catalogo';
+import {
+	analizarHojas,
+	analizarLibroCatalogo,
+	clasificarLinea,
+	conservarRegistrado,
+	ErrorImportacion
+} from './catalogo';
 import { crearLibroSintetico, PARTIDAS_EJEMPLO } from './libro-sintetico';
+import { tipoDeLibro } from './programa';
+import type { Hoja, ValorCelda } from './xlsx';
 
 const FIXTURE = new URL('./fixtures/catalogo-sintetico.xlsx', import.meta.url);
 
@@ -117,6 +125,123 @@ describe('análisis del libro de catálogo', () => {
 		expect(clasificarLinea('CONTROL DE LA CORROSIÓN EXTERNA')?.tipo).toBe('norma');
 		expect(clasificarLinea('Brida WNRF De 8"')?.tipo).toBe('nota');
 		expect(clasificarLinea('   ')).toBeNull();
+	});
+});
+
+describe('libro solo de alcances, sin hoja de programa', () => {
+	const fila = (
+		numero: number,
+		actividad: string,
+		alcances: string,
+		periodicidad: string,
+		resto: ValorCelda[] = []
+	): ValorCelda[] => [null, numero, actividad, alcances, periodicidad, ...resto];
+	const hojaAlcances = (filas: ValorCelda[][], ocultas: number[] = []): Hoja => ({
+		nombre: 'Prog anual 2026',
+		filas: [
+			[null, 'PROGRAMA ANUAL DE OPERACIÓN Y MANTENIMIENTO EM:11111'],
+			[
+				null,
+				'Nº',
+				'ACTIVIDAD',
+				'ALCANCES',
+				'PERIODICIDAD ',
+				'ENTREGA DE ACUERDO CON OMA',
+				'ENTREGA PROPUESTA',
+				'REQUIERE ODM',
+				null,
+				'REQUIERE PT',
+				null,
+				'REQUIERE AST',
+				null,
+				'MATERIAL / CONSUMIBLES'
+			],
+			[null, null, null, null, null, null, null, 'SI', 'NO', 'SI', 'NO', 'SI', 'NO'],
+			...filas
+		],
+		combinadas: [],
+		rellenos: [],
+		columnasOcultas: new Set(),
+		filasOcultas: new Set(ocultas)
+	});
+	const FILAS = [
+		fila(1, 'Revisión ficticia', '• Inspección visual.\r\n• Limpieza\r\nficticia', 'TRIMESTRAL', [
+			'Reporte ficticio',
+			'Bitácora ficticia',
+			'X',
+			null,
+			null,
+			'X',
+			null,
+			'X',
+			'ICSI'
+		]),
+		fila(2, 'Servicio ficticio', '• Servicio acreditado', 'ANUAL'),
+		fila(2, 'Drenado ficticio', 'Inspección visual, retiro de tapón', 'MENSUAL')
+	];
+
+	it('lee las cabeceras del libro, las viñetas de una celda y usa la fila visible de un número repetido', () => {
+		const hojas = [hojaAlcances(FILAS, [4])];
+		expect(tipoDeLibro(hojas)).toBe('catalogo');
+		const catalogo = analizarHojas(hojas);
+		expect(catalogo.programa).toBeNull();
+		expect(catalogo.firmantesPropuestos).toEqual([]);
+		expect(catalogo.partidas).toHaveLength(2);
+		expect(catalogo.partidas[0]).toMatchObject({
+			numero: '1',
+			actividad: 'Revisión ficticia',
+			periodicidad: 'trimestral',
+			cantidadAnual: null,
+			entregaOma: 'Reporte ficticio',
+			entregaPropuesta: 'Bitácora ficticia',
+			requiereOdm: true,
+			requierePt: false,
+			requiereAst: false,
+			materialesPor: 'icsi',
+			meses: [],
+			alcances: [
+				{ tipo: 'alcance', texto: 'Inspección visual.' },
+				{ tipo: 'alcance', texto: 'Limpieza ficticia' }
+			]
+		});
+		expect(catalogo.partidas[1]).toMatchObject({
+			numero: '2',
+			actividad: 'Drenado ficticio',
+			periodicidad: 'mensual',
+			alcances: [{ tipo: 'nota', texto: 'Inspección visual, retiro de tapón' }]
+		});
+		expect(catalogo.advertencias).toHaveLength(2);
+		expect(catalogo.advertencias[0]).toMatch(/no trae la hoja del programa anual/);
+		expect(catalogo.advertencias[1]).toMatch(/fila oculta 5 .*fila visible 6/);
+	});
+
+	it('rechaza un número repetido en dos filas visibles', () => {
+		expect(() => analizarHojas([hojaAlcances(FILAS)])).toThrow(/se repite en las filas 5 y 6/);
+	});
+
+	it('conserva la cantidad anual, la distribución y los alcances registrados si se pide', () => {
+		const { partidas } = analizarHojas([hojaAlcances(FILAS, [4])]);
+		const registradas = [
+			{
+				numero: '01',
+				cantidadAnual: 4,
+				distribucion: 'mantenimiento' as const,
+				alcances: [{ tipo: 'alcance' }]
+			},
+			{ numero: '2', cantidadAnual: null, distribucion: null, alcances: [] }
+		];
+		const soloPrograma = conservarRegistrado(partidas, registradas, {
+			sinPrograma: true,
+			alcances: false
+		});
+		expect(soloPrograma[0]).toMatchObject({ cantidadAnual: 4, distribucion: 'mantenimiento' });
+		expect(soloPrograma[0].alcances).toHaveLength(2);
+		const conAlcances = conservarRegistrado(partidas, registradas, {
+			sinPrograma: true,
+			alcances: true
+		});
+		expect(conAlcances[0].alcances).toEqual([]);
+		expect(conAlcances[1].alcances).toEqual(partidas[1].alcances);
 	});
 });
 
